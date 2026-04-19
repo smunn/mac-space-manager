@@ -1,0 +1,33 @@
+name: SpaceManager
+options:
+  bundleIdPrefix: com.smunn
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+targets:
+  SpaceManager:
+    type: application
+    platform: macOS
+    sources:
+      - path: SpaceManager
+        excludes:
+          - Resources/Assets.xcassets/AppIcon.appiconset
+    resources:
+      - path: SpaceManager/Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.smunn.SpaceManager
+        PRODUCT_NAME: Space Manager
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_OBJC_BRIDGING_HEADER: SpaceManager/SpaceManager-Bridging-Header.h
+        INFOPLIST_FILE: SpaceManager/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SpaceManager/Resources/SpaceManager.entitlements
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: false
+        COMBINE_HIDPI_IMAGES: true
