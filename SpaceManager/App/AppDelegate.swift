@@ -197,11 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSettingsWindow() {
-        NSApp.activate(ignoringOtherApps: true)
-        let didShowSettings = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        if !didShowSettings {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
+        statusBarController.showSettings()
     }
 
     private func processPendingCommandURLs() {

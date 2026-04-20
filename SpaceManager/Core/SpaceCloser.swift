@@ -105,7 +105,7 @@ class SpaceCloser {
             for num in desktopNumbers {
                 lines.append("            try")
                 lines.append("              perform action \"AXRemoveDesktop\" of button \"Desktop \(num)\"")
-                lines.append("              delay 0.3")
+                lines.append("              delay 0.8")
                 lines.append("            end try")
             }
 

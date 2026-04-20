@@ -10,6 +10,7 @@ class StatusBarController: NSObject {
     private var statusItem: NSStatusItem!
     private var statusMenu: NSMenu!
     private let spaceSwitcher = SpaceSwitcher()
+    private var settingsWindow: NSWindow?
 
     private var currentSpaces: [Space] = []
     private var physicalDisplayOrder: [String] = []
@@ -48,7 +49,8 @@ class StatusBarController: NSObject {
     private func updateMenuBarTitle(_ spaces: [Space]) {
         guard let current = spaces.first(where: { $0.isCurrentSpace }) else { return }
         if let button = statusItem.button {
-            let number = current.isFullScreen ? "F" : current.spaceByDesktopID
+            let desktopCount = spaces.filter { !$0.isFullScreen }.count
+            let number = current.isFullScreen ? "F" : "\(current.spaceByDesktopID)/\(desktopCount)"
             button.title = " \(number)"
             button.imagePosition = .imageLeading
         }
@@ -592,12 +594,29 @@ class StatusBarController: NSObject {
         NSWorkspace.shared.launchApplication("Mission Control")
     }
 
+    func showSettings() {
+        openSettings()
+    }
+
     @objc private func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        let didShowSettings = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        if !didShowSettings {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+
+        if let existing = settingsWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
         }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 430, height: 300),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false)
+        window.title = "Space Manager Settings"
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        settingsWindow = window
     }
 
     private func refreshAfterClose() {
