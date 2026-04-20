@@ -99,11 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: SpaceObserverDelegate {
     func didUpdateSpaces(spaces: [Space]) {
-        if let currentSpace = spaces.first(where: { $0.isCurrentSpace }) {
-            windowDetector.snapshotCurrentSpace(spaceID: currentSpace.spaceID)
-        }
+        windowDetector.snapshotAllSpaces()
 
-        // Immediate UI update with cached data (no subprocess spawning)
         enrichAndDisplay(spaces)
 
         // Resolve terminal CWDs in background, then refresh names

@@ -116,6 +116,20 @@ class StatusBarController: NSObject {
 
         statusMenu.addItem(NSMenuItem.separator())
 
+        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
+        closeItem.submenu = buildCloseSubmenu(spaces)
+        statusMenu.addItem(closeItem)
+
+        let addSpaceItem = NSMenuItem(title: "Add Space", action: #selector(addSpace), keyEquivalent: "")
+        addSpaceItem.target = self
+        statusMenu.addItem(addSpaceItem)
+
+        let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
+        missionControlItem.target = self
+        statusMenu.addItem(missionControlItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
         let hasAccessibility = checkAccessibility()
         let hasAutomation = checkAutomation()
         let hasScreenRecording = checkScreenRecording()
@@ -197,23 +211,97 @@ class StatusBarController: NSObject {
         return item
     }
 
+    // MARK: - Close Submenu
+
+    private func buildCloseSubmenu(_ spaces: [Space]) -> NSMenu {
+        let submenu = NSMenu()
+
+        let desktopSpaces = spaces.filter { !$0.isFullScreen }
+        let hasMultipleDesktops = desktopSpaces.count > 1
+
+        for space in desktopSpaces {
+            let item = makeCloseMenuItem(space: space, enabled: hasMultipleDesktops)
+            submenu.addItem(item)
+        }
+
+        submenu.addItem(NSMenuItem.separator())
+
+        let emptySpaces = desktopSpaces.filter { $0.windows.isEmpty }
+        let closeableEmptyCount: Int
+        if desktopSpaces.count - emptySpaces.count > 0 {
+            closeableEmptyCount = emptySpaces.count
+        } else {
+            closeableEmptyCount = max(0, emptySpaces.count - 1)
+        }
+
+        let emptyItem = NSMenuItem(
+            title: "Close Empty Spaces (\(closeableEmptyCount))",
+            action: closeableEmptyCount > 0 ? #selector(closeEmptySpaces) : nil,
+            keyEquivalent: "")
+        emptyItem.target = self
+        submenu.addItem(emptyItem)
+
+        let closeAllItem = NSMenuItem(
+            title: "Close All Spaces",
+            action: hasMultipleDesktops ? #selector(closeAllSpaces) : nil,
+            keyEquivalent: "")
+        closeAllItem.target = self
+        submenu.addItem(closeAllItem)
+
+        return submenu
+    }
+
+    private func makeCloseMenuItem(space: Space, enabled: Bool) -> NSMenuItem {
+        let prefix = space.spaceByDesktopID
+        let appNames = uniqueAppNames(space.windows)
+
+        let item = NSMenuItem(
+            title: "\(prefix). \(space.spaceName)",
+            action: enabled ? #selector(closeSpace(_:)) : nil,
+            keyEquivalent: "")
+        item.target = self
+        item.representedObject = Int(space.spaceByDesktopID)
+
+        let attrTitle = NSMutableAttributedString()
+
+        let numberAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.tertiaryLabelColor
+        ]
+        attrTitle.append(NSAttributedString(string: "\(prefix). ", attributes: numberAttrs))
+
+        let nameAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.menuFont(ofSize: 14),
+            .foregroundColor: space.isCurrentSpace ? NSColor.controlAccentColor : NSColor.labelColor
+        ]
+        attrTitle.append(NSAttributedString(string: space.spaceName, attributes: nameAttrs))
+
+        if !appNames.isEmpty {
+            let subtitle = appNames.joined(separator: ", ")
+            let subtitleAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.menuFont(ofSize: 11),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+            attrTitle.append(NSAttributedString(string: "\n     \(subtitle)", attributes: subtitleAttrs))
+        }
+
+        item.attributedTitle = attrTitle
+        return item
+    }
+
     // MARK: - Actions
 
     @objc private func switchToSpace(_ sender: NSMenuItem) {
         guard let targetNumber = sender.representedObject as? Int else { return }
-        guard let current = currentSpaces.first(where: { $0.isCurrentSpace }) else { return }
-
-        let currentNumber = current.spaceNumber
-        if currentNumber == targetNumber { return }
+        guard let target = currentSpaces.first(where: { $0.spaceNumber == targetNumber }) else { return }
+        guard !target.isCurrentSpace else { return }
 
         if spaceSwitcher.canDirectSwitch(spaceNumber: targetNumber) {
             spaceSwitcher.switchToSpace(spaceNumber: targetNumber) {
                 self.showSwitchError()
             }
-        } else {
-            spaceSwitcher.navigateToSpace(from: currentNumber, to: targetNumber) {
-                self.showSwitchError()
-            }
+        } else if !target.isFullScreen, let desktopNum = Int(target.spaceByDesktopID) {
+            spaceSwitcher.switchViaMissionControl(desktopNumber: desktopNum)
         }
     }
 
@@ -284,6 +372,70 @@ class StatusBarController: NSObject {
 
     @objc private func openScreenRecordingSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+    }
+
+    @objc private func closeSpace(_ sender: NSMenuItem) {
+        guard let desktopNumber = sender.representedObject as? Int else { return }
+        SpaceCloser.closeSpaces(desktopNumbers: [desktopNumber]) { [weak self] _ in
+            self?.refreshAfterClose()
+        }
+    }
+
+    @objc private func closeEmptySpaces() {
+        let freshWindows = WindowDetector.detectWindowsPerSpace()
+        let desktopSpaces = currentSpaces.filter { !$0.isFullScreen }
+
+        var emptyNumbers = desktopSpaces
+            .filter { (freshWindows[$0.spaceID] ?? []).isEmpty }
+            .compactMap { Int($0.spaceByDesktopID) }
+
+        guard !emptyNumbers.isEmpty else { return }
+
+        let occupiedCount = desktopSpaces.count - emptyNumbers.count
+        if occupiedCount == 0 {
+            emptyNumbers.sort()
+            emptyNumbers.removeFirst()
+        }
+
+        guard !emptyNumbers.isEmpty else { return }
+
+        SpaceCloser.closeSpaces(desktopNumbers: emptyNumbers) { [weak self] _ in
+            self?.refreshAfterClose()
+        }
+    }
+
+    @objc private func closeAllSpaces() {
+        let desktopSpaces = currentSpaces.filter { !$0.isFullScreen }
+        guard desktopSpaces.count > 1 else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Close All Spaces?"
+        alert.informativeText = "This will close \(desktopSpaces.count - 1) space\(desktopSpaces.count == 2 ? "" : "s") and move all windows to Desktop 1."
+        alert.addButton(withTitle: "Close All")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let numbersToClose = desktopSpaces.compactMap { Int($0.spaceByDesktopID) }.filter { $0 > 1 }
+        SpaceCloser.closeSpaces(desktopNumbers: numbersToClose) { [weak self] _ in
+            self?.refreshAfterClose()
+        }
+    }
+
+    @objc private func addSpace() {
+        SpaceCloser.addSpace { [weak self] _ in
+            self?.refreshAfterClose()
+        }
+    }
+
+    @objc private func showMissionControl() {
+        NSWorkspace.shared.launchApplication("Mission Control")
+    }
+
+    private func refreshAfterClose() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NotificationCenter.default.post(name: NSNotification.Name("RequestSpaceRefresh"), object: nil)
+        }
     }
 
     @objc private func refreshSpaces() {

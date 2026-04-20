@@ -23,6 +23,35 @@ class SpaceSwitcher {
         shortcutHelper.reload()
     }
 
+    /// Switches to a space by clicking its button in Mission Control.
+    /// Constant time regardless of distance -- no stepping through intermediate spaces.
+    func switchViaMissionControl(desktopNumber: Int) {
+        var lines: [String] = []
+        lines.append("tell application \"Mission Control\" to launch")
+        lines.append("delay 0.7")
+        lines.append("")
+        lines.append("tell application \"System Events\"")
+        lines.append("  tell process \"Dock\"")
+        lines.append("    tell group \"Mission Control\"")
+        lines.append("      tell group 1")
+        lines.append("        tell group \"Spaces Bar\"")
+        lines.append("          tell list 1")
+        lines.append("            click button \"Desktop \(desktopNumber)\"")
+        lines.append("          end tell")
+        lines.append("        end tell")
+        lines.append("      end tell")
+        lines.append("    end tell")
+        lines.append("  end tell")
+        lines.append("end tell")
+
+        let script = lines.joined(separator: "\n")
+        DispatchQueue.global(qos: .userInteractive).async {
+            let appleScript = NSAppleScript(source: script)
+            var error: NSDictionary?
+            appleScript?.executeAndReturnError(&error)
+        }
+    }
+
     func canDirectSwitch(spaceNumber: Int) -> Bool {
         shortcutHelper.getKeyCode(spaceNumber: spaceNumber) >= 0
     }

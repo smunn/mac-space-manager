@@ -24,6 +24,7 @@
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
 		DBE2A6EADF22BC51A5D7EA32 /* SpaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */; };
 		EA50500A8F00DDE204D5E63C /* SpaceManagerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DCE0867DD1ECA0FD468D3D0 /* SpaceManagerApp.swift */; };
+		FBF3EE083A0E3DBC49D5D0AE /* SpaceCloser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		5FCD10B9F25963D2BECC467D /* WindowDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDetector.swift; sourceTree = "<group>"; };
 		5FD7AC909FBAF3280A7ADB5E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayGeometryUtilities.swift; sourceTree = "<group>"; };
+		6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceCloser.swift; sourceTree = "<group>"; };
 		6E5031E65C33D85C65EDA242 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		703E83622E4EE8A035214A5A /* Space.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Space.swift; sourceTree = "<group>"; };
 		733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHelper.swift; sourceTree = "<group>"; };
@@ -77,6 +79,7 @@
 			children = (
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
 				0C83502A28F0A648D41E7688 /* ShortcutHelper.swift */,
+				6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */,
 				1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */,
 				CC1761DA8F106DAD6C9F477D /* SpaceObserver.swift */,
 				993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */,
@@ -220,6 +223,7 @@
 				0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */,
 				28511B773923A14C363DD47B /* ShortcutHelper.swift in Sources */,
 				36EF5488F31DCCDF32170042 /* Space.swift in Sources */,
+				FBF3EE083A0E3DBC49D5D0AE /* SpaceCloser.swift in Sources */,
 				EA50500A8F00DDE204D5E63C /* SpaceManagerApp.swift in Sources */,
 				1E09A7077C6B3A5D22386CA7 /* SpaceNameInfo.swift in Sources */,
 				2DCD2F14A3077165A7E72BC9 /* SpaceNameStore.swift in Sources */,
