@@ -31,5 +31,5 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development: Scott Munn (B9H95944YF)"
         DEVELOPMENT_TEAM: YXX3W2NJA2
         CODE_SIGN_STYLE: Manual
-        ENABLE_HARDENED_RUNTIME: false
+        ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
