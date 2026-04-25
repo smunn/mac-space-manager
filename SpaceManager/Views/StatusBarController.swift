@@ -81,6 +81,16 @@ class StatusBarController: NSObject {
             sortedSpaces = spaces
         }
 
+        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
+        newItem.submenu = buildNewSubmenu()
+        statusMenu.addItem(newItem)
+
+        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
+        closeItem.submenu = buildCloseSubmenu(spaces)
+        statusMenu.addItem(closeItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
         var currentDisplayID: String?
 
         for space in sortedSpaces {
@@ -139,18 +149,6 @@ class StatusBarController: NSObject {
         }
 
         statusMenu.addItem(NSMenuItem.separator())
-
-        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
-        newItem.submenu = buildNewSubmenu()
-        statusMenu.addItem(newItem)
-
-        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
-        closeItem.submenu = buildCloseSubmenu(spaces)
-        statusMenu.addItem(closeItem)
-
-        let workspaceItem = NSMenuItem(title: "New Workspace", action: nil, keyEquivalent: "")
-        workspaceItem.submenu = buildWorkspaceSubmenu()
-        statusMenu.addItem(workspaceItem)
 
         let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
         missionControlItem.target = self
@@ -231,7 +229,68 @@ class StatusBarController: NSObject {
         terminalItem.target = self
         submenu.addItem(terminalItem)
 
+        submenu.addItem(NSMenuItem.separator())
+        addSectionHeader("Workspaces", to: submenu)
+        addWorkspaceItems(to: submenu)
+
+        submenu.addItem(NSMenuItem.separator())
+        addSectionHeader("Sites", to: submenu)
+        addSiteItems(to: submenu)
+
         return submenu
+    }
+
+    private func addWorkspaceItems(to menu: NSMenu) {
+        let workspaces = WorkspaceConfig.loadWorkspaces()
+
+        if workspaces.isEmpty {
+            let item = NSMenuItem(title: "No workspaces found", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            return
+        }
+
+        for workspace in workspaces {
+            let item = NSMenuItem(
+                title: workspace.displayName,
+                action: #selector(launchWorkspace(_:)),
+                keyEquivalent: "")
+            item.target = self
+            item.representedObject = workspace.key
+            menu.addItem(item)
+        }
+    }
+
+    private func addSiteItems(to menu: NSMenu) {
+        let sites = WorkspaceConfig.loadSiteFolders()
+
+        if sites.isEmpty {
+            let item = NSMenuItem(title: "No sites found", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            return
+        }
+
+        for site in sites {
+            let item = NSMenuItem(
+                title: site.displayName,
+                action: #selector(launchSite(_:)),
+                keyEquivalent: "")
+            item.target = self
+            item.representedObject = ["name": site.displayName, "path": site.path]
+            menu.addItem(item)
+        }
+    }
+
+    private func addSectionHeader(_ title: String, to menu: NSMenu) {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.tertiaryLabelColor
+        ]
+        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        header.attributedTitle = NSAttributedString(string: title, attributes: attrs)
+        menu.addItem(header)
     }
 
     // MARK: - Transfer Submenu
@@ -283,47 +342,38 @@ class StatusBarController: NSObject {
         return submenu
     }
 
-    // MARK: - Workspace Submenu
-
-    private func buildWorkspaceSubmenu() -> NSMenu {
-        let submenu = NSMenu()
-        let workspaces = WorkspaceConfig.loadWorkspaces()
-
-        if workspaces.isEmpty {
-            let item = NSMenuItem(title: "No workspaces found", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            submenu.addItem(item)
-            return submenu
-        }
-
-        for workspace in workspaces {
-            let item = NSMenuItem(
-                title: workspace.displayName,
-                action: #selector(launchWorkspace(_:)),
-                keyEquivalent: "")
-            item.target = self
-            item.representedObject = workspace.key
-            submenu.addItem(item)
-        }
-
-        return submenu
-    }
-
     @objc private func launchWorkspace(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
 
-        let activeUUID = DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder)
-        let desktopsOnDisplay = currentSpaces.filter {
-            $0.displayID == (activeUUID ?? "") && !$0.isFullScreen
-        }
-        let targetDesktopNumber = desktopsOnDisplay.count + 1
         let groupIndex = activeDisplayGroupIndex()
 
         SpaceCloser.addSpaceAndSwitch(
-            toDesktopNumber: targetDesktopNumber,
+            toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
             displayGroupIndex: groupIndex
         ) { _ in
             WorkspaceLauncher.launch(key)
+        }
+    }
+
+    @objc private func launchSite(_ sender: NSMenuItem) {
+        guard let info = sender.representedObject as? [String: String],
+              let name = info["name"],
+              let path = info["path"]
+        else { return }
+
+        let groupIndex = activeDisplayGroupIndex()
+
+        SpaceCloser.addSpaceAndSwitch(
+            toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
+            displayGroupIndex: groupIndex
+        ) { [weak self] success in
+            guard success else {
+                self?.refreshAfterClose()
+                return
+            }
+
+            WorkspaceLauncher.launchSite(name: name, path: path)
+            self?.refreshAfterClose()
         }
     }
 
@@ -440,6 +490,20 @@ class StatusBarController: NSObject {
     private func activeDisplayGroupIndex() -> Int {
         guard let uuid = DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder) else { return 1 }
         return displayGroupIndex(for: uuid)
+    }
+
+    private func activeDisplayID() -> String? {
+        DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder) ?? physicalDisplayOrder.first
+    }
+
+    private func nextDesktopNumberOnActiveDisplay() -> Int {
+        guard let displayID = activeDisplayID() else {
+            return currentSpaces.filter { !$0.isFullScreen }.count + 1
+        }
+
+        return currentSpaces.filter {
+            $0.displayID == displayID && !$0.isFullScreen
+        }.count + 1
     }
 
     private func perDisplayDesktopNumber(for space: Space) -> Int? {
@@ -688,14 +752,9 @@ class StatusBarController: NSObject {
 
     @objc private func addTerminalSpace() {
         let groupIndex = activeDisplayGroupIndex()
-        let activeUUID = DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder)
-        let desktopsOnDisplay = currentSpaces.filter {
-            $0.displayID == (activeUUID ?? "") && !$0.isFullScreen
-        }
-        let targetDesktopNumber = desktopsOnDisplay.count + 1
 
         WorkspaceAutomation.createTerminalSpace(
-            targetDesktopNumber: targetDesktopNumber,
+            targetDesktopNumber: nextDesktopNumberOnActiveDisplay(),
             displayGroupIndex: groupIndex
         ) { [weak self] _ in
             self?.refreshAfterClose()
