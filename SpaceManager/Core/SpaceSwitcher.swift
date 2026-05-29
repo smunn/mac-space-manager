@@ -23,9 +23,10 @@ class SpaceSwitcher {
         shortcutHelper.reload()
     }
 
-    /// Switches to a space by clicking its button in Mission Control.
+    /// Switches to a space by clicking the Nth desktop button inside the
+    /// target display's Mission Control group.
     /// Constant time regardless of distance -- no stepping through intermediate spaces.
-    func switchViaMissionControl(desktopNumber: Int) {
+    func switchViaMissionControl(displayGroupIndex: Int = 1, desktopIndex: Int) {
         var lines: [String] = []
         lines.append("tell application \"Mission Control\" to launch")
         lines.append("delay 0.7")
@@ -33,10 +34,11 @@ class SpaceSwitcher {
         lines.append("tell application \"System Events\"")
         lines.append("  tell process \"Dock\"")
         lines.append("    tell group \"Mission Control\"")
-        lines.append("      tell group 1")
+        lines.append("      tell group \(displayGroupIndex)")
         lines.append("        tell group \"Spaces Bar\"")
         lines.append("          tell list 1")
-        lines.append("            click button \"Desktop \(desktopNumber)\"")
+        lines.append("            set desktopButtons to (every button whose name starts with \"Desktop \")")
+        lines.append("            click (item \(desktopIndex) of desktopButtons)")
         lines.append("          end tell")
         lines.append("        end tell")
         lines.append("      end tell")

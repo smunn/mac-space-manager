@@ -18,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var currentSpaces: [Space] = []
     private var pendingCommandURLs: [URL] = []
+    private var refreshInFlight = false
+    private var pendingRefreshCompletions: [() -> Void] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: ["autoUpdateWorkspaceNames": true])
@@ -28,7 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         spaceObserver = SpaceObserver()
         spaceObserver.delegate = self
-        spaceObserver.updateSpaceInformation()
+        statusBarController.requestSpaceRefresh = { [weak self] completion in
+            self?.requestSpaceRefresh(completion: completion)
+        }
+        requestSpaceRefresh()
 
         NotificationCenter.default.addObserver(
             self,
@@ -56,6 +61,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func handleRefreshRequest() {
+        requestSpaceRefresh()
+    }
+
+    private func requestSpaceRefresh(completion: (() -> Void)? = nil) {
+        if let completion {
+            pendingRefreshCompletions.append(completion)
+        }
+
+        guard !refreshInFlight else { return }
+        refreshInFlight = true
         spaceObserver.updateSpaceInformation()
     }
 
@@ -255,6 +270,11 @@ extension AppDelegate: SpaceObserverDelegate {
         windowDetector.snapshotAllSpaces()
 
         enrichAndDisplay(spaces)
+
+        refreshInFlight = false
+        let completions = pendingRefreshCompletions
+        pendingRefreshCompletions.removeAll()
+        completions.forEach { $0() }
 
         // Resolve terminal CWDs in background, then refresh names
         let terminalPIDs = collectTerminalPIDs(from: spaces)

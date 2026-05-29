@@ -18,7 +18,9 @@
 //  In multi-display setups, Mission Control's accessibility tree has one group
 //  per display under "Mission Control" > "Dock" > group "Mission Control".
 //  The displayGroupIndex parameter (1-based) selects which display to target.
-//  Desktop numbers are per-display ("Desktop 1", "Desktop 2", etc. within each group).
+//  The visible button labels can be globally numbered across every display
+//  ("Desktop 1" ... "Desktop 9"), so we target desktop buttons by their
+//  position among the "Desktop *" buttons inside each display group instead.
 //
 //  Limitations:
 //  - Mission Control briefly flashes during the operation
@@ -30,23 +32,25 @@ import Cocoa
 
 class SpaceCloser {
 
-    /// A space to close, identified by its Mission Control group and per-display desktop number.
+    /// A space to close, identified by its Mission Control group and the
+    /// 1-based position of its desktop button within that display's desktop list.
     struct CloseTarget {
         let displayGroup: Int
-        let desktopNumber: Int
+        let desktopIndex: Int
     }
 
-    /// A desktop to activate after closing spaces.
+    /// A desktop to activate after closing spaces, addressed by 1-based position
+    /// within the destination display's desktop-button list.
     struct FocusTarget {
         let displayGroup: Int
-        let desktopNumber: Int
+        let desktopIndex: Int
     }
 
     /// Closes desktop spaces by performing AXRemoveDesktop in Mission Control.
     ///
-    /// Opens Mission Control, locates "Desktop N" buttons in each display's Spaces Bar,
-    /// performs AXRemoveDesktop on each (highest first within each group to preserve numbering),
-    /// then dismisses Mission Control via Escape.
+    /// Opens Mission Control, locates desktop buttons inside each display's Spaces Bar,
+    /// performs AXRemoveDesktop on each (highest index first within each group to preserve
+    /// per-display ordering), then dismisses Mission Control via Escape.
     static func closeSpaces(
         targets: [CloseTarget],
         focusTarget: FocusTarget? = nil,
@@ -93,8 +97,8 @@ class SpaceCloser {
 
     // MARK: - Script Builders
 
-    // Groups targets by display, sorts highest desktop number first within each
-    // group to preserve numbering during removal.
+    // Groups targets by display, sorts highest desktop index first within each
+    // group to preserve per-display ordering during removal.
     private static func buildCloseScript(targets: [CloseTarget], focusTarget: FocusTarget?) -> String {
         let grouped = Dictionary(grouping: targets, by: { $0.displayGroup })
 
@@ -111,14 +115,15 @@ class SpaceCloser {
             if i > 0 {
                 lines.append("      delay 0.5")
             }
-            let desktopNumbers = grouped[group]!.map(\.desktopNumber).sorted(by: >)
+            let desktopIndexes = grouped[group]!.map(\.desktopIndex).sorted(by: >)
             lines.append("      tell group \(group)")
             lines.append("        tell group \"Spaces Bar\"")
             lines.append("          tell list 1")
 
-            for num in desktopNumbers {
+            for index in desktopIndexes {
                 lines.append("            try")
-                lines.append("              perform action \"AXRemoveDesktop\" of button \"Desktop \(num)\"")
+                lines.append("              set desktopButtons to (every button whose name starts with \"Desktop \")")
+                lines.append("              perform action \"AXRemoveDesktop\" of (item \(index) of desktopButtons)")
                 lines.append("              delay 0.8")
                 lines.append("            end try")
             }
@@ -135,14 +140,15 @@ class SpaceCloser {
             lines.append("            set didClickDesktop to false")
             lines.append("            repeat 20 times")
             lines.append("              try")
-            lines.append("                click button \"Desktop \(focusTarget.desktopNumber)\"")
+            lines.append("                set desktopButtons to (every button whose name starts with \"Desktop \")")
+            lines.append("                click (item \(focusTarget.desktopIndex) of desktopButtons)")
             lines.append("                set didClickDesktop to true")
             lines.append("                exit repeat")
             lines.append("              on error")
             lines.append("                delay 0.1")
             lines.append("              end try")
             lines.append("            end repeat")
-            lines.append("            if didClickDesktop is false then error \"Could not find Desktop \(focusTarget.desktopNumber)\"")
+            lines.append("            if didClickDesktop is false then error \"Could not find desktop index \(focusTarget.desktopIndex)\"")
             lines.append("          end tell")
             lines.append("        end tell")
             lines.append("      end tell")
@@ -197,14 +203,15 @@ class SpaceCloser {
         lines.append("            set didClickDesktop to false")
         lines.append("            repeat 20 times")
         lines.append("              try")
-        lines.append("                click button \"Desktop \(desktopNumber)\"")
+        lines.append("                set desktopButtons to (every button whose name starts with \"Desktop \")")
+        lines.append("                click (item \(desktopNumber) of desktopButtons)")
         lines.append("                set didClickDesktop to true")
         lines.append("                exit repeat")
         lines.append("              on error")
         lines.append("                delay 0.1")
         lines.append("              end try")
         lines.append("            end repeat")
-        lines.append("            if didClickDesktop is false then error \"Could not find Desktop \(desktopNumber)\"")
+        lines.append("            if didClickDesktop is false then error \"Could not find desktop index \(desktopNumber)\"")
         lines.append("          end tell")
         lines.append("        end tell")
         lines.append("      end tell")

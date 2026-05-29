@@ -28,6 +28,12 @@ class DisplayGeometryUtilities {
         return CGDisplayGetDisplayIDFromUUID(uuid)
     }
 
+    static func uuidString(for displayID: CGDirectDisplayID) -> String? {
+        guard let unmanaged = CGDisplayCreateUUIDFromDisplayID(displayID) else { return nil }
+        let uuid = unmanaged.takeRetainedValue()
+        return CFUUIDCreateString(nil, uuid) as String
+    }
+
     static func screen(for uuidString: String) -> NSScreen? {
         let did = displayID(for: uuidString)
         return NSScreen.screens.first { screen in
@@ -38,6 +44,16 @@ class DisplayGeometryUtilities {
 
     static func displayName(for uuidString: String) -> String {
         screen(for: uuidString)?.localizedName ?? "Display"
+    }
+
+    static func displayUUID(containing point: CGPoint, candidates: [String]) -> String? {
+        for candidate in candidates {
+            guard let screen = screen(for: candidate) else { continue }
+            if screen.frame.contains(point) {
+                return candidate
+            }
+        }
+        return nil
     }
 
     /// Returns the display UUID that has keyboard focus, matched against known UUIDs.

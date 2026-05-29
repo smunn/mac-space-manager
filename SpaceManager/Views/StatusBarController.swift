@@ -7,6 +7,8 @@ import Cocoa
 import SwiftUI
 
 class StatusBarController: NSObject {
+    var requestSpaceRefresh: ((@escaping () -> Void) -> Void)?
+
     private var statusItem: NSStatusItem!
     private var statusMenu: NSMenu!
     private let spaceSwitcher = SpaceSwitcher()
@@ -16,6 +18,7 @@ class StatusBarController: NSObject {
     private var currentSpaces: [Space] = []
     private var physicalDisplayOrder: [String] = []
     private var missionControlDisplayOrder: [String] = []
+    private var menuContextDisplayID: String?
 
     private let issueFetcher = GitHubIssueFetcher.shared
     private var issuesMenu: NSMenu?
@@ -68,15 +71,9 @@ class StatusBarController: NSObject {
     private func rebuildMenu(_ spaces: [Space]) {
         statusMenu.removeAllItems()
 
-        var orderedDisplayIDs: [String] = []
-        var seenDisplays = Set<String>()
-        for space in spaces {
-            if seenDisplays.insert(space.displayID).inserted {
-                orderedDisplayIDs.append(space.displayID)
-            }
-        }
+        let orderedDisplayIDs = orderedDisplayIDs(from: spaces)
         let multipleDisplays = orderedDisplayIDs.count > 1
-        let activeDisplayUUID = multipleDisplays ? DisplayGeometryUtilities.activeDisplayUUID(from: orderedDisplayIDs) : nil
+        let activeDisplayUUID = multipleDisplays ? interactionDisplayID(from: orderedDisplayIDs) : nil
 
         // Reorder so the active display's spaces come first
         let sortedSpaces: [Space]
@@ -143,7 +140,7 @@ class StatusBarController: NSObject {
         statusMenu.addItem(renameItem)
 
         let currentNameSource: NameSource? = {
-            guard let current = spaces.first(where: { $0.isCurrentSpace }) else { return nil }
+            guard let current = currentSpace(in: spaces) else { return nil }
             let stored = SpaceNameStore.shared.loadAll()
             return stored[current.spaceID]?.nameSource
         }()
@@ -183,6 +180,93 @@ class StatusBarController: NSObject {
         let quitItem = NSMenuItem(title: "Quit Space Manager", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         statusMenu.addItem(quitItem)
+    }
+
+    private func orderedDisplayIDs(from spaces: [Space]) -> [String] {
+        var orderedDisplayIDs: [String] = []
+        var seenDisplays = Set<String>()
+        for space in spaces {
+            if seenDisplays.insert(space.displayID).inserted {
+                orderedDisplayIDs.append(space.displayID)
+            }
+        }
+        return orderedDisplayIDs
+    }
+
+    private func interactionDisplayID(from candidates: [String]? = nil) -> String? {
+        let displayIDs = candidates ?? physicalDisplayOrder
+        guard !displayIDs.isEmpty else { return nil }
+
+        if let menuContextDisplayID, displayIDs.contains(menuContextDisplayID) {
+            return menuContextDisplayID
+        }
+
+        if let mouseDisplayID = DisplayGeometryUtilities.displayUUID(
+            containing: NSEvent.mouseLocation,
+            candidates: displayIDs)
+        {
+            return mouseDisplayID
+        }
+
+        return DisplayGeometryUtilities.activeDisplayUUID(from: displayIDs) ?? displayIDs.first
+    }
+
+    private func currentSpace(
+        in spaces: [Space]? = nil,
+        includeFullScreen: Bool = true,
+        preferredDisplayID: String? = nil
+    ) -> Space? {
+        let allSpaces = spaces ?? currentSpaces
+        let displayID = preferredDisplayID ?? interactionDisplayID(from: orderedDisplayIDs(from: allSpaces))
+
+        if let displayID,
+           let match = allSpaces.first(where: {
+               $0.displayID == displayID && $0.isCurrentSpace && (includeFullScreen || !$0.isFullScreen)
+           })
+        {
+            return match
+        }
+
+        return allSpaces.first { $0.isCurrentSpace && (includeFullScreen || !$0.isFullScreen) }
+    }
+
+    private func currentDesktopSpace(in spaces: [Space]? = nil, preferredDisplayID: String? = nil) -> Space? {
+        currentSpace(in: spaces, includeFullScreen: false, preferredDisplayID: preferredDisplayID)
+    }
+
+    private func closeAllTargetSpaces(from desktopSpaces: [Space]) -> [Space] {
+        let byDisplay = Dictionary(grouping: desktopSpaces, by: { $0.displayID })
+        var targetSpaces: [Space] = []
+
+        for (_, spacesOnDisplay) in byDisplay {
+            guard spacesOnDisplay.count > 1 else { continue }
+            let keepSpace = spacesOnDisplay.first(where: { $0.isCurrentSpace }) ?? spacesOnDisplay[0]
+            targetSpaces += spacesOnDisplay.filter { $0.spaceID != keepSpace.spaceID }
+        }
+
+        return targetSpaces
+    }
+
+    private func closeableEmptyTargetSpaces(
+        from desktopSpaces: [Space],
+        windowsBySpaceID: [String: [SpaceWindow]]
+    ) -> [Space] {
+        let emptySpaces = desktopSpaces.filter { (windowsBySpaceID[$0.spaceID] ?? []).isEmpty }
+        let byDisplay = Dictionary(grouping: desktopSpaces, by: { $0.displayID })
+        let emptyByDisplay = Dictionary(grouping: emptySpaces, by: { $0.displayID })
+
+        var targetSpaces: [Space] = []
+        for (displayID, allOnDisplay) in byDisplay {
+            guard var emptyOnDisplay = emptyByDisplay[displayID] else { continue }
+            let occupiedCount = allOnDisplay.count - emptyOnDisplay.count
+            if occupiedCount == 0 {
+                let keepSpace = allOnDisplay.first(where: { $0.isCurrentSpace }) ?? allOnDisplay[0]
+                emptyOnDisplay.removeAll { $0.spaceID == keepSpace.spaceID }
+            }
+            targetSpaces += emptyOnDisplay
+        }
+
+        return targetSpaces
     }
 
     private func makeSpaceMenuItem(space: Space) -> NSMenuItem {
@@ -344,16 +428,7 @@ class StatusBarController: NSObject {
     private func buildTransferSubmenu(_ spaces: [Space], orderedDisplayIDs: [String]) -> NSMenu {
         let submenu = NSMenu()
 
-        // Identify the active display's current space as the transfer source
-        let activeUUID = DisplayGeometryUtilities.activeDisplayUUID(from: orderedDisplayIDs)
-        let currentSpace: Space? = {
-            if let uuid = activeUUID {
-                return spaces.first { $0.isCurrentSpace && $0.displayID == uuid }
-            }
-            return spaces.first { $0.isCurrentSpace }
-        }()
-
-        guard let source = currentSpace, !source.isFullScreen else {
+        guard let source = currentDesktopSpace(in: spaces), !source.isFullScreen else {
             let disabled = NSMenuItem(title: "No transferable space", action: nil, keyEquivalent: "")
             disabled.isEnabled = false
             submenu.addItem(disabled)
@@ -390,14 +465,16 @@ class StatusBarController: NSObject {
 
     @objc private func launchWorkspace(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
+        withFreshSpaces { [weak self] in
+            guard let self else { return }
+            let groupIndex = self.activeDisplayGroupIndex()
 
-        let groupIndex = activeDisplayGroupIndex()
-
-        SpaceCloser.addSpaceAndSwitch(
-            toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
-            displayGroupIndex: groupIndex
-        ) { _ in
-            WorkspaceLauncher.launch(key)
+            SpaceCloser.addSpaceAndSwitch(
+                toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayGroupIndex: groupIndex
+            ) { _ in
+                WorkspaceLauncher.launch(key)
+            }
         }
     }
 
@@ -407,19 +484,22 @@ class StatusBarController: NSObject {
               let path = info["path"]
         else { return }
 
-        let groupIndex = activeDisplayGroupIndex()
+        withFreshSpaces { [weak self] in
+            guard let self else { return }
+            let groupIndex = self.activeDisplayGroupIndex()
 
-        SpaceCloser.addSpaceAndSwitch(
-            toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
-            displayGroupIndex: groupIndex
-        ) { [weak self] success in
-            guard success else {
+            SpaceCloser.addSpaceAndSwitch(
+                toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayGroupIndex: groupIndex
+            ) { [weak self] success in
+                guard success else {
+                    self?.refreshAfterClose()
+                    return
+                }
+
+                WorkspaceLauncher.launchSite(name: name, path: path)
                 self?.refreshAfterClose()
-                return
             }
-
-            WorkspaceLauncher.launchSite(name: name, path: path)
-            self?.refreshAfterClose()
         }
     }
 
@@ -429,8 +509,17 @@ class StatusBarController: NSObject {
         let submenu = NSMenu()
 
         let desktopSpaces = spaces.filter { !$0.isFullScreen }
-        let hasMultipleDesktops = desktopSpaces.count > 1
-        let currentDesktop = spaces.first { $0.isCurrentSpace && !$0.isFullScreen }
+        let currentDesktop = currentDesktopSpace(in: spaces)
+        let currentDisplayDesktopCount = currentDesktop.map { currentDesktop in
+            desktopSpaces.filter { space in
+                space.displayID == currentDesktop.displayID
+            }.count
+        } ?? 0
+        let canCloseCurrentDesktop = currentDisplayDesktopCount > 1
+        let closeableEmptySpaces = closeableEmptyTargetSpaces(
+            from: desktopSpaces,
+            windowsBySpaceID: Dictionary(uniqueKeysWithValues: spaces.map { ($0.spaceID, $0.windows) }))
+        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
 
         let closeCurrentTitle: String
         if let currentDesktop {
@@ -441,7 +530,7 @@ class StatusBarController: NSObject {
 
         let closeCurrentItem = NSMenuItem(
             title: closeCurrentTitle,
-            action: currentDesktop != nil && hasMultipleDesktops ? #selector(closeCurrentSpace) : nil,
+            action: currentDesktop != nil && canCloseCurrentDesktop ? #selector(closeCurrentSpace) : nil,
             keyEquivalent: "")
         closeCurrentItem.target = self
         submenu.addItem(closeCurrentItem)
@@ -449,7 +538,7 @@ class StatusBarController: NSObject {
         let hasWindows = currentDesktop.map { !$0.windows.isEmpty } ?? false
         let closeWithWindowsItem = NSMenuItem(
             title: "Close Current Space and Windows",
-            action: currentDesktop != nil && hasMultipleDesktops && hasWindows
+            action: currentDesktop != nil && canCloseCurrentDesktop && hasWindows
                 ? #selector(closeCurrentSpaceAndWindows) : nil,
             keyEquivalent: "")
         closeWithWindowsItem.target = self
@@ -458,30 +547,23 @@ class StatusBarController: NSObject {
         submenu.addItem(NSMenuItem.separator())
 
         for space in desktopSpaces {
-            let item = makeCloseMenuItem(space: space, enabled: hasMultipleDesktops)
+            let sameDisplayDesktopCount = desktopSpaces.filter { $0.displayID == space.displayID }.count
+            let item = makeCloseMenuItem(space: space, enabled: sameDisplayDesktopCount > 1)
             submenu.addItem(item)
         }
 
         submenu.addItem(NSMenuItem.separator())
 
-        let emptySpaces = desktopSpaces.filter { $0.windows.isEmpty }
-        let closeableEmptyCount: Int
-        if desktopSpaces.count - emptySpaces.count > 0 {
-            closeableEmptyCount = emptySpaces.count
-        } else {
-            closeableEmptyCount = max(0, emptySpaces.count - 1)
-        }
-
         let emptyItem = NSMenuItem(
-            title: "Close Empty Spaces (\(closeableEmptyCount))",
-            action: closeableEmptyCount > 0 ? #selector(closeEmptySpaces) : nil,
+            title: "Close Empty Spaces (\(closeableEmptySpaces.count))",
+            action: !closeableEmptySpaces.isEmpty ? #selector(closeEmptySpaces) : nil,
             keyEquivalent: "")
         emptyItem.target = self
         submenu.addItem(emptyItem)
 
         let closeAllItem = NSMenuItem(
             title: "Close All Spaces",
-            action: hasMultipleDesktops ? #selector(closeAllSpaces) : nil,
+            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
             keyEquivalent: "")
         closeAllItem.target = self
         submenu.addItem(closeAllItem)
@@ -666,15 +748,18 @@ class StatusBarController: NSObject {
 
         // Check for configured workspace
         if let workspaceKey = WorkspaceConfig.workspaceKey(forRepoName: repoName) {
-            let groupIndex = activeDisplayGroupIndex()
-            let issueNum = number
-            SpaceCloser.addSpaceAndSwitch(
-                toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
-                displayGroupIndex: groupIndex
-            ) { [weak self] _ in
-                WorkspaceLauncher.launch(workspaceKey)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                    self?.sendIssueToIdleTerminal(issueNumber: issueNum)
+            withFreshSpaces { [weak self] in
+                guard let self else { return }
+                let groupIndex = self.activeDisplayGroupIndex()
+                let issueNum = number
+                SpaceCloser.addSpaceAndSwitch(
+                    toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                    displayGroupIndex: groupIndex
+                ) { [weak self] _ in
+                    WorkspaceLauncher.launch(workspaceKey)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                        self?.sendIssueToIdleTerminal(issueNumber: issueNum)
+                    }
                 }
             }
             return
@@ -682,17 +767,20 @@ class StatusBarController: NSObject {
 
         // Find local project by name or git remote
         if let localPath = GitHubIssueFetcher.localProjectPath(for: repoName, repoFullName: repoFullName) {
-            let groupIndex = activeDisplayGroupIndex()
-            SpaceCloser.addSpaceAndSwitch(
-                toDesktopNumber: nextDesktopNumberOnActiveDisplay(),
-                displayGroupIndex: groupIndex
-            ) { [weak self] success in
-                guard success else {
+            withFreshSpaces { [weak self] in
+                guard let self else { return }
+                let groupIndex = self.activeDisplayGroupIndex()
+                SpaceCloser.addSpaceAndSwitch(
+                    toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                    displayGroupIndex: groupIndex
+                ) { [weak self] success in
+                    guard success else {
+                        self?.refreshAfterClose()
+                        return
+                    }
+                    WorkspaceLauncher.launchSite(name: repoName, path: localPath, issueNumber: number)
                     self?.refreshAfterClose()
-                    return
                 }
-                WorkspaceLauncher.launchSite(name: repoName, path: localPath, issueNumber: number)
-                self?.refreshAfterClose()
             }
             return
         }
@@ -757,12 +845,12 @@ class StatusBarController: NSObject {
     }
 
     private func activeDisplayGroupIndex() -> Int {
-        guard let uuid = DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder) else { return 1 }
+        guard let uuid = interactionDisplayID() else { return 1 }
         return displayGroupIndex(for: uuid)
     }
 
     private func activeDisplayID() -> String? {
-        DisplayGeometryUtilities.activeDisplayUUID(from: physicalDisplayOrder) ?? physicalDisplayOrder.first
+        interactionDisplayID()
     }
 
     private func nextDesktopNumberOnActiveDisplay() -> Int {
@@ -775,7 +863,7 @@ class StatusBarController: NSObject {
         }.count + 1
     }
 
-    private func perDisplayDesktopNumber(for space: Space) -> Int? {
+    private func desktopIndexOnDisplay(for space: Space) -> Int? {
         guard !space.isFullScreen else { return nil }
         let sameDisplayDesktops = currentSpaces.filter {
             $0.displayID == space.displayID && !$0.isFullScreen
@@ -785,10 +873,10 @@ class StatusBarController: NSObject {
     }
 
     private func closeTarget(for space: Space) -> SpaceCloser.CloseTarget? {
-        guard let desktopNum = perDisplayDesktopNumber(for: space) else { return nil }
+        guard let desktopIndex = desktopIndexOnDisplay(for: space) else { return nil }
         return SpaceCloser.CloseTarget(
             displayGroup: displayGroupIndex(for: space.displayID),
-            desktopNumber: desktopNum)
+            desktopIndex: desktopIndex)
     }
 
     private func focusTarget(afterClosing targetSpaces: [Space], preferredClosedSpace: Space) -> SpaceCloser.FocusTarget? {
@@ -829,7 +917,20 @@ class StatusBarController: NSObject {
 
         return SpaceCloser.FocusTarget(
             displayGroup: displayGroupIndex(for: focusSpace.displayID),
-            desktopNumber: finalIndex + 1)
+            desktopIndex: finalIndex + 1)
+    }
+
+    private func withFreshSpaces(_ action: @escaping () -> Void) {
+        guard let requestSpaceRefresh else {
+            action()
+            return
+        }
+
+        requestSpaceRefresh {
+            DispatchQueue.main.async {
+                action()
+            }
+        }
     }
 
     // MARK: - Actions
@@ -843,8 +944,11 @@ class StatusBarController: NSObject {
             spaceSwitcher.switchToSpace(spaceNumber: targetNumber) {
                 self.showSwitchError()
             }
-        } else if !target.isFullScreen, let desktopNum = Int(target.spaceByDesktopID) {
-            spaceSwitcher.switchViaMissionControl(desktopNumber: desktopNum)
+        } else if !target.isFullScreen,
+                  let desktopIndex = desktopIndexOnDisplay(for: target) {
+            spaceSwitcher.switchViaMissionControl(
+                displayGroupIndex: displayGroupIndex(for: target.displayID),
+                desktopIndex: desktopIndex)
         }
     }
 
@@ -884,7 +988,7 @@ class StatusBarController: NSObject {
     }
 
     @objc private func renameCurrentSpace() {
-        guard let current = currentSpaces.first(where: { $0.isCurrentSpace }) else { return }
+        guard let current = currentSpace() else { return }
 
         let alert = NSAlert()
         alert.messageText = "Rename Space \(current.spaceByDesktopID)"
@@ -909,7 +1013,7 @@ class StatusBarController: NSObject {
     }
 
     @objc private func clearCurrentSpaceName() {
-        guard let current = currentSpaces.first(where: { $0.isCurrentSpace }) else { return }
+        guard let current = currentSpace() else { return }
         NotificationCenter.default.post(
             name: NSNotification.Name("RenameSpace"),
             object: nil,
@@ -917,7 +1021,14 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeSpace(_ sender: NSMenuItem) {
-        guard let spaceID = sender.representedObject as? String,
+        let spaceID = sender.representedObject as? String
+        withFreshSpaces { [weak self] in
+            self?.performCloseSpace(spaceID: spaceID)
+        }
+    }
+
+    private func performCloseSpace(spaceID: String?) {
+        guard let spaceID,
               let space = currentSpaces.first(where: { $0.spaceID == spaceID }),
               let target = closeTarget(for: space) else { return }
         let focusTarget = self.focusTarget(afterClosing: [space], preferredClosedSpace: space)
@@ -927,7 +1038,13 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeCurrentSpace() {
-        guard let current = currentSpaces.first(where: { $0.isCurrentSpace && !$0.isFullScreen }),
+        withFreshSpaces { [weak self] in
+            self?.performCloseCurrentSpace()
+        }
+    }
+
+    private func performCloseCurrentSpace() {
+        guard let current = currentDesktopSpace(),
               let target = closeTarget(for: current) else { return }
 
         let sameDisplayDesktops = currentSpaces.filter {
@@ -942,7 +1059,13 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeCurrentSpaceAndWindows() {
-        guard let current = currentSpaces.first(where: { $0.isCurrentSpace && !$0.isFullScreen }),
+        withFreshSpaces { [weak self] in
+            self?.performCloseCurrentSpaceAndWindows()
+        }
+    }
+
+    private func performCloseCurrentSpaceAndWindows() {
+        guard let current = currentDesktopSpace(),
               let target = closeTarget(for: current) else { return }
 
         let sameDisplayDesktops = currentSpaces.filter {
@@ -998,30 +1121,20 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeEmptySpaces() {
+        withFreshSpaces { [weak self] in
+            self?.performCloseEmptySpaces()
+        }
+    }
+
+    private func performCloseEmptySpaces() {
         let freshWindows = WindowDetector.detectWindowsPerSpace()
         let desktopSpaces = currentSpaces.filter { !$0.isFullScreen }
-
-        let emptySpaces = desktopSpaces.filter { (freshWindows[$0.spaceID] ?? []).isEmpty }
-        guard !emptySpaces.isEmpty else { return }
-
-        // Keep at least one desktop per display
-        let byDisplay = Dictionary(grouping: desktopSpaces, by: { $0.displayID })
-        let emptyByDisplay = Dictionary(grouping: emptySpaces, by: { $0.displayID })
-
-        var targetSpaces: [Space] = []
-        for (displayID, allOnDisplay) in byDisplay {
-            guard var emptyOnDisplay = emptyByDisplay[displayID] else { continue }
-            let occupiedCount = allOnDisplay.count - emptyOnDisplay.count
-            if occupiedCount == 0 {
-                emptyOnDisplay.removeFirst()
-            }
-            targetSpaces += emptyOnDisplay
-        }
+        let targetSpaces = closeableEmptyTargetSpaces(from: desktopSpaces, windowsBySpaceID: freshWindows)
 
         let targets = targetSpaces.compactMap { closeTarget(for: $0) }
         guard !targets.isEmpty else { return }
 
-        let current = currentSpaces.first { $0.isCurrentSpace && !$0.isFullScreen }
+        let current = currentDesktopSpace()
         let focusTarget = current.flatMap { current in
             targetSpaces.contains(where: { $0.spaceID == current.spaceID })
                 ? self.focusTarget(afterClosing: targetSpaces, preferredClosedSpace: current)
@@ -1034,16 +1147,14 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeAllSpaces() {
-        let desktopSpaces = currentSpaces.filter { !$0.isFullScreen }
-        guard desktopSpaces.count > 1 else { return }
-
-        // Keep at least one desktop per display
-        let byDisplay = Dictionary(grouping: desktopSpaces, by: { $0.displayID })
-        var targetSpaces: [Space] = []
-        for (_, spacesOnDisplay) in byDisplay {
-            guard spacesOnDisplay.count > 1 else { continue }
-            targetSpaces += spacesOnDisplay.dropFirst()
+        withFreshSpaces { [weak self] in
+            self?.performCloseAllSpaces()
         }
+    }
+
+    private func performCloseAllSpaces() {
+        let desktopSpaces = currentSpaces.filter { !$0.isFullScreen }
+        let targetSpaces = closeAllTargetSpaces(from: desktopSpaces)
 
         let targets = targetSpaces.compactMap { closeTarget(for: $0) }
         guard !targets.isEmpty else { return }
@@ -1056,7 +1167,7 @@ class StatusBarController: NSObject {
         alert.alertStyle = .warning
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        let current = currentSpaces.first { $0.isCurrentSpace && !$0.isFullScreen }
+        let current = currentDesktopSpace()
         let focusTarget = current.flatMap { current in
             targetSpaces.contains(where: { $0.spaceID == current.spaceID })
                 ? self.focusTarget(afterClosing: targetSpaces, preferredClosedSpace: current)
@@ -1069,20 +1180,27 @@ class StatusBarController: NSObject {
     }
 
     @objc private func addSpace() {
-        let groupIndex = activeDisplayGroupIndex()
-        SpaceCloser.addSpace(displayGroupIndex: groupIndex) { [weak self] _ in
-            self?.refreshAfterClose()
+        withFreshSpaces { [weak self] in
+            guard let self else { return }
+            let groupIndex = self.activeDisplayGroupIndex()
+            SpaceCloser.addSpace(displayGroupIndex: groupIndex) { [weak self] _ in
+                self?.refreshAfterClose()
+            }
         }
     }
 
     @objc private func addTerminalSpace() {
-        let groupIndex = activeDisplayGroupIndex()
+        withFreshSpaces { [weak self] in
+            guard let self, let targetDisplayID = self.activeDisplayID() else { return }
+            let groupIndex = self.activeDisplayGroupIndex()
 
-        WorkspaceAutomation.createTerminalSpace(
-            targetDesktopNumber: nextDesktopNumberOnActiveDisplay(),
-            displayGroupIndex: groupIndex
-        ) { [weak self] _ in
-            self?.refreshAfterClose()
+            WorkspaceAutomation.createTerminalSpace(
+                targetDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayGroupIndex: groupIndex,
+                targetDisplayID: targetDisplayID
+            ) { [weak self] _ in
+                self?.refreshAfterClose()
+            }
         }
     }
 
@@ -1183,7 +1301,11 @@ class StatusBarController: NSObject {
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if menu === statusMenu {
+            menuContextDisplayID = DisplayGeometryUtilities.displayUUID(
+                containing: NSEvent.mouseLocation,
+                candidates: physicalDisplayOrder)
             issueFetcher.refreshIfNeeded()
+            requestSpaceRefresh? {}
         }
     }
 
