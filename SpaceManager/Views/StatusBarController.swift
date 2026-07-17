@@ -964,6 +964,18 @@ class StatusBarController: NSObject {
             spaceSwitcher.switchToSpace(spaceNumber: targetNumber) {
                 self.showSwitchError()
             }
+        } else if let current = currentSpace(in: currentSpaces),
+                  current.displayID == target.displayID,
+                  !current.isFullScreen,
+                  !target.isFullScreen,
+                  let currentDesktopIndex = desktopIndexOnDisplay(for: current),
+                  let targetDesktopIndex = desktopIndexOnDisplay(for: target)
+        {
+            spaceSwitcher.navigateToSpace(
+                from: currentDesktopIndex,
+                to: targetDesktopIndex) {
+                    self.showSwitchError()
+                }
         } else if !target.isFullScreen,
                   let desktopIndex = desktopIndexOnDisplay(for: target) {
             spaceSwitcher.switchViaMissionControl(
