@@ -96,14 +96,27 @@ final class WindowMoveController: NSObject {
                 menu.addItem(displayItem)
             }
 
-            let label = SpaceLabelStore.shared.label(for: space.spaceID)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let name = label.isEmpty ? space.spaceName : label
-            let indicator = label.isEmpty ? "" : "• "
+            let name = SpaceDisplayName.title(for: space)
             let item = NSMenuItem(
-                title: "\(space.spaceByDesktopID). \(indicator)\(name)",
+                title: "\(space.spaceByDesktopID). \(name)",
                 action: space.spaceID == sourceSpaceID ? nil : #selector(moveFocusedWindow(_:)),
                 keyEquivalent: "")
+            let attributedTitle = NSMutableAttributedString(
+                string: item.title,
+                attributes: [
+                    .font: NSFont.menuFont(ofSize: 0),
+                    .foregroundColor: NSColor.labelColor
+                ])
+            if let repositoryName = SpaceDisplayName.repositoryName(for: space) {
+                let repositoryRange = (item.title as NSString).range(of: "[\(repositoryName)]")
+                if repositoryRange.location != NSNotFound {
+                    attributedTitle.addAttribute(
+                        .foregroundColor,
+                        value: RepositoryColor.color(for: repositoryName),
+                        range: repositoryRange)
+                }
+            }
+            item.attributedTitle = attributedTitle
             item.target = self
             item.representedObject = space.spaceID
             if space.spaceID != sourceSpaceID,
@@ -122,9 +135,7 @@ final class WindowMoveController: NSObject {
         }
 
         let loggedSpaces = desktopSpaces.map { space in
-            let label = SpaceLabelStore.shared.label(for: space.spaceID)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let name = label.isEmpty ? space.spaceName : label
+            let name = SpaceDisplayName.title(for: space)
             return "\(space.spaceByDesktopID)=\(name)"
         }.joined(separator: ", ")
         WindowMoveLog.write("Move menu spaces: \(loggedSpaces)")

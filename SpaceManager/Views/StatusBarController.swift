@@ -290,7 +290,7 @@ class StatusBarController: NSObject {
         let prefix = space.isFullScreen ? "F" : "\(space.spaceByDesktopID)"
         let label = SpaceLabelStore.shared.label(for: space.spaceID)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let primaryName = label.isEmpty ? space.spaceName : label
+        let primaryName = SpaceDisplayName.title(for: space)
 
         let item = NSMenuItem(
             title: "\(prefix). \(primaryName)",
@@ -316,14 +316,17 @@ class StatusBarController: NSObject {
             .font: NSFont.menuFont(ofSize: 14),
             .foregroundColor: space.isCurrentSpace ? NSColor.controlAccentColor : NSColor.labelColor
         ]
-        if !label.isEmpty {
-            let labelIndicatorAttrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.menuFont(ofSize: 11),
-                .foregroundColor: NSColor.controlAccentColor
-            ]
-            attrTitle.append(NSAttributedString(string: "• ", attributes: labelIndicatorAttrs))
+        let attributedName = NSMutableAttributedString(string: primaryName, attributes: nameAttrs)
+        if let repositoryName = SpaceDisplayName.repositoryName(for: space) {
+            let repositoryRange = (primaryName as NSString).range(of: "[\(repositoryName)]")
+            if repositoryRange.location != NSNotFound {
+                attributedName.addAttribute(
+                    .foregroundColor,
+                    value: RepositoryColor.color(for: repositoryName),
+                    range: repositoryRange)
+            }
         }
-        attrTitle.append(NSAttributedString(string: primaryName, attributes: nameAttrs))
+        attrTitle.append(attributedName)
 
         if label.isEmpty && space.hasDriftedName {
             let driftAttrs: [NSAttributedString.Key: Any] = [
@@ -333,18 +336,8 @@ class StatusBarController: NSObject {
             attrTitle.append(NSAttributedString(string: "  \u{00B7}", attributes: driftAttrs))
         }
 
-        if !space.windows.isEmpty {
-            let appNames = uniqueAppNames(space.windows)
-            let subtitle = appNames.joined(separator: ", ")
-            item.toolTip = space.hasDriftedName
-                ? "Windows have changed since workspace was created"
-                : subtitle
-
-            let subtitleAttrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.menuFont(ofSize: 11),
-                .foregroundColor: NSColor.secondaryLabelColor
-            ]
-            attrTitle.append(NSAttributedString(string: "\n     \(subtitle)", attributes: subtitleAttrs))
+        if space.hasDriftedName {
+            item.toolTip = "Windows have changed since workspace was created"
         }
 
         item.attributedTitle = attrTitle

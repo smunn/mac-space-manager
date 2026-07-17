@@ -9,6 +9,13 @@ import Foundation
 
 struct SpaceNamer {
 
+    func terminalFolderName(from windows: [SpaceWindow]) -> String? {
+        for window in windows {
+            if let name = parseTerminalCWD(window) { return name }
+        }
+        return nil
+    }
+
     func generateName(for windows: [SpaceWindow], spaceNumber: Int) -> String {
         if windows.isEmpty {
             return "Space \(spaceNumber)"
@@ -37,9 +44,7 @@ struct SpaceNamer {
         for window in windows {
             if let name = parseCursorOrVSCode(window) { return name }
         }
-        for window in windows {
-            if let name = parseTerminalCWD(window) { return name }
-        }
+        if let name = terminalFolderName(from: windows) { return name }
         for window in windows {
             if let name = parseChromeContext(window) { return name }
         }
@@ -87,13 +92,25 @@ struct SpaceNamer {
         let terminals: Set<String> = ["Terminal", "iTerm2", "Alacritty", "kitty", "Warp", "Ghostty"]
         guard terminals.contains(window.ownerName) else { return nil }
 
-        // Read from pre-resolved cache (never blocks)
+        // Prefer the individual window title because one terminal process can own
+        // windows in several different working directories.
+        let title = window.windowTitle
+        if !title.isEmpty,
+           let dashRange = title.range(of: " \u{2014} ") ?? title.range(of: " - ")
+        {
+            let leadingValue = String(title[..<dashRange.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let genericValues: Set<String> = ["Terminal", "zsh", "bash", "fish", "sh"]
+            if !leadingValue.isEmpty, !genericValues.contains(leadingValue) {
+                return lastPathComponent(leadingValue)
+            }
+        }
+
+        // Read from the pre-resolved process cache when the title has no folder.
         if let name = ProcessHelper.shared.cachedProjectName(terminalPID: window.ownerPID) {
             return name
         }
 
-        // Fallback: parse the window title (requires Screen Recording permission)
-        let title = window.windowTitle
         if title.isEmpty { return nil }
 
         if let colonRange = title.range(of: ": ") {
