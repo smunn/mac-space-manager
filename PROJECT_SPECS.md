@@ -43,11 +43,15 @@ macOS Spaces have no native naming or identification system beyond their numeric
 
 9. **Keyboard Shortcuts**: Global hotkeys to switch to specific named spaces.
 
+10. **Floating Space Labels**: Attach a movable one-line task label to a Space. Persist reusable label themes, handle placement, and screen position.
+
+11. **Window Space Chooser**: Move the frontmost window to a labeled Space from a global keyboard menu with number-key selection.
+
 ### Phase 3 — Polish
 
-10. **Space Icons**: Show app icons next to space names in the dropdown.
-11. **Notifications**: Optional notification when switching spaces.
-12. **Multiple Display Support**: Show per-display space groupings.
+12. **Space Icons**: Show app icons next to space names in the dropdown.
+13. **Notifications**: Optional notification when switching spaces.
+14. **Multiple Display Support**: Show per-display space groupings.
 
 ## Architecture
 

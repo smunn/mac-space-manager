@@ -10,6 +10,8 @@
 #define SpaceManager_Bridging_Header_h
 
 #import <Foundation/Foundation.h>
+#import <ApplicationServices/ApplicationServices.h>
+#import <CoreGraphics/CoreGraphics.h>
 
 int _CGSDefaultConnection(void);
 CFArrayRef CGSCopyManagedDisplaySpaces(int conn);
@@ -19,6 +21,13 @@ CFStringRef CGSCopyActiveMenuBarDisplayIdentifier(int conn);
 // type is a bitmask: 1=current, 2=other, 0x7=all spaces.
 // Returns CFArray of space IDs (CFNumbers) for the given windows.
 CFArrayRef CGSCopySpacesForWindows(int conn, int type, CFArrayRef windowIDs);
+
+// Moves the supplied CGWindowIDs to an existing managed Space.
+void CGSMoveWindowsToManagedSpace(int conn, CFArrayRef windowIDs, uint64_t spaceID);
+int SMMoveWindowsToManagedSpaceModern(CFArrayRef windowIDs, uint64_t spaceID);
+
+// Resolves an Accessibility window element to its CGWindowID.
+AXError _AXUIElementGetWindow(AXUIElementRef element, CGWindowID *windowID);
 
 
 #endif

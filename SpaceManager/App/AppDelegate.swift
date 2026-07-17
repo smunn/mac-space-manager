@@ -10,10 +10,13 @@
 import Cocoa
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spaceObserver: SpaceObserver!
     private var windowDetector: WindowDetector!
     private var spaceNamer: SpaceNamer!
+    private var spaceLabelController: SpaceLabelController!
+    private var windowMoveController: WindowMoveController!
     private var statusBarController: StatusBarController!
 
     private var currentSpaces: [Space] = []
@@ -26,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         windowDetector = WindowDetector()
         spaceNamer = SpaceNamer()
+        spaceLabelController = SpaceLabelController()
+        windowMoveController = WindowMoveController()
         statusBarController = StatusBarController()
 
         spaceObserver = SpaceObserver()
@@ -260,6 +265,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         currentSpaces = enriched
+        spaceLabelController.updateSpaces(enriched)
+        windowMoveController.updateSpaces(enriched)
         statusBarController.updateSpaces(enriched, missionControlDisplayOrder: spaceObserver.missionControlDisplayOrder)
         processPendingCommandURLs()
     }

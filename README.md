@@ -13,6 +13,8 @@ A macOS menu bar app that auto-detects Spaces, names them by their window conten
 - Toggle "Open at login" from Settings
 - Create a new empty space or a starter Terminal space from the menu
 - Auto-names spaces based on: Xcode project names, Cursor/VS Code folder names, terminal working directories, Chrome profile/page context
+- Attach a persistent floating task label to each Space
+- Move the frontmost window to a labeled Space from a global keyboard chooser
 
 ## Reference Project
 
@@ -57,9 +59,11 @@ SpaceManager/
 │   ├── SpaceNameInfo.swift            # Persisted name + override flag
 │   └── DisplayDirection.swift         # Display sort enums
 ├── Views/
-│   └── StatusBarController.swift      # NSMenu-based menu bar UI
+│   ├── StatusBarController.swift      # NSMenu-based menu bar UI
+│   └── SpaceLabelController.swift     # Per-Space floating task labels
 ├── Utilities/
 │   ├── SpaceNameStore.swift           # UserDefaults persistence
+│   ├── SpaceLabelStore.swift          # Label profiles, themes, and positions
 │   ├── ProcessHelper.swift            # Terminal shell CWD resolution (async + cached)
 │   ├── AppPermissions.swift           # Permission checks + System Settings links
 │   ├── LaunchAtLoginManager.swift     # SMAppService open-at-login wrapper
@@ -118,6 +122,12 @@ open "spacemanager://refresh"
 # Open Settings
 open "spacemanager://settings"
 ```
+
+### Space Labels
+
+Use **Current Label...** or **Control-Option-Command-L** to edit the current Space's floating task label. Labels retain their theme, handle side, and screen position when loaded again from recent labels.
+
+Use **Move Frontmost Window...** or **Control-Option-Command-M** to open the Space chooser. Press a displayed Space number or select its menu item to move the focused window.
 
 For a project name that may contain spaces or special characters, URL-encode the name first:
 

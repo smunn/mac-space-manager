@@ -6,6 +6,7 @@
 import Cocoa
 import SwiftUI
 
+@MainActor
 class StatusBarController: NSObject {
     var requestSpaceRefresh: ((@escaping () -> Void) -> Void)?
 
@@ -92,6 +93,22 @@ class StatusBarController: NSObject {
         let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
         closeItem.submenu = buildCloseSubmenu(spaces)
         statusMenu.addItem(closeItem)
+
+        let currentLabelItem = NSMenuItem(
+            title: "Current Label...",
+            action: #selector(editCurrentSpaceLabel),
+            keyEquivalent: "l")
+        currentLabelItem.keyEquivalentModifierMask = [.control, .option, .command]
+        currentLabelItem.target = self
+        statusMenu.addItem(currentLabelItem)
+
+        let moveWindowItem = NSMenuItem(
+            title: "Move Frontmost Window...",
+            action: #selector(showWindowMoveMenu),
+            keyEquivalent: "m")
+        moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
+        moveWindowItem.target = self
+        statusMenu.addItem(moveWindowItem)
 
         let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
         let issMenu = NSMenu()
@@ -271,9 +288,12 @@ class StatusBarController: NSObject {
 
     private func makeSpaceMenuItem(space: Space) -> NSMenuItem {
         let prefix = space.isFullScreen ? "F" : "\(space.spaceByDesktopID)"
+        let label = SpaceLabelStore.shared.label(for: space.spaceID)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let primaryName = label.isEmpty ? space.spaceName : label
 
         let item = NSMenuItem(
-            title: "\(prefix). \(space.spaceName)",
+            title: "\(prefix). \(primaryName)",
             action: space.isCurrentSpace ? nil : #selector(switchToSpace(_:)),
             keyEquivalent: "")
         item.target = self
@@ -296,9 +316,16 @@ class StatusBarController: NSObject {
             .font: NSFont.menuFont(ofSize: 14),
             .foregroundColor: space.isCurrentSpace ? NSColor.controlAccentColor : NSColor.labelColor
         ]
-        attrTitle.append(NSAttributedString(string: space.spaceName, attributes: nameAttrs))
+        if !label.isEmpty {
+            let labelIndicatorAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.menuFont(ofSize: 11),
+                .foregroundColor: NSColor.controlAccentColor
+            ]
+            attrTitle.append(NSAttributedString(string: "• ", attributes: labelIndicatorAttrs))
+        }
+        attrTitle.append(NSAttributedString(string: primaryName, attributes: nameAttrs))
 
-        if space.hasDriftedName {
+        if label.isEmpty && space.hasDriftedName {
             let driftAttrs: [NSAttributedString.Key: Any] = [
                 .font: NSFont.menuFont(ofSize: 11),
                 .foregroundColor: NSColor.tertiaryLabelColor
@@ -1009,6 +1036,16 @@ class StatusBarController: NSObject {
                 name: NSNotification.Name("RenameSpace"),
                 object: nil,
                 userInfo: ["spaceID": current.spaceID, "name": newName])
+        }
+    }
+
+    @objc private func editCurrentSpaceLabel() {
+        SpaceLabelController.shared?.editCurrentSpace()
+    }
+
+    @objc private func showWindowMoveMenu() {
+        DispatchQueue.main.async {
+            WindowMoveController.shared?.showMoveMenu()
         }
     }
 

@@ -15,6 +15,7 @@ enum SpaceNameMatchingStrategy {
     case idOnly
 }
 
+@MainActor
 protocol SpaceObserverDelegate: AnyObject {
     func didUpdateSpaces(spaces: [Space])
 }
