@@ -91,7 +91,11 @@ class SpaceTransfer {
         var pos = CGPoint.zero
         var size = CGSize.zero
         // AXValue bridging: position and size are stored as AXValue wrappers
-        guard AXValueGetValue(posRef as! AXValue, .cgPoint, &pos),
+        guard let posRef,
+              let sizeRef,
+              CFGetTypeID(posRef) == AXValueGetTypeID(),
+              CFGetTypeID(sizeRef) == AXValueGetTypeID(),
+              AXValueGetValue(posRef as! AXValue, .cgPoint, &pos),
               AXValueGetValue(sizeRef as! AXValue, .cgSize, &size)
         else { return nil }
 

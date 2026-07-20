@@ -36,6 +36,7 @@ class SpaceSwitcher {
                   snapshots.indices.contains(displayGroupIndex - 1)
             else {
                 NSLog("SpaceSwitcher: Mission Control display group \(displayGroupIndex) did not appear")
+                SpaceOperationLog.write("Switch failed: display group \(displayGroupIndex) unavailable")
                 DispatchQueue.main.async { onError?() }
                 return
             }
@@ -45,10 +46,14 @@ class SpaceSwitcher {
                   MissionControlAccessibility.performPress(on: buttons[desktopIndex - 1])
             else {
                 NSLog("SpaceSwitcher: could not press desktop \(desktopIndex) in display group \(displayGroupIndex)")
+                SpaceOperationLog.write(
+                    "Switch failed: AXPress display=\(displayGroupIndex) desktop=\(desktopIndex)")
                 MissionControlAccessibility.dismiss()
                 DispatchQueue.main.async { onError?() }
                 return
             }
+            SpaceOperationLog.write(
+                "Switch completed via Mission Control display=\(displayGroupIndex) desktop=\(desktopIndex)")
         }
     }
 

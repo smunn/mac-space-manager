@@ -63,6 +63,7 @@ final class SpaceLabelStore: ObservableObject {
     }
 
     private static let storageKey = "spaceLabelState.v1"
+    private static let backupKey = "spaceLabelState.v1.backup"
     private static let migrationCompletedKey = "spaceLabelMigrationFromSMMenubarCompleted"
     private var spaces: [String: StoredSpace] = [:]
     private var profiles: [String: StoredProfile] = [:]
@@ -180,6 +181,21 @@ final class SpaceLabelStore: ObservableObject {
         save()
     }
 
+    func removeSpaces(withIDs spaceIDs: Set<String>) {
+        guard !spaceIDs.isEmpty else { return }
+        for spaceID in spaceIDs {
+            spaces.removeValue(forKey: spaceID)
+        }
+        if let editingSpaceID, spaceIDs.contains(editingSpaceID) {
+            self.editingSpaceID = nil
+        }
+        objectWillChange.send()
+        save()
+        if let data = UserDefaults.standard.data(forKey: Self.storageKey) {
+            UserDefaults.standard.set(data, forKey: Self.backupKey)
+        }
+    }
+
     func frame(for spaceID: String) -> NSRect? {
         guard let value = spaces[spaceID]?.frame else { return nil }
         return NSRectFromString(value)
@@ -207,11 +223,18 @@ final class SpaceLabelStore: ObservableObject {
     }
 
     private func load() {
-        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
-           let decoded = try? JSONDecoder().decode(StoredState.self, from: data) {
-            spaces = decoded.spaces
-            profiles = decoded.profiles
-            return
+        let defaults = UserDefaults.standard
+        let decoder = JSONDecoder()
+        for key in [Self.storageKey, Self.backupKey] {
+            guard let data = defaults.data(forKey: key) else { continue }
+            do {
+                let decoded = try decoder.decode(StoredState.self, from: data)
+                spaces = decoded.spaces
+                profiles = decoded.profiles
+                return
+            } catch {
+                NSLog("SpaceLabelStore: invalid data for \(key): \(error)")
+            }
         }
         migrateFromSMMenubarIfNeeded()
     }
@@ -231,8 +254,18 @@ final class SpaceLabelStore: ObservableObject {
 
     private func save() {
         let state = StoredState(spaces: spaces, profiles: profiles)
-        guard let data = try? JSONEncoder().encode(state) else { return }
-        UserDefaults.standard.set(data, forKey: Self.storageKey)
+        do {
+            let data = try JSONEncoder().encode(state)
+            let defaults = UserDefaults.standard
+            if let current = defaults.data(forKey: Self.storageKey),
+               (try? JSONDecoder().decode(StoredState.self, from: current)) != nil
+            {
+                defaults.set(current, forKey: Self.backupKey)
+            }
+            defaults.set(data, forKey: Self.storageKey)
+        } catch {
+            NSLog("SpaceLabelStore: failed to encode state: \(error)")
+        }
     }
 
     private func profileKey(for label: String) -> String {

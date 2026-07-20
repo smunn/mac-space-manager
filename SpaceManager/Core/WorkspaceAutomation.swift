@@ -163,7 +163,8 @@ enum WorkspaceAutomation {
             appElement,
             kAXFocusedWindowAttribute as CFString,
             &focusedWindowRef) == .success,
-              let focusedWindow = focusedWindowRef
+              let focusedWindow = focusedWindowRef,
+              CFGetTypeID(focusedWindow) == AXUIElementGetTypeID()
         else { return false }
 
         var point = CGPoint(x: targetBounds.origin.x + 120, y: targetBounds.origin.y + 120)

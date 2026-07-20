@@ -32,6 +32,7 @@ enum MissionControlAccessibility {
             completionHandler: { _, error in
                 if let error {
                     NSLog("MissionControlAccessibility: launch request failed: \(error)")
+                    SpaceOperationLog.write("Mission Control launch request failed: \(error)")
                 }
             })
     }
@@ -41,15 +42,18 @@ enum MissionControlAccessibility {
     /// Dock.app to WindowManager and added identifiers such as `mc.spaces`; older
     /// releases expose a named hierarchy under Dock. Both remain undocumented.
     static func openAndWaitForDisplaySnapshots() -> [DisplaySnapshot]? {
-        for _ in 0..<2 {
+        for attempt in 1...2 {
             open()
             if let snapshots = waitForSnapshots(
                 timeout: appearanceTimeout,
                 predicate: { !$0.isEmpty })
             {
+                SpaceOperationLog.write(
+                    "Mission Control ready attempt=\(attempt) displays=\(snapshots.count) desktops=\(snapshots.map { $0.desktopButtons.count })")
                 return snapshots
             }
         }
+        SpaceOperationLog.write("Mission Control hierarchy unavailable after 2 attempts")
         return nil
     }
 
@@ -100,6 +104,7 @@ enum MissionControlAccessibility {
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
         else {
             NSLog("MissionControlAccessibility: could not create keyboard event for key code \(keyCode)")
+            SpaceOperationLog.write("Could not create keyboard event keyCode=\(keyCode) flags=\(flags.rawValue)")
             return false
         }
 

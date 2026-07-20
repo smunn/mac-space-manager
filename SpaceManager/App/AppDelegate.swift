@@ -22,7 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var currentSpaces: [Space] = []
     private var pendingCommandURLs: [URL] = []
     private var refreshInFlight = false
-    private var pendingRefreshCompletions: [() -> Void] = []
+    private var refreshRequestedWhileInFlight = false
+    private var pendingRefreshCompletions: [(Bool) -> Void] = []
+    private var spaceUpdateGeneration = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: ["autoUpdateWorkspaceNames": true])
@@ -69,12 +71,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         requestSpaceRefresh()
     }
 
-    private func requestSpaceRefresh(completion: (() -> Void)? = nil) {
+    private func requestSpaceRefresh(completion: ((Bool) -> Void)? = nil) {
         if let completion {
             pendingRefreshCompletions.append(completion)
         }
 
-        guard !refreshInFlight else { return }
+        guard !refreshInFlight else {
+            refreshRequestedWhileInFlight = true
+            return
+        }
         refreshInFlight = true
         spaceObserver.updateSpaceInformation()
     }
@@ -117,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("SpaceTransfer: moved \(moved)/\(windows.count) windows, wallpaper: \(wallpaperOK)")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.spaceObserver.updateSpaceInformation()
+            self.requestSpaceRefresh()
         }
     }
 
@@ -140,7 +145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if currentSpaces.isEmpty {
             pendingCommandURLs.append(url)
-            spaceObserver.updateSpaceInformation()
+            requestSpaceRefresh()
             return
         }
 
@@ -164,7 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             renameCurrentSpace(to: "", source: .auto)
 
         case ("refresh", _):
-            spaceObserver.updateSpaceInformation()
+            requestSpaceRefresh()
 
         case ("settings", _):
             showSettingsWindow()
@@ -216,7 +221,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        spaceObserver.updateSpaceInformation()
+        // Reflect name changes immediately. A full observer refresh still follows to
+        // reconcile IDs and positions, but it should not be required for menu feedback.
+        enrichAndDisplay(currentSpaces)
+        requestSpaceRefresh()
     }
 
     private func showSettingsWindow() {
@@ -274,14 +282,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: SpaceObserverDelegate {
     func didUpdateSpaces(spaces: [Space]) {
+        spaceUpdateGeneration += 1
+        let updateGeneration = spaceUpdateGeneration
         windowDetector.snapshotAllSpaces()
 
         enrichAndDisplay(spaces)
 
-        refreshInFlight = false
-        let completions = pendingRefreshCompletions
-        pendingRefreshCompletions.removeAll()
-        completions.forEach { $0() }
+        finishRefreshIfCurrent(success: true)
 
         // Resolve terminal CWDs in background, then refresh names
         let terminalPIDs = collectTerminalPIDs(from: spaces)
@@ -289,8 +296,29 @@ extension AppDelegate: SpaceObserverDelegate {
 
         ProcessHelper.shared.resolveTerminalCWDs(pids: terminalPIDs) { [weak self] in
             guard let self else { return }
+            guard self.spaceUpdateGeneration == updateGeneration else {
+                NSLog("AppDelegate: discarded stale terminal enrichment for generation \(updateGeneration)")
+                return
+            }
             self.enrichAndDisplay(spaces)
         }
+    }
+
+    func didFailToUpdateSpaces() {
+        finishRefreshIfCurrent(success: false)
+    }
+
+    private func finishRefreshIfCurrent(success: Bool) {
+        if refreshInFlight, refreshRequestedWhileInFlight {
+            refreshRequestedWhileInFlight = false
+            spaceObserver.updateSpaceInformation()
+            return
+        }
+
+        refreshInFlight = false
+        let completions = pendingRefreshCompletions
+        pendingRefreshCompletions.removeAll()
+        completions.forEach { $0(success) }
     }
 
     private func collectTerminalPIDs(from spaces: [Space]) -> [pid_t] {

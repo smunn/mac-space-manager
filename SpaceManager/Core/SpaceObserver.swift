@@ -18,6 +18,7 @@ enum SpaceNameMatchingStrategy {
 @MainActor
 protocol SpaceObserverDelegate: AnyObject {
     func didUpdateSpaces(spaces: [Space])
+    func didFailToUpdateSpaces()
 }
 
 class SpaceObserver {
@@ -71,7 +72,13 @@ class SpaceObserver {
     }
 
     private func performSpaceInformationUpdate(needsRevalidation: Bool) {
-        guard var displays = fetchDisplaySpaces() else { return }
+        guard var displays = fetchDisplaySpacesWithRetry() else {
+            NSLog("SpaceObserver: CGSCopyManagedDisplaySpaces failed after 3 attempts")
+            DispatchQueue.main.async {
+                self.delegate?.didFailToUpdateSpaces()
+            }
+            return
+        }
 
         let rawDisplayOrder = displays.compactMap { $0["Display Identifier"] as? String }
 
@@ -205,6 +212,18 @@ class SpaceObserver {
             return nil
         }
         return rawDisplays
+    }
+
+    private func fetchDisplaySpacesWithRetry() -> [NSDictionary]? {
+        for attempt in 1...3 {
+            if let displays = fetchDisplaySpaces() {
+                return displays
+            }
+            if attempt < 3 {
+                Thread.sleep(forTimeInterval: 0.1 * Double(attempt))
+            }
+        }
+        return nil
     }
 
     private func buildSpaceNumberMap(from displays: [NSDictionary]) -> [String: Int] {

@@ -8,7 +8,7 @@ import SwiftUI
 
 @MainActor
 class StatusBarController: NSObject {
-    var requestSpaceRefresh: ((@escaping () -> Void) -> Void)?
+    var requestSpaceRefresh: ((@escaping (Bool) -> Void) -> Void)?
 
     private var statusItem: NSStatusItem!
     private var statusMenu: NSMenu!
@@ -955,9 +955,14 @@ class StatusBarController: NSObject {
             return
         }
 
-        requestSpaceRefresh {
+        requestSpaceRefresh { success in
             DispatchQueue.main.async {
-                action()
+                if success {
+                    action()
+                } else {
+                    NSLog("StatusBarController: fresh Space snapshot was unavailable; action canceled")
+                    NSSound.beep()
+                }
             }
         }
     }
@@ -1095,7 +1100,8 @@ class StatusBarController: NSObject {
         let focusTarget = space.isCurrentSpace
             ? self.focusTarget(afterClosing: [space], preferredClosedSpace: space)
             : nil
-        SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] _ in
+        SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] success in
+            if success { self?.removePersistedState(for: [space]) }
             self?.refreshAfterClose()
         }
     }
@@ -1116,7 +1122,8 @@ class StatusBarController: NSObject {
         guard sameDisplayDesktops.count > 1 else { return }
 
         let focusTarget = self.focusTarget(afterClosing: [current], preferredClosedSpace: current)
-        SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] _ in
+        SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] success in
+            if success { self?.removePersistedState(for: [current]) }
             self?.refreshAfterClose()
         }
     }
@@ -1136,25 +1143,49 @@ class StatusBarController: NSObject {
         }
         guard sameDisplayDesktops.count > 1 else { return }
 
-        closeWindowsViaAccessibility(current.windows)
+        guard let closeButtons = closeButtonsViaAccessibility(for: current.windows) else {
+            NSLog("StatusBarController: could not resolve every window close button; Space close canceled")
+            NSSound.beep()
+            return
+        }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        for closeButton in closeButtons {
+            guard AXUIElementPerformAction(closeButton, kAXPressAction as CFString) == .success else {
+                NSLog("StatusBarController: a window close action failed; Space close canceled")
+                NSSound.beep()
+                return
+            }
+        }
+
+        waitForWindowsToClose(Set(current.windows.map(\.windowID))) { [weak self] windowsClosed in
+            guard let self else { return }
+            guard windowsClosed else {
+                NSLog("StatusBarController: windows remained open after close requests; Space close canceled")
+                NSSound.beep()
+                self.refreshAfterClose()
+                return
+            }
             let focusTarget = self.focusTarget(afterClosing: [current], preferredClosedSpace: current)
-            SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] _ in
+            SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] success in
+                if success { self?.removePersistedState(for: [current]) }
                 self?.refreshAfterClose()
             }
         }
     }
 
-    private func closeWindowsViaAccessibility(_ windows: [SpaceWindow]) {
+    /// Resolves every close button before pressing any of them. This avoids partially
+    /// closing a Space's windows when one app is not accessibility-controllable.
+    private func closeButtonsViaAccessibility(for windows: [SpaceWindow]) -> [AXUIElement]? {
+        var closeButtons: [AXUIElement] = []
         for window in windows {
             let appElement = AXUIElementCreateApplication(window.ownerPID)
             var axWindowsRef: CFTypeRef?
             guard AXUIElementCopyAttributeValue(
                 appElement, kAXWindowsAttribute as CFString, &axWindowsRef) == .success,
                   let axWindows = axWindowsRef as? [AXUIElement]
-            else { continue }
+            else { return nil }
 
+            var matchedCloseButton: AXUIElement?
             for axWindow in axWindows {
                 var posRef: CFTypeRef?
                 var sizeRef: CFTypeRef?
@@ -1163,8 +1194,13 @@ class StatusBarController: NSObject {
 
                 var pos = CGPoint.zero
                 var size = CGSize.zero
-                if let p = posRef { AXValueGetValue(p as! AXValue, .cgPoint, &pos) }
-                if let s = sizeRef { AXValueGetValue(s as! AXValue, .cgSize, &size) }
+                guard let p = posRef,
+                      let s = sizeRef,
+                      CFGetTypeID(p) == AXValueGetTypeID(),
+                      CFGetTypeID(s) == AXValueGetTypeID(),
+                      AXValueGetValue(p as! AXValue, .cgPoint, &pos),
+                      AXValueGetValue(s as! AXValue, .cgSize, &size)
+                else { continue }
 
                 let axBounds = CGRect(origin: pos, size: size)
                 guard abs(axBounds.origin.x - window.bounds.origin.x) < 2,
@@ -1175,10 +1211,49 @@ class StatusBarController: NSObject {
 
                 var closeRef: CFTypeRef?
                 if AXUIElementCopyAttributeValue(
-                    axWindow, kAXCloseButtonAttribute as CFString, &closeRef) == .success {
-                    AXUIElementPerformAction(closeRef as! AXUIElement, kAXPressAction as CFString)
+                    axWindow, kAXCloseButtonAttribute as CFString, &closeRef) == .success,
+                   let closeRef,
+                   CFGetTypeID(closeRef) == AXUIElementGetTypeID()
+                {
+                    matchedCloseButton = unsafeBitCast(closeRef, to: AXUIElement.self)
                 }
                 break
+            }
+
+            guard let matchedCloseButton else { return nil }
+            closeButtons.append(matchedCloseButton)
+        }
+        return closeButtons
+    }
+
+    private func waitForWindowsToClose(
+        _ windowIDs: Set<Int>,
+        attempt: Int = 1,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard !windowIDs.isEmpty else {
+            completion(true)
+            return
+        }
+
+        let remainingIDs: Set<Int>
+        if let windowInfo = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] {
+            remainingIDs = Set(windowInfo.compactMap { $0[kCGWindowNumber as String] as? Int })
+                .intersection(windowIDs)
+        } else {
+            remainingIDs = windowIDs
+        }
+
+        if remainingIDs.isEmpty {
+            completion(true)
+        } else if attempt >= 30 {
+            completion(false)
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.waitForWindowsToClose(
+                    windowIDs,
+                    attempt: attempt + 1,
+                    completion: completion)
             }
         }
     }
@@ -1204,7 +1279,8 @@ class StatusBarController: NSObject {
                 : nil
         }
 
-        SpaceCloser.closeSpaces(targets: targets, focusTarget: focusTarget) { [weak self] _ in
+        SpaceCloser.closeSpaces(targets: targets, focusTarget: focusTarget) { [weak self] success in
+            if success { self?.removePersistedState(for: targetSpaces) }
             self?.refreshAfterClose()
         }
     }
@@ -1237,7 +1313,8 @@ class StatusBarController: NSObject {
                 : nil
         }
 
-        SpaceCloser.closeSpaces(targets: targets, focusTarget: focusTarget) { [weak self] _ in
+        SpaceCloser.closeSpaces(targets: targets, focusTarget: focusTarget) { [weak self] success in
+            if success { self?.removePersistedState(for: targetSpaces) }
             self?.refreshAfterClose()
         }
     }
@@ -1341,6 +1418,12 @@ class StatusBarController: NSObject {
         }
     }
 
+    private func removePersistedState(for spaces: [Space]) {
+        let spaceIDs = Set(spaces.map(\.spaceID))
+        SpaceNameStore.shared.remove(spaceIDs: spaceIDs)
+        SpaceLabelStore.shared.removeSpaces(withIDs: spaceIDs)
+    }
+
     @objc private func refreshSpaces() {
         NotificationCenter.default.post(name: NSNotification.Name("RequestSpaceRefresh"), object: nil)
     }
@@ -1368,7 +1451,7 @@ extension StatusBarController: NSMenuDelegate {
                 containing: NSEvent.mouseLocation,
                 candidates: physicalDisplayOrder)
             issueFetcher.refreshIfNeeded()
-            requestSpaceRefresh? {}
+            requestSpaceRefresh? { _ in }
         }
     }
 

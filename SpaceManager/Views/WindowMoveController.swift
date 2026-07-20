@@ -180,21 +180,36 @@ final class WindowMoveController: NSObject {
         }
         WindowMoveLog.write(
             "Move submitted window=\(windowID) targetSpace=\(targetSpaceID) modern=\(usedModernOperation)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self else { return }
-            let actualSpaceID = self.spaceID(containing: windowID)
-            let succeeded = actualSpaceID == String(targetSpaceID)
-            WindowMoveLog.write(
-                "Move verification window=\(windowID) expected=\(targetSpaceID) actual=\(actualSpaceID ?? "unknown") success=\(succeeded)")
-            if succeeded {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RequestSpaceRefresh"),
-                    object: nil)
-            } else {
-                NSSound.beep()
-            }
-        }
+        verifyMove(windowID: windowID, targetSpaceID: targetSpaceID)
         pendingWindowID = nil
+    }
+
+    /// SkyLight moves are asynchronous and can take longer during Space animations.
+    /// Poll the actual window-to-Space mapping instead of assuming 0.5 seconds is enough.
+    private func verifyMove(windowID: CGWindowID, targetSpaceID: UInt64, attempt: Int = 1) {
+        let actualSpaceID = spaceID(containing: windowID)
+        if actualSpaceID == String(targetSpaceID) {
+            WindowMoveLog.write(
+                "Move verification window=\(windowID) expected=\(targetSpaceID) actual=\(actualSpaceID ?? "unknown") success=true attempt=\(attempt)")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("RequestSpaceRefresh"),
+                object: nil)
+            return
+        }
+
+        guard attempt < 20 else {
+            WindowMoveLog.write(
+                "Move verification window=\(windowID) expected=\(targetSpaceID) actual=\(actualSpaceID ?? "unknown") success=false attempts=\(attempt)")
+            NSSound.beep()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.verifyMove(
+                windowID: windowID,
+                targetSpaceID: targetSpaceID,
+                attempt: attempt + 1)
+        }
     }
 
     private func focusedWindow() -> (id: CGWindowID, title: String)? {
@@ -215,7 +230,8 @@ final class WindowMoveController: NSObject {
             appElement,
             kAXFocusedWindowAttribute as CFString,
             &windowValue) == .success,
-            let window = windowValue
+            let window = windowValue,
+            CFGetTypeID(window) == AXUIElementGetTypeID()
         else { return nil }
 
         let windowElement = window as! AXUIElement

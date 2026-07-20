@@ -72,6 +72,8 @@ class SpaceCloser {
         targets: [CloseTarget],
         focusTarget: FocusTarget?
     ) -> Bool {
+        SpaceOperationLog.write(
+            "Close started targets=\(targets.map { "\($0.displayGroup):\($0.desktopIndex)" }) focus=\(focusTarget.map { "\($0.displayGroup):\($0.desktopIndex)" } ?? "none")")
         guard MissionControlAccessibility.openAndWaitForDisplaySnapshots() != nil else {
             return failAndDismiss("Mission Control accessibility hierarchy did not appear")
         }
@@ -124,6 +126,7 @@ class SpaceCloser {
             MissionControlAccessibility.dismiss()
         }
 
+        SpaceOperationLog.write("Close completed targets=\(targets.count)")
         return true
     }
 
@@ -131,6 +134,8 @@ class SpaceCloser {
         displayGroupIndex: Int,
         switchToDesktopIndex: Int?
     ) -> Bool {
+        SpaceOperationLog.write(
+            "Add started display=\(displayGroupIndex) switchTarget=\(switchToDesktopIndex.map(String.init) ?? "none")")
         guard let snapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
               snapshots.indices.contains(displayGroupIndex - 1)
         else {
@@ -164,11 +169,14 @@ class SpaceCloser {
             MissionControlAccessibility.dismiss()
         }
 
+        SpaceOperationLog.write(
+            "Add completed display=\(displayGroupIndex) desktopCount=\(previousCount + 1)")
         return true
     }
 
     private static func failAndDismiss(_ message: String) -> Bool {
         NSLog("SpaceCloser: \(message)")
+        SpaceOperationLog.write("Operation failed: \(message)")
         MissionControlAccessibility.dismiss()
         return false
     }
