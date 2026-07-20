@@ -16,7 +16,8 @@
 //  Mission Control. It requires only standard Accessibility and Automation permissions.
 //
 //  In multi-display setups, Mission Control's accessibility tree has one group
-//  per display under "Mission Control" > "Dock" > group "Mission Control".
+//  per display. Before macOS 27, these groups live under Dock's "Mission Control"
+//  group. Starting in macOS 27, they are top-level groups owned by WindowManager.
 //  The displayGroupIndex parameter (1-based) selects which display to target.
 //  The visible button labels can be globally numbered across every display
 //  ("Desktop 1" ... "Desktop 9"), so we target desktop buttons by their
@@ -106,9 +107,7 @@ class SpaceCloser {
         lines.append("tell application \"Mission Control\" to launch")
         lines.append("delay 0.7")
         lines.append("")
-        lines.append("tell application \"System Events\"")
-        lines.append("  tell process \"Dock\"")
-        lines.append("    tell group \"Mission Control\"")
+        MissionControlAccessibility.appendProcessStart(to: &lines)
 
         let sortedGroups = grouped.keys.sorted()
         for (i, group) in sortedGroups.enumerated() {
@@ -154,8 +153,7 @@ class SpaceCloser {
             lines.append("      end tell")
         }
 
-        lines.append("    end tell")
-        lines.append("  end tell")
+        MissionControlAccessibility.appendProcessEnd(to: &lines)
         if focusTarget == nil {
             lines.append("  delay 0.3")
             lines.append("  key code 53")
@@ -170,16 +168,13 @@ class SpaceCloser {
         lines.append("tell application \"Mission Control\" to launch")
         lines.append("delay 0.7")
         lines.append("")
-        lines.append("tell application \"System Events\"")
-        lines.append("  tell process \"Dock\"")
-        lines.append("    tell group \"Mission Control\"")
+        MissionControlAccessibility.appendProcessStart(to: &lines)
         lines.append("      tell group \(displayGroupIndex)")
         lines.append("        tell group \"Spaces Bar\"")
         lines.append("          click button 1")
         lines.append("        end tell")
         lines.append("      end tell")
-        lines.append("    end tell")
-        lines.append("  end tell")
+        MissionControlAccessibility.appendProcessEnd(to: &lines)
         lines.append("  delay 0.5")
         lines.append("  key code 53")
         lines.append("end tell")
@@ -192,9 +187,7 @@ class SpaceCloser {
         lines.append("tell application \"Mission Control\" to launch")
         lines.append("delay 0.7")
         lines.append("")
-        lines.append("tell application \"System Events\"")
-        lines.append("  tell process \"Dock\"")
-        lines.append("    tell group \"Mission Control\"")
+        MissionControlAccessibility.appendProcessStart(to: &lines)
         lines.append("      tell group \(displayGroupIndex)")
         lines.append("        tell group \"Spaces Bar\"")
         lines.append("          click button 1")
@@ -215,8 +208,7 @@ class SpaceCloser {
         lines.append("          end tell")
         lines.append("        end tell")
         lines.append("      end tell")
-        lines.append("    end tell")
-        lines.append("  end tell")
+        MissionControlAccessibility.appendProcessEnd(to: &lines)
         lines.append("end tell")
 
         return lines.joined(separator: "\n")

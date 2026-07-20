@@ -20,6 +20,7 @@
 		36EF5488F31DCCDF32170042 /* Space.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703E83622E4EE8A035214A5A /* Space.swift */; };
 		395E9E0BE6F06804E330AF08 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */; };
 		3CA4D8E78B9433E0C9B72FB8 /* SpaceWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDB5ABC3FBCE1E8E6B1A8576 /* SpaceWindow.swift */; };
+		4F637416B7091FFFD42D867A /* MissionControlAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */; };
 		5C958F87782A7D6A42CBE17A /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C9412D33F0D096D25CDA4C3 /* StatusBarController.swift */; };
 		62DAC63236FEB617879B8ACB /* WorkspaceAutomation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */; };
 		6ACA2F83191EA92F21494A66 /* AppPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DD1593956E51F3327F6C9D /* AppPermissions.swift */; };
@@ -72,6 +73,7 @@
 		6E5031E65C33D85C65EDA242 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		703E83622E4EE8A035214A5A /* Space.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Space.swift; sourceTree = "<group>"; };
 		733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHelper.swift; sourceTree = "<group>"; };
+		7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionControlAccessibility.swift; sourceTree = "<group>"; };
 		82362D22A0A79C23B8BCABF9 /* WindowMoveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveController.swift; sourceTree = "<group>"; };
 		836855BE97116D239959D8B6 /* SpaceLabelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceLabelStore.swift; sourceTree = "<group>"; };
 		85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -120,6 +122,7 @@
 			children = (
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
 				4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */,
+				7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */,
 				6B4CD1FDC8256CEDAF13A75A /* ModernSpaceWindowMover.m */,
 				0C83502A28F0A648D41E7688 /* ShortcutHelper.swift */,
 				6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */,
@@ -284,6 +287,7 @@
 				8F9A388C81D2E5728AB512AF /* GitHubIssue.swift in Sources */,
 				24A9D30786C44A008BDA5342 /* GitHubIssueFetcher.swift in Sources */,
 				16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */,
+				4F637416B7091FFFD42D867A /* MissionControlAccessibility.swift in Sources */,
 				97867B69A59BF7EC5DA641FC /* ModernSpaceWindowMover.m in Sources */,
 				0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */,
 				926ADBDE9F90FDC1F37FC875 /* RepositoryColor.swift in Sources */,
