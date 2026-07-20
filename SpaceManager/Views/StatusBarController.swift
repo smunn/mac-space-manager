@@ -492,8 +492,13 @@ class StatusBarController: NSObject {
             SpaceCloser.addSpaceAndSwitch(
                 toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
                 displayGroupIndex: groupIndex
-            ) { _ in
+            ) { [weak self] success in
+                guard success else {
+                    self?.refreshAfterClose()
+                    return
+                }
                 WorkspaceLauncher.launch(key)
+                self?.refreshAfterClose()
             }
         }
     }
@@ -775,7 +780,11 @@ class StatusBarController: NSObject {
                 SpaceCloser.addSpaceAndSwitch(
                     toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
                     displayGroupIndex: groupIndex
-                ) { [weak self] _ in
+                ) { [weak self] success in
+                    guard success else {
+                        self?.refreshAfterClose()
+                        return
+                    }
                     WorkspaceLauncher.launch(workspaceKey)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
                         self?.sendIssueToIdleTerminal(issueNumber: issueNum)
@@ -962,7 +971,7 @@ class StatusBarController: NSObject {
 
         if spaceSwitcher.canDirectSwitch(spaceNumber: targetNumber) {
             spaceSwitcher.switchToSpace(spaceNumber: targetNumber) {
-                self.showSwitchError()
+                self.switchViaMissionControl(to: target)
             }
         } else if let current = currentSpace(in: currentSpaces),
                   current.displayID == target.displayID,
@@ -974,23 +983,33 @@ class StatusBarController: NSObject {
             spaceSwitcher.navigateToSpace(
                 from: currentDesktopIndex,
                 to: targetDesktopIndex) {
-                    self.showSwitchError()
+                    self.switchViaMissionControl(to: target)
                 }
-        } else if !target.isFullScreen,
-                  let desktopIndex = desktopIndexOnDisplay(for: target) {
-            spaceSwitcher.switchViaMissionControl(
-                displayGroupIndex: displayGroupIndex(for: target.displayID),
-                desktopIndex: desktopIndex)
+        } else {
+            switchViaMissionControl(to: target)
         }
+    }
+
+    private func switchViaMissionControl(to target: Space) {
+        guard !target.isFullScreen,
+              let desktopIndex = desktopIndexOnDisplay(for: target)
+        else {
+            showSwitchError()
+            return
+        }
+
+        spaceSwitcher.switchViaMissionControl(
+            displayGroupIndex: displayGroupIndex(for: target.displayID),
+            desktopIndex: desktopIndex) {
+                self.showSwitchError()
+            }
     }
 
     private func showSwitchError() {
         let hasAcc = AppPermissions.check(.accessibility)
-        let hasAuto = AppPermissions.check(.automation)
         var msg = "Space switching failed.\n\n"
         if !hasAcc { msg += "- Accessibility permission NOT granted\n" }
-        if !hasAuto { msg += "- Automation (System Events) permission NOT granted\n" }
-        if hasAcc && hasAuto { msg += "Both permissions appear granted. Try removing and re-adding Space Manager in System Settings > Privacy & Security > Accessibility, then restart the app." }
+        if hasAcc { msg += "Accessibility permission appears granted. Try removing and re-adding Space Manager in System Settings > Privacy & Security > Accessibility, then restart the app." }
 
         let alert = NSAlert()
         alert.messageText = "Cannot Switch Spaces"
@@ -1073,7 +1092,9 @@ class StatusBarController: NSObject {
         guard let spaceID,
               let space = currentSpaces.first(where: { $0.spaceID == spaceID }),
               let target = closeTarget(for: space) else { return }
-        let focusTarget = self.focusTarget(afterClosing: [space], preferredClosedSpace: space)
+        let focusTarget = space.isCurrentSpace
+            ? self.focusTarget(afterClosing: [space], preferredClosedSpace: space)
+            : nil
         SpaceCloser.closeSpaces(targets: [target], focusTarget: focusTarget) { [weak self] _ in
             self?.refreshAfterClose()
         }
@@ -1264,7 +1285,7 @@ class StatusBarController: NSObject {
     }
 
     @objc private func showMissionControl() {
-        NSWorkspace.shared.launchApplication("Mission Control")
+        MissionControlAccessibility.open()
     }
 
     func showSettings() {

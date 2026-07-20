@@ -2,7 +2,7 @@
 //  SpaceSwitcher.swift
 //  SpaceManager
 //
-//  Switches between macOS Spaces via simulated keyboard shortcuts.
+//  Switches between macOS Spaces via direct keyboard events or Mission Control AX.
 //  Uses arrow-key chaining when direct Desktop N shortcuts are unavailable.
 //  Adapted from Spaceman by René Uittenbogaard (MIT License).
 //
@@ -26,28 +26,29 @@ class SpaceSwitcher {
     /// Switches to a space by clicking the Nth desktop button inside the
     /// target display's Mission Control group.
     /// Constant time regardless of distance -- no stepping through intermediate spaces.
-    func switchViaMissionControl(displayGroupIndex: Int = 1, desktopIndex: Int) {
-        var lines: [String] = []
-        lines.append("tell application \"Mission Control\" to launch")
-        lines.append("delay 0.7")
-        lines.append("")
-        MissionControlAccessibility.appendProcessStart(to: &lines)
-        lines.append("      tell group \(displayGroupIndex)")
-        lines.append("        tell group \"Spaces Bar\"")
-        lines.append("          tell list 1")
-        lines.append("            set desktopButtons to (every button whose name starts with \"Desktop \")")
-        lines.append("            click (item \(desktopIndex) of desktopButtons)")
-        lines.append("          end tell")
-        lines.append("        end tell")
-        lines.append("      end tell")
-        MissionControlAccessibility.appendProcessEnd(to: &lines)
-        lines.append("end tell")
+    func switchViaMissionControl(
+        displayGroupIndex: Int = 1,
+        desktopIndex: Int,
+        onError: (() -> Void)? = nil
+    ) {
+        MissionControlAccessibility.operationQueue.async {
+            guard let snapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
+                  snapshots.indices.contains(displayGroupIndex - 1)
+            else {
+                NSLog("SpaceSwitcher: Mission Control display group \(displayGroupIndex) did not appear")
+                DispatchQueue.main.async { onError?() }
+                return
+            }
 
-        let script = lines.joined(separator: "\n")
-        DispatchQueue.global(qos: .userInteractive).async {
-            let appleScript = NSAppleScript(source: script)
-            var error: NSDictionary?
-            appleScript?.executeAndReturnError(&error)
+            let buttons = snapshots[displayGroupIndex - 1].desktopButtons
+            guard buttons.indices.contains(desktopIndex - 1),
+                  MissionControlAccessibility.performPress(on: buttons[desktopIndex - 1])
+            else {
+                NSLog("SpaceSwitcher: could not press desktop \(desktopIndex) in display group \(displayGroupIndex)")
+                MissionControlAccessibility.dismiss()
+                DispatchQueue.main.async { onError?() }
+                return
+            }
         }
     }
 
@@ -56,21 +57,13 @@ class SpaceSwitcher {
     }
 
     func switchToSpace(spaceNumber: Int, onError: (() -> Void)? = nil) {
-        let keyCode = shortcutHelper.getKeyCode(spaceNumber: spaceNumber)
-        if keyCode < 0 {
+        guard let shortcut = shortcutHelper.shortcut(forDesktop: spaceNumber) else {
             onError?()
             return
         }
-        let modifiers = shortcutHelper.getModifiers(spaceNumber: spaceNumber)
-        let appleScript = makeAppleScript(keyCode: keyCode, modifiers: modifiers)
-        DispatchQueue.global(qos: .userInteractive).async {
-            var error: NSDictionary?
-            if let scriptObject = NSAppleScript(source: appleScript) {
-                scriptObject.executeAndReturnError(&error)
-                if error != nil {
-                    DispatchQueue.main.async { onError?() }
-                }
-            }
+        cancelChain()
+        performKeyboardSwitch(shortcut: shortcut) { success in
+            if !success { onError?() }
         }
     }
 
@@ -84,20 +77,36 @@ class SpaceSwitcher {
 
     private func executeChain(stepsRemaining: Int, goRight: Bool, onError: (() -> Void)? = nil) {
         guard stepsRemaining > 0 else { return }
-        if goRight {
-            switchToNextSpace(onError: onError)
-        } else {
-            switchToPreviousSpace(onError: onError)
-        }
-        if stepsRemaining == 1 { return }
-        waitForSpaceChange {
-            self.executeChain(stepsRemaining: stepsRemaining - 1, goRight: goRight, onError: onError)
+        let shortcut = goRight
+            ? shortcutHelper.moveRightShortcut ?? fallbackArrowShortcut(keyCode: 124)
+            : shortcutHelper.moveLeftShortcut ?? fallbackArrowShortcut(keyCode: 123)
+
+        performKeyboardSwitch(shortcut: shortcut) { [weak self] success in
+            guard let self else { return }
+            guard success else {
+                onError?()
+                return
+            }
+            self.executeChain(
+                stepsRemaining: stepsRemaining - 1,
+                goRight: goRight,
+                onError: onError)
         }
     }
 
-    private func waitForSpaceChange(onComplete: @escaping () -> Void) {
+    /// Installs the active-Space observer before posting the key event so fast
+    /// transitions cannot race past the observer. Completion is based on the actual
+    /// workspace notification rather than successful event construction alone.
+    private func performKeyboardSwitch(
+        shortcut: SpaceShortcut,
+        completion: @escaping (Bool) -> Void
+    ) {
+        cancelChain()
+
         let timeout = DispatchWorkItem { [weak self] in
-            self?.cancelChain()
+            self?.chainTimeout = nil
+            self?.removeChainObserver()
+            completion(false)
         }
         chainTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: timeout)
@@ -108,8 +117,24 @@ class SpaceSwitcher {
             queue: .main
         ) { [weak self] _ in
             timeout.cancel()
+            self?.chainTimeout = nil
             self?.removeChainObserver()
-            onComplete()
+            completion(true)
+        }
+
+        // Menu actions invoke this before NSMenu finishes closing. Posting immediately
+        // lets the menu consume the shortcut, so wait for the next run-loop turn.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self, !timeout.isCancelled else { return }
+            let posted = MissionControlAccessibility.postKey(
+                keyCode: CGKeyCode(shortcut.keyCode),
+                flags: Self.cgEventFlags(from: shortcut.modifierFlags))
+            if !posted {
+                timeout.cancel()
+                self.chainTimeout = nil
+                self.removeChainObserver()
+                completion(false)
+            }
         }
     }
 
@@ -126,37 +151,19 @@ class SpaceSwitcher {
         }
     }
 
-    private func switchToPreviousSpace(onError: (() -> Void)? = nil) {
-        let sc = shortcutHelper.moveLeftShortcut
-        sendKeyCode(sc?.keyCode ?? 123, modifiers: sc?.modifiers ?? "control down", onError: onError)
+    private func fallbackArrowShortcut(keyCode: Int) -> SpaceShortcut {
+        SpaceShortcut(
+            keyCode: keyCode,
+            modifierFlags: .control,
+            keyEquivalent: "")
     }
 
-    private func switchToNextSpace(onError: (() -> Void)? = nil) {
-        let sc = shortcutHelper.moveRightShortcut
-        sendKeyCode(sc?.keyCode ?? 124, modifiers: sc?.modifiers ?? "control down", onError: onError)
-    }
-
-    private func sendKeyCode(_ keyCode: Int, modifiers: String, onError: (() -> Void)? = nil) {
-        let script = makeAppleScript(keyCode: keyCode, modifiers: modifiers)
-        NSLog("SpaceSwitcher: sending keyCode=\(keyCode) modifiers=\(modifiers)")
-        DispatchQueue.global(qos: .userInteractive).async {
-            if let scriptObject = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                scriptObject.executeAndReturnError(&error)
-                if let error = error {
-                    let num = error[NSAppleScript.errorNumber] as? Int ?? 0
-                    let msg = error[NSAppleScript.errorBriefMessage] as? String ?? "unknown"
-                    NSLog("SpaceSwitcher FAILED: error \(num) — \(msg)")
-                    DispatchQueue.main.async { onError?() }
-                }
-            }
-        }
-    }
-
-    private func makeAppleScript(keyCode: Int, modifiers: String) -> String {
-        if modifiers.isEmpty {
-            return "tell application \"System Events\" to key code \(keyCode)"
-        }
-        return "tell application \"System Events\" to key code \(keyCode) using {\(modifiers)}"
+    private static func cgEventFlags(from flags: NSEvent.ModifierFlags) -> CGEventFlags {
+        var cgFlags: CGEventFlags = []
+        if flags.contains(.shift) { cgFlags.insert(.maskShift) }
+        if flags.contains(.control) { cgFlags.insert(.maskControl) }
+        if flags.contains(.option) { cgFlags.insert(.maskAlternate) }
+        if flags.contains(.command) { cgFlags.insert(.maskCommand) }
+        return cgFlags
     }
 }

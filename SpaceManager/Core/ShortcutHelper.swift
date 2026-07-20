@@ -11,7 +11,6 @@ import Foundation
 
 struct SpaceShortcut {
     let keyCode: Int
-    let modifiers: String
     let modifierFlags: NSEvent.ModifierFlags
     let keyEquivalent: String
 }
@@ -56,10 +55,6 @@ class ShortcutHelper {
         desktopShortcuts[spaceNumber]?.keyCode ?? -1
     }
 
-    func getModifiers(spaceNumber: Int) -> String {
-        desktopShortcuts[spaceNumber]?.modifiers ?? ""
-    }
-
     private func parseHotkey(id: Int, from hotkeys: [String: Any]) -> SpaceShortcut? {
         guard let entry = hotkeys[String(id)] as? [String: Any],
               let enabled = entry["enabled"] as? Bool, enabled,
@@ -71,12 +66,6 @@ class ShortcutHelper {
         let keyCode = params[1]
         let modRaw = params[2]
 
-        var mods: [String] = []
-        if modRaw & (1 << 17) != 0 { mods.append("shift down") }
-        if modRaw & (1 << 18) != 0 { mods.append("control down") }
-        if modRaw & (1 << 19) != 0 { mods.append("option down") }
-        if modRaw & (1 << 20) != 0 { mods.append("command down") }
-
         var flags = NSEvent.ModifierFlags()
         if modRaw & (1 << 17) != 0 { flags.insert(.shift) }
         if modRaw & (1 << 18) != 0 { flags.insert(.control) }
@@ -87,7 +76,6 @@ class ShortcutHelper {
 
         return SpaceShortcut(
             keyCode: keyCode,
-            modifiers: mods.joined(separator: ","),
             modifierFlags: flags,
             keyEquivalent: keyEquivalent)
     }

@@ -39,43 +39,54 @@ enum WorkspaceAutomation {
         existingWindowIDs: Set<Int>,
         completion: @escaping (Bool) -> Void
     ) {
-        let script = """
-        set shouldCreateNewWindow to false
-        tell application "Terminal"
-          if running and (count of windows) > 0 then
-            set shouldCreateNewWindow to true
-          end if
-          activate
-          reopen
-        end tell
-        delay 0.2
-        if shouldCreateNewWindow then
-          tell application "System Events"
-            tell process "Terminal"
-              keystroke "n" using command down
-            end tell
-          end tell
-        end if
-        """
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let appleScript = NSAppleScript(source: script)
-            var error: NSDictionary?
-            appleScript?.executeAndReturnError(&error)
+        let terminalURL = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(
+            at: terminalURL,
+            configuration: configuration
+        ) { _, error in
             if let error {
-                NSLog("WorkspaceAutomation Terminal AppleScript failed: \(error)")
-                DispatchQueue.main.async {
-                    completion(false)
-                }
+                NSLog("WorkspaceAutomation: could not open Terminal: \(error)")
+                DispatchQueue.main.async { completion(false) }
                 return
             }
 
-            DispatchQueue.main.async {
-                moveNewTerminalWindow(
-                    toDisplay: targetDisplayID,
-                    existingWindowIDs: existingWindowIDs
-                ) { moved in
-                    completion(moved)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let deadline = Date().addingTimeInterval(2.0)
+                var terminalIsActive = false
+                while Date() < deadline {
+                    if NSWorkspace.shared.runningApplications.first(where: {
+                        $0.bundleIdentifier == "com.apple.Terminal"
+                    })?.isActive == true {
+                        terminalIsActive = true
+                        break
+                    }
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+                guard terminalIsActive else {
+                    NSLog("WorkspaceAutomation: Terminal did not become active")
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+
+                if !existingWindowIDs.isEmpty {
+                    guard MissionControlAccessibility.postKey(
+                        keyCode: 45,
+                        flags: .maskCommand)
+                    else {
+                        DispatchQueue.main.async { completion(false) }
+                        return
+                    }
+                }
+
+                DispatchQueue.main.async {
+                    moveNewTerminalWindow(
+                        toDisplay: targetDisplayID,
+                        existingWindowIDs: existingWindowIDs
+                    ) { moved in
+                        completion(moved)
+                    }
                 }
             }
         }
