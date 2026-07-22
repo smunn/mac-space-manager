@@ -113,6 +113,9 @@ Space Manager registers the `spacemanager://` URL scheme for simple script integ
 # Rename the currently active space
 open "spacemanager://rename-current?name=WGU"
 
+# Clear its name override and restore a random wallpaper from the configured folder
+open "spacemanager://reset-current"
+
 # Clear the current space's manual name
 open "spacemanager://clear-current-name"
 

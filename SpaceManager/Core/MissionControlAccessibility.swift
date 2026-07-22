@@ -10,6 +10,7 @@ import ApplicationServices
 
 enum MissionControlAccessibility {
     struct DisplaySnapshot {
+        let displayID: String?
         let desktopButtons: [AXUIElement]
         let addButton: AXUIElement?
     }
@@ -49,7 +50,7 @@ enum MissionControlAccessibility {
                 predicate: { !$0.isEmpty })
             {
                 SpaceOperationLog.write(
-                    "Mission Control ready attempt=\(attempt) displays=\(snapshots.count) desktops=\(snapshots.map { $0.desktopButtons.count })")
+                    "Mission Control ready attempt=\(attempt) displays=\(snapshots.count) snapshots=\(snapshots.map { "\($0.displayID ?? "unknown"):\($0.desktopButtons.count)" })")
                 return snapshots
             }
         }
@@ -64,8 +65,24 @@ enum MissionControlAccessibility {
             }) else { continue }
 
             let root = AXUIElementCreateApplication(app.processIdentifier)
+
+            // WindowManager exposes one `mc.display` container per physical display on
+            // macOS 27. Its child order does not match CGSCopyManagedDisplaySpaces, so
+            // retain the stable Core Graphics display identity carried by AXDisplayID.
+            let displayGroups = descendants(of: root, maximumDepth: 2).filter {
+                identifier(of: $0) == "mc.display"
+            }
+            let identifiedSnapshots = displayGroups.compactMap(snapshot(forDisplayGroup:))
+            if !identifiedSnapshots.isEmpty {
+                return identifiedSnapshots
+            }
+
+            // Older macOS releases expose the Spaces bars under Dock without an
+            // `mc.display` container or AXDisplayID. Preserve ordinal lookup there.
             let spacesBars = descendants(of: root, maximumDepth: 6).filter(isSpacesBar)
-            let snapshots = spacesBars.compactMap(snapshot(forSpacesBar:))
+            let snapshots = spacesBars.compactMap {
+                snapshot(forSpacesBar: $0, displayID: nil)
+            }
             if !snapshots.isEmpty {
                 return snapshots
             }
@@ -74,14 +91,37 @@ enum MissionControlAccessibility {
         return []
     }
 
+    static func snapshot(
+        in snapshots: [DisplaySnapshot],
+        displayID: String,
+        fallbackDisplayGroupIndex: Int
+    ) -> DisplaySnapshot? {
+        if let identified = snapshots.first(where: { $0.displayID == displayID }) {
+            return identified
+        }
+
+        // Only fall back to the undocumented ordinal hierarchy when the platform
+        // supplies no display identities at all. Falling back after a UUID mismatch
+        // could mutate a Space on the wrong monitor.
+        guard snapshots.allSatisfy({ $0.displayID == nil }),
+              snapshots.indices.contains(fallbackDisplayGroupIndex - 1)
+        else { return nil }
+        return snapshots[fallbackDisplayGroupIndex - 1]
+    }
+
     static func waitForDesktopCount(
+        displayID: String,
         displayGroupIndex: Int,
         timeout: TimeInterval = mutationTimeout,
         predicate: @escaping (Int) -> Bool
     ) -> [DisplaySnapshot]? {
         waitForSnapshots(timeout: timeout) { snapshots in
-            guard snapshots.indices.contains(displayGroupIndex - 1) else { return false }
-            return predicate(snapshots[displayGroupIndex - 1].desktopButtons.count)
+            guard let snapshot = snapshot(
+                in: snapshots,
+                displayID: displayID,
+                fallbackDisplayGroupIndex: displayGroupIndex)
+            else { return false }
+            return predicate(snapshot.desktopButtons.count)
         }
     }
 
@@ -138,7 +178,19 @@ enum MissionControlAccessibility {
         return nil
     }
 
-    private static func snapshot(forSpacesBar spacesBar: AXUIElement) -> DisplaySnapshot? {
+    private static func snapshot(forDisplayGroup displayGroup: AXUIElement) -> DisplaySnapshot? {
+        guard let spacesBar = descendants(of: displayGroup, maximumDepth: 2).first(where: isSpacesBar)
+        else { return nil }
+
+        return snapshot(
+            forSpacesBar: spacesBar,
+            displayID: displayUUID(for: displayGroup))
+    }
+
+    private static func snapshot(
+        forSpacesBar spacesBar: AXUIElement,
+        displayID: String?
+    ) -> DisplaySnapshot? {
         let allDescendants = descendants(of: spacesBar, maximumDepth: 3)
         guard let list = allDescendants.first(where: {
             identifier(of: $0) == "mc.spaces.list" || role(of: $0) == kAXListRole as String
@@ -148,6 +200,7 @@ enum MissionControlAccessibility {
             guard role(of: element) == kAXButtonRole as String else { return false }
             let actions = actionNames(of: element)
             return actions.contains(removeDesktopAction as String)
+                || title(of: element) == "Desktop"
                 || title(of: element)?.hasPrefix("Desktop ") == true
         }
 
@@ -160,7 +213,24 @@ enum MissionControlAccessibility {
             role(of: $0) == kAXButtonRole as String
         })
 
-        return DisplaySnapshot(desktopButtons: desktopButtons, addButton: addButton)
+        return DisplaySnapshot(
+            displayID: displayID,
+            desktopButtons: desktopButtons,
+            addButton: addButton)
+    }
+
+    private static func displayUUID(for displayGroup: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            displayGroup,
+            "AXDisplayID" as CFString,
+            &value) == .success,
+            let number = value as? NSNumber
+        else { return nil }
+
+        let directDisplayID = CGDirectDisplayID(number.uint32Value)
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(directDisplayID) else { return nil }
+        return CFUUIDCreateString(nil, uuid.takeRetainedValue()) as String
     }
 
     private static func isSpacesBar(_ element: AXUIElement) -> Bool {

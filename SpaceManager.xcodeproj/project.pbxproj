@@ -44,6 +44,7 @@
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
 		D20BCC1BD20F3DDB8573D221 /* SpaceLabelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836855BE97116D239959D8B6 /* SpaceLabelStore.swift */; };
 		DBE2A6EADF22BC51A5D7EA32 /* SpaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */; };
+		E0AE7021A47D9FBC637112CF /* WallpaperResetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */; };
 		EA50500A8F00DDE204D5E63C /* SpaceManagerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DCE0867DD1ECA0FD468D3D0 /* SpaceManagerApp.swift */; };
 		EBAA87AA89A1D4720B95BE9A /* WindowMoveLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C699A48A6374BCDA24048F9 /* WindowMoveLog.swift */; };
 		FBF3EE083A0E3DBC49D5D0AE /* SpaceCloser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */; };
@@ -61,6 +62,7 @@
 		4AC80DA235AD47C992270A3B /* SpaceTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTransfer.swift; sourceTree = "<group>"; };
 		4C699A48A6374BCDA24048F9 /* WindowMoveLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveLog.swift; sourceTree = "<group>"; };
 		57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayDirection.swift; sourceTree = "<group>"; };
+		5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperResetter.swift; sourceTree = "<group>"; };
 		5B4013259C7C740B1425CD77 /* SpaceManager.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SpaceManager.entitlements; sourceTree = "<group>"; };
 		5C5673C90FAED6A821AE32F2 /* SpaceManager-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SpaceManager-Bridging-Header.h"; sourceTree = "<group>"; };
 		5C9412D33F0D096D25CDA4C3 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 				CC1761DA8F106DAD6C9F477D /* SpaceObserver.swift */,
 				993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */,
 				4AC80DA235AD47C992270A3B /* SpaceTransfer.swift */,
+				5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */,
 				5FCD10B9F25963D2BECC467D /* WindowDetector.swift */,
 				E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */,
 				5E24B9AD41807749EE20B419 /* WorkspaceConfig.swift */,
@@ -312,6 +315,7 @@
 				3CA4D8E78B9433E0C9B72FB8 /* SpaceWindow.swift in Sources */,
 				5C958F87782A7D6A42CBE17A /* StatusBarController.swift in Sources */,
 				79B306578A1BD5062718CBD7 /* View+DebugLabel.swift in Sources */,
+				E0AE7021A47D9FBC637112CF /* WallpaperResetter.swift in Sources */,
 				ABE439E098D8935AC52C38F2 /* WindowDetector.swift in Sources */,
 				924902E76D958E3E141E46E2 /* WindowMoveController.swift in Sources */,
 				EBAA87AA89A1D4720B95BE9A /* WindowMoveLog.swift in Sources */,

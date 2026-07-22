@@ -19,7 +19,11 @@ enum WorkspaceAutomation {
     ) {
         let existingTerminalWindowIDs = Set(terminalWindowsSnapshot().map(\.windowID))
 
-        SpaceCloser.addSpaceAndSwitch(toDesktopNumber: targetDesktopNumber, displayGroupIndex: displayGroupIndex) { success in
+        SpaceCloser.addSpaceAndSwitch(
+            toDesktopNumber: targetDesktopNumber,
+            displayID: targetDisplayID,
+            displayGroupIndex: displayGroupIndex
+        ) { success in
             guard success else {
                 completion(false)
                 return

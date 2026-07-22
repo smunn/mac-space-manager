@@ -21,11 +21,13 @@ import Cocoa
 
 class SpaceCloser {
     struct CloseTarget {
+        let displayID: String
         let displayGroup: Int
         let desktopIndex: Int
     }
 
     struct FocusTarget {
+        let displayID: String
         let displayGroup: Int
         let desktopIndex: Int
     }
@@ -46,9 +48,14 @@ class SpaceCloser {
         }
     }
 
-    static func addSpace(displayGroupIndex: Int = 1, completion: @escaping (Bool) -> Void) {
+    static func addSpace(
+        displayID: String,
+        displayGroupIndex: Int = 1,
+        completion: @escaping (Bool) -> Void
+    ) {
         MissionControlAccessibility.operationQueue.async {
             let success = addSpaceSynchronously(
+                displayID: displayID,
                 displayGroupIndex: displayGroupIndex,
                 switchToDesktopIndex: nil)
             DispatchQueue.main.async { completion(success) }
@@ -57,11 +64,13 @@ class SpaceCloser {
 
     static func addSpaceAndSwitch(
         toDesktopNumber desktopNumber: Int,
+        displayID: String,
         displayGroupIndex: Int = 1,
         completion: @escaping (Bool) -> Void
     ) {
         MissionControlAccessibility.operationQueue.async {
             let success = addSpaceSynchronously(
+                displayID: displayID,
                 displayGroupIndex: displayGroupIndex,
                 switchToDesktopIndex: desktopNumber)
             DispatchQueue.main.async { completion(success) }
@@ -78,17 +87,36 @@ class SpaceCloser {
             return failAndDismiss("Mission Control accessibility hierarchy did not appear")
         }
 
-        let grouped = Dictionary(grouping: targets, by: \.displayGroup)
-        for group in grouped.keys.sorted() {
-            let desktopIndexes = grouped[group]!.map(\.desktopIndex).sorted(by: >)
+        let grouped = Dictionary(grouping: targets, by: \.displayID)
+
+        // Wait for every requested display to expose the full target range before
+        // changing anything. macOS 27 populates separate display bars asynchronously.
+        for displayID in grouped.keys.sorted() {
+            guard let target = grouped[displayID]?.first,
+                  let requiredIndex = grouped[displayID]?.map(\.desktopIndex).max(),
+                  MissionControlAccessibility.waitForDesktopCount(
+                    displayID: target.displayID,
+                    displayGroupIndex: target.displayGroup,
+                    predicate: { $0 >= requiredIndex }) != nil
+            else {
+                return failAndDismiss("display \(displayID) did not expose the requested desktops")
+            }
+        }
+
+        for displayID in grouped.keys.sorted() {
+            guard let target = grouped[displayID]?.first else { continue }
+            let group = target.displayGroup
+            let desktopIndexes = grouped[displayID]!.map(\.desktopIndex).sorted(by: >)
             for desktopIndex in desktopIndexes {
                 guard let snapshots = MissionControlAccessibility.currentDisplaySnapshots().nonEmpty,
-                      snapshots.indices.contains(group - 1)
+                      let snapshot = MissionControlAccessibility.snapshot(
+                        in: snapshots,
+                        displayID: target.displayID,
+                        fallbackDisplayGroupIndex: group)
                 else {
                     return failAndDismiss("display group \(group) was unavailable")
                 }
 
-                let snapshot = snapshots[group - 1]
                 guard snapshot.desktopButtons.indices.contains(desktopIndex - 1) else {
                     return failAndDismiss("desktop index \(desktopIndex) was unavailable in display group \(group)")
                 }
@@ -101,6 +129,7 @@ class SpaceCloser {
                 }
 
                 guard MissionControlAccessibility.waitForDesktopCount(
+                    displayID: target.displayID,
                     displayGroupIndex: group,
                     predicate: { $0 == previousCount - 1 }) != nil
                 else {
@@ -111,12 +140,15 @@ class SpaceCloser {
 
         if let focusTarget {
             guard let snapshots = MissionControlAccessibility.currentDisplaySnapshots().nonEmpty,
-                  snapshots.indices.contains(focusTarget.displayGroup - 1)
+                  let snapshot = MissionControlAccessibility.snapshot(
+                    in: snapshots,
+                    displayID: focusTarget.displayID,
+                    fallbackDisplayGroupIndex: focusTarget.displayGroup)
             else {
                 return failAndDismiss("focus display group \(focusTarget.displayGroup) was unavailable")
             }
 
-            let buttons = snapshots[focusTarget.displayGroup - 1].desktopButtons
+            let buttons = snapshot.desktopButtons
             guard buttons.indices.contains(focusTarget.desktopIndex - 1),
                   MissionControlAccessibility.performPress(on: buttons[focusTarget.desktopIndex - 1])
             else {
@@ -131,18 +163,21 @@ class SpaceCloser {
     }
 
     private static func addSpaceSynchronously(
+        displayID: String,
         displayGroupIndex: Int,
         switchToDesktopIndex: Int?
     ) -> Bool {
         SpaceOperationLog.write(
             "Add started display=\(displayGroupIndex) switchTarget=\(switchToDesktopIndex.map(String.init) ?? "none")")
         guard let snapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
-              snapshots.indices.contains(displayGroupIndex - 1)
+              let snapshot = MissionControlAccessibility.snapshot(
+                in: snapshots,
+                displayID: displayID,
+                fallbackDisplayGroupIndex: displayGroupIndex)
         else {
             return failAndDismiss("Mission Control display group \(displayGroupIndex) did not appear")
         }
 
-        let snapshot = snapshots[displayGroupIndex - 1]
         let previousCount = snapshot.desktopButtons.count
         guard let addButton = snapshot.addButton else {
             return failAndDismiss("add-desktop button was unavailable for display group \(displayGroupIndex)")
@@ -152,6 +187,7 @@ class SpaceCloser {
         }
 
         guard let updatedSnapshots = MissionControlAccessibility.waitForDesktopCount(
+            displayID: displayID,
             displayGroupIndex: displayGroupIndex,
             predicate: { $0 == previousCount + 1 })
         else {
@@ -159,7 +195,14 @@ class SpaceCloser {
         }
 
         if let switchToDesktopIndex {
-            let buttons = updatedSnapshots[displayGroupIndex - 1].desktopButtons
+            guard let updatedSnapshot = MissionControlAccessibility.snapshot(
+                in: updatedSnapshots,
+                displayID: displayID,
+                fallbackDisplayGroupIndex: displayGroupIndex)
+            else {
+                return failAndDismiss("updated display group \(displayGroupIndex) was unavailable")
+            }
+            let buttons = updatedSnapshot.desktopButtons
             guard buttons.indices.contains(switchToDesktopIndex - 1),
                   MissionControlAccessibility.performPress(on: buttons[switchToDesktopIndex - 1])
             else {

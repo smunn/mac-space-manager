@@ -168,6 +168,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case ("clear-current-name", _), ("space", "/current/clear-name"):
             renameCurrentSpace(to: "", source: .auto)
 
+        case ("reset-current", _), ("space", "/current/reset"):
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ResetCurrentSpace"),
+                object: nil)
+
         case ("refresh", _):
             requestSpaceRefresh()
 

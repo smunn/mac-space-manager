@@ -26,6 +26,12 @@ class StatusBarController: NSObject {
 
     override init() {
         super.init()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(resetCurrentSpace),
+            name: NSNotification.Name("ResetCurrentSpace"),
+            object: nil)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusMenu = NSMenu()
         statusMenu.delegate = self
@@ -90,17 +96,15 @@ class StatusBarController: NSObject {
         newItem.submenu = buildNewSubmenu()
         statusMenu.addItem(newItem)
 
+        let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
+        currentSpaceItem.submenu = buildCurrentSpaceSubmenu(
+            spaces,
+            orderedDisplayIDs: orderedDisplayIDs)
+        statusMenu.addItem(currentSpaceItem)
+
         let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
         closeItem.submenu = buildCloseSubmenu(spaces)
         statusMenu.addItem(closeItem)
-
-        let currentLabelItem = NSMenuItem(
-            title: "Current Label...",
-            action: #selector(editCurrentSpaceLabel),
-            keyEquivalent: "l")
-        currentLabelItem.keyEquivalentModifierMask = [.control, .option, .command]
-        currentLabelItem.target = self
-        statusMenu.addItem(currentLabelItem)
 
         let moveWindowItem = NSMenuItem(
             title: "Move Frontmost Window...",
@@ -149,35 +153,6 @@ class StatusBarController: NSObject {
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        let renameItem = NSMenuItem(
-            title: "Rename Current Space...",
-            action: #selector(renameCurrentSpace),
-            keyEquivalent: "")
-        renameItem.target = self
-        statusMenu.addItem(renameItem)
-
-        let currentNameSource: NameSource? = {
-            guard let current = currentSpace(in: spaces) else { return nil }
-            let stored = SpaceNameStore.shared.loadAll()
-            return stored[current.spaceID]?.nameSource
-        }()
-        if currentNameSource == .manual || currentNameSource == .workspace {
-            let clearItem = NSMenuItem(
-                title: "Clear Name Override",
-                action: #selector(clearCurrentSpaceName),
-                keyEquivalent: "")
-            clearItem.target = self
-            statusMenu.addItem(clearItem)
-        }
-
-        if multipleDisplays {
-            let transferItem = NSMenuItem(title: "Transfer", action: nil, keyEquivalent: "")
-            transferItem.submenu = buildTransferSubmenu(spaces, orderedDisplayIDs: orderedDisplayIDs)
-            statusMenu.addItem(transferItem)
-        }
-
-        statusMenu.addItem(NSMenuItem.separator())
-
         let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
         missionControlItem.target = self
         statusMenu.addItem(missionControlItem)
@@ -190,13 +165,65 @@ class StatusBarController: NSObject {
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshSpaces), keyEquivalent: "r")
-        refreshItem.target = self
-        statusMenu.addItem(refreshItem)
-
         let quitItem = NSMenuItem(title: "Quit Space Manager", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         statusMenu.addItem(quitItem)
+    }
+
+    // MARK: - Current Space Submenu
+
+    private func buildCurrentSpaceSubmenu(
+        _ spaces: [Space],
+        orderedDisplayIDs: [String]
+    ) -> NSMenu {
+        let submenu = NSMenu()
+        let current = currentSpace(in: spaces)
+
+        let renameItem = NSMenuItem(
+            title: "Rename...",
+            action: current != nil ? #selector(renameCurrentSpace) : nil,
+            keyEquivalent: "")
+        renameItem.target = self
+        submenu.addItem(renameItem)
+
+        if let current {
+            let currentNameSource = SpaceNameStore.shared.loadAll()[current.spaceID]?.nameSource
+            if currentNameSource == .manual || currentNameSource == .workspace {
+                let clearItem = NSMenuItem(
+                    title: "Clear Name Override",
+                    action: #selector(clearCurrentSpaceName),
+                    keyEquivalent: "")
+                clearItem.target = self
+                submenu.addItem(clearItem)
+            }
+        }
+
+        let resetItem = NSMenuItem(
+            title: "Reset Current Space",
+            action: current != nil ? #selector(resetCurrentSpace) : nil,
+            keyEquivalent: "")
+        resetItem.target = self
+        submenu.addItem(resetItem)
+
+        submenu.addItem(NSMenuItem.separator())
+
+        let labelItem = NSMenuItem(
+            title: "Label...",
+            action: current != nil ? #selector(editCurrentSpaceLabel) : nil,
+            keyEquivalent: "l")
+        labelItem.keyEquivalentModifierMask = [.control, .option, .command]
+        labelItem.target = self
+        submenu.addItem(labelItem)
+
+        if orderedDisplayIDs.count > 1 {
+            let transferItem = NSMenuItem(title: "Transfer", action: nil, keyEquivalent: "")
+            transferItem.submenu = buildTransferSubmenu(
+                spaces,
+                orderedDisplayIDs: orderedDisplayIDs)
+            submenu.addItem(transferItem)
+        }
+
+        return submenu
     }
 
     private func orderedDisplayIDs(from spaces: [Space]) -> [String] {
@@ -434,6 +461,10 @@ class StatusBarController: NSObject {
         workspacesItem.target = self
         submenu.addItem(workspacesItem)
 
+        let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshSpaces), keyEquivalent: "r")
+        refreshItem.target = self
+        submenu.addItem(refreshItem)
+
         submenu.addItem(NSMenuItem.separator())
 
         let devTermItem = NSMenuItem(title: "Open Dev Terminal", action: #selector(openDevTerminal), keyEquivalent: "")
@@ -486,11 +517,12 @@ class StatusBarController: NSObject {
     @objc private func launchWorkspace(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
         withFreshSpaces { [weak self] in
-            guard let self else { return }
+            guard let self, let displayID = self.activeDisplayID() else { return }
             let groupIndex = self.activeDisplayGroupIndex()
 
             SpaceCloser.addSpaceAndSwitch(
                 toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayID: displayID,
                 displayGroupIndex: groupIndex
             ) { [weak self] success in
                 guard success else {
@@ -510,11 +542,12 @@ class StatusBarController: NSObject {
         else { return }
 
         withFreshSpaces { [weak self] in
-            guard let self else { return }
+            guard let self, let displayID = self.activeDisplayID() else { return }
             let groupIndex = self.activeDisplayGroupIndex()
 
             SpaceCloser.addSpaceAndSwitch(
                 toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayID: displayID,
                 displayGroupIndex: groupIndex
             ) { [weak self] success in
                 guard success else {
@@ -774,11 +807,12 @@ class StatusBarController: NSObject {
         // Check for configured workspace
         if let workspaceKey = WorkspaceConfig.workspaceKey(forRepoName: repoName) {
             withFreshSpaces { [weak self] in
-                guard let self else { return }
+                guard let self, let displayID = self.activeDisplayID() else { return }
                 let groupIndex = self.activeDisplayGroupIndex()
                 let issueNum = number
                 SpaceCloser.addSpaceAndSwitch(
                     toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                    displayID: displayID,
                     displayGroupIndex: groupIndex
                 ) { [weak self] success in
                     guard success else {
@@ -797,10 +831,11 @@ class StatusBarController: NSObject {
         // Find local project by name or git remote
         if let localPath = GitHubIssueFetcher.localProjectPath(for: repoName, repoFullName: repoFullName) {
             withFreshSpaces { [weak self] in
-                guard let self else { return }
+                guard let self, let displayID = self.activeDisplayID() else { return }
                 let groupIndex = self.activeDisplayGroupIndex()
                 SpaceCloser.addSpaceAndSwitch(
                     toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                    displayID: displayID,
                     displayGroupIndex: groupIndex
                 ) { [weak self] success in
                     guard success else {
@@ -904,6 +939,7 @@ class StatusBarController: NSObject {
     private func closeTarget(for space: Space) -> SpaceCloser.CloseTarget? {
         guard let desktopIndex = desktopIndexOnDisplay(for: space) else { return nil }
         return SpaceCloser.CloseTarget(
+            displayID: space.displayID,
             displayGroup: displayGroupIndex(for: space.displayID),
             desktopIndex: desktopIndex)
     }
@@ -945,6 +981,7 @@ class StatusBarController: NSObject {
         else { return nil }
 
         return SpaceCloser.FocusTarget(
+            displayID: focusSpace.displayID,
             displayGroup: displayGroupIndex(for: focusSpace.displayID),
             desktopIndex: finalIndex + 1)
     }
@@ -1004,6 +1041,7 @@ class StatusBarController: NSObject {
         }
 
         spaceSwitcher.switchViaMissionControl(
+            displayID: target.displayID,
             displayGroupIndex: displayGroupIndex(for: target.displayID),
             desktopIndex: desktopIndex) {
                 self.showSwitchError()
@@ -1084,6 +1122,29 @@ class StatusBarController: NSObject {
             name: NSNotification.Name("RenameSpace"),
             object: nil,
             userInfo: ["spaceID": current.spaceID, "name": ""])
+    }
+
+    @objc private func resetCurrentSpace() {
+        guard let current = currentSpace() else { return }
+
+        NotificationCenter.default.post(
+            name: NSNotification.Name("RenameSpace"),
+            object: nil,
+            userInfo: ["spaceID": current.spaceID, "name": ""])
+
+        do {
+            let wallpaperURL = try WallpaperResetter.resetWallpaper(on: current.displayID)
+            SpaceOperationLog.write(
+                "Reset space=\(current.spaceID) display=\(current.displayID) wallpaper=\(wallpaperURL.path)")
+        } catch {
+            SpaceOperationLog.write(
+                "Reset wallpaper failed space=\(current.spaceID) display=\(current.displayID) error=\(error)")
+            let alert = NSAlert()
+            alert.messageText = "Couldn’t Reset Wallpaper"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
     }
 
     @objc private func closeSpace(_ sender: NSMenuItem) {
@@ -1321,9 +1382,9 @@ class StatusBarController: NSObject {
 
     @objc private func addSpace() {
         withFreshSpaces { [weak self] in
-            guard let self else { return }
+            guard let self, let displayID = self.activeDisplayID() else { return }
             let groupIndex = self.activeDisplayGroupIndex()
-            SpaceCloser.addSpace(displayGroupIndex: groupIndex) { [weak self] _ in
+            SpaceCloser.addSpace(displayID: displayID, displayGroupIndex: groupIndex) { [weak self] _ in
                 self?.refreshAfterClose()
             }
         }

@@ -27,13 +27,17 @@ class SpaceSwitcher {
     /// target display's Mission Control group.
     /// Constant time regardless of distance -- no stepping through intermediate spaces.
     func switchViaMissionControl(
+        displayID: String,
         displayGroupIndex: Int = 1,
         desktopIndex: Int,
         onError: (() -> Void)? = nil
     ) {
         MissionControlAccessibility.operationQueue.async {
             guard let snapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
-                  snapshots.indices.contains(displayGroupIndex - 1)
+                  let snapshot = MissionControlAccessibility.snapshot(
+                    in: snapshots,
+                    displayID: displayID,
+                    fallbackDisplayGroupIndex: displayGroupIndex)
             else {
                 NSLog("SpaceSwitcher: Mission Control display group \(displayGroupIndex) did not appear")
                 SpaceOperationLog.write("Switch failed: display group \(displayGroupIndex) unavailable")
@@ -41,7 +45,7 @@ class SpaceSwitcher {
                 return
             }
 
-            let buttons = snapshots[displayGroupIndex - 1].desktopButtons
+            let buttons = snapshot.desktopButtons
             guard buttons.indices.contains(desktopIndex - 1),
                   MissionControlAccessibility.performPress(on: buttons[desktopIndex - 1])
             else {

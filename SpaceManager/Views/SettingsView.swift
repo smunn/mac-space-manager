@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginManager()
     @AppStorage("autoUpdateWorkspaceNames") private var autoUpdateWorkspaceNames = true
+    @AppStorage(WallpaperResetter.folderDefaultsKey) private var defaultWallpaperFolder = WallpaperResetter.defaultFolderPath
     @State private var permissionStates: [AppPermission: Bool] = [:]
 
     var body: some View {
@@ -73,6 +74,25 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            GroupBox("Space Reset") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        TextField("Default wallpaper folder", text: $defaultWallpaperFolder)
+
+                        Button("Choose…") {
+                            chooseWallpaperFolder()
+                        }
+                    }
+
+                    Button("Reset Current Space") {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ResetCurrentSpace"),
+                            object: nil)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(20)
         .frame(width: 430)
@@ -89,6 +109,19 @@ struct SettingsView: View {
                 (permission, AppPermissions.check(permission))
             }
         )
+    }
+
+    private func chooseWallpaperFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(
+            fileURLWithPath: NSString(string: defaultWallpaperFolder).expandingTildeInPath)
+
+        if panel.runModal() == .OK, let url = panel.url {
+            defaultWallpaperFolder = url.path
+        }
     }
 }
 

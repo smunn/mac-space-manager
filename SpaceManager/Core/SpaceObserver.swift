@@ -27,8 +27,9 @@ class SpaceObserver {
     private let nameStore = SpaceNameStore.shared
     private let workerQueue = DispatchQueue(label: "com.smunn.SpaceManager.SpaceObserver")
 
-    // Display UUIDs in the order CGSCopyManagedDisplaySpaces returns them.
-    // This matches Mission Control's AX tree group ordering (group 1, group 2, etc.).
+    // Display UUIDs in the order CGSCopyManagedDisplaySpaces returns them. This is
+    // retained only as the ordinal fallback for older Dock-based Mission Control AX
+    // hierarchies; macOS 27 display containers are resolved by AXDisplayID instead.
     private(set) var missionControlDisplayOrder: [String] = []
 
     private var _needsPositionRevalidation = true
