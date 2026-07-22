@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginManager()
+    @ObservedObject private var windowLayouts = WindowLayoutManager.shared
     @AppStorage("autoUpdateWorkspaceNames") private var autoUpdateWorkspaceNames = true
     @AppStorage(WallpaperResetter.folderDefaultsKey) private var defaultWallpaperFolder = WallpaperResetter.defaultFolderPath
     @State private var permissionStates: [AppPermission: Bool] = [:]
@@ -55,6 +56,22 @@ struct SettingsView: View {
                         "Auto-update workspace names",
                         isOn: $autoUpdateWorkspaceNames
                     )
+
+                    Divider()
+
+                    Toggle(
+                        "Window layouts",
+                        isOn: Binding(
+                            get: { windowLayouts.isEnabled },
+                            set: { windowLayouts.setEnabled($0) }
+                        )
+                    )
+
+                    if let error = windowLayouts.lastError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         spaceLabelController = SpaceLabelController()
         windowMoveController = WindowMoveController()
         statusBarController = StatusBarController()
+        _ = WindowLayoutManager.shared
 
         spaceObserver = SpaceObserver()
         spaceObserver.delegate = self
@@ -143,6 +144,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleCommandURLWhenReady(_ url: URL) {
         guard url.scheme?.lowercased() == "spacemanager" else { return }
 
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
+        if host == "window-layout-shortcuts" || (host == "settings" && path == "/window-layout-shortcuts") {
+            handleCommandURL(url)
+            return
+        }
+
         if currentSpaces.isEmpty {
             pendingCommandURLs.append(url)
             requestSpaceRefresh()
@@ -175,6 +183,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         case ("refresh", _):
             requestSpaceRefresh()
+
+        case ("window-layout-shortcuts", _), ("settings", "/window-layout-shortcuts"):
+            statusBarController.openWindowLayoutShortcutEditor()
 
         case ("settings", _):
             showSettingsWindow()

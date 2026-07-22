@@ -15,6 +15,8 @@ class StatusBarController: NSObject {
     private let spaceSwitcher = SpaceSwitcher()
     private var settingsWindow: NSWindow?
     private var workspaceEditorWindow: NSWindow?
+    private var windowLayoutShortcutWindow: NSWindow?
+    private var windowLayoutShortcutCoordinator: MagnetShortcutEditorCoordinator?
 
     private var currentSpaces: [Space] = []
     private var physicalDisplayOrder: [String] = []
@@ -113,6 +115,10 @@ class StatusBarController: NSObject {
         moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
         moveWindowItem.target = self
         statusMenu.addItem(moveWindowItem)
+
+        let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
+        windowLayoutsItem.submenu = WindowLayoutManager.shared.makeMenu()
+        statusMenu.addItem(windowLayoutsItem)
 
         let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
         let issMenu = NSMenu()
@@ -460,6 +466,13 @@ class StatusBarController: NSObject {
         let workspacesItem = NSMenuItem(title: "Manage Workspaces...", action: #selector(openWorkspaceEditor), keyEquivalent: "")
         workspacesItem.target = self
         submenu.addItem(workspacesItem)
+
+        let windowShortcutsItem = NSMenuItem(
+            title: "Manage Window Layout Shortcuts...",
+            action: #selector(openWindowLayoutShortcutEditor),
+            keyEquivalent: "")
+        windowShortcutsItem.target = self
+        submenu.addItem(windowShortcutsItem)
 
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshSpaces), keyEquivalent: "r")
         refreshItem.target = self
@@ -1452,6 +1465,51 @@ class StatusBarController: NSObject {
         workspaceEditorWindow = window
     }
 
+    @objc func openWindowLayoutShortcutEditor() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        if let existing = windowLayoutShortcutWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        do {
+            let coordinator = try MagnetShortcutEditorCoordinator()
+            let content = MagnetShortcutConfigurationView(
+                commands: coordinator.editorCommands,
+                onSave: { [weak coordinator] commands in
+                    try coordinator?.save(commands)
+                },
+                onApply: { [weak coordinator] commands in
+                    try await coordinator?.apply(commands)
+                }
+            )
+            .debugLabel("windowLayoutShortcutEditorView")
+
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false)
+            window.title = "Manage Window Layout Shortcuts"
+            window.contentView = NSHostingView(rootView: content)
+            window.contentMinSize = NSSize(width: 920, height: 640)
+            window.setFrameAutosaveName("WindowLayoutShortcutEditor")
+            window.center()
+            window.isReleasedWhenClosed = false
+            window.makeKeyAndOrderFront(nil)
+
+            windowLayoutShortcutCoordinator = coordinator
+            windowLayoutShortcutWindow = window
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Unable to Open Window Shortcuts"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+
     @objc private func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
 
@@ -1461,7 +1519,7 @@ class StatusBarController: NSObject {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 430, height: 300),
+            contentRect: NSRect(x: 0, y: 0, width: 430, height: 390),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false)
