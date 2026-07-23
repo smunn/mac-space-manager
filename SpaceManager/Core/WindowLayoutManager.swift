@@ -551,16 +551,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func showCheatsheet(modifiers: Set<MagnetShortcutModifier>) {
-        let orientation = focusedWindow().map {
-            self.orientation(for: screen(containing: $0.frame))
-        } ?? .horizontal
+        let targetScreen: NSScreen
+        let orientation: MagnetDisplayOrientation
+        if let window = focusedWindow() {
+            targetScreen = screen(containing: window.frame)
+            orientation = self.orientation(for: targetScreen)
+        } else {
+            targetScreen = NSScreen.main ?? NSScreen.screens[0]
+            orientation = self.orientation(for: targetScreen)
+        }
         if cheatsheetController == nil {
             cheatsheetController = WindowLayoutCheatsheetController()
         }
         cheatsheetController?.show(
             commands: commands.filter(\.isEnabled),
             orientation: orientation,
-            activeModifiers: modifiers)
+            activeModifiers: modifiers,
+            screen: targetScreen)
     }
 
     private func startCheatsheetKeyMonitor() {

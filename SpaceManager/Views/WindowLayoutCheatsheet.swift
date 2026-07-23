@@ -13,17 +13,29 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
     func show(
         commands: [MagnetShortcutCommand],
         orientation: MagnetDisplayOrientation,
-        activeModifiers: Set<MagnetShortcutModifier>
+        activeModifiers: Set<MagnetShortcutModifier>,
+        screen: NSScreen
     ) {
+        let orientedCommands = commands.filter {
+            $0.orientation == orientation && $0.isEnabled
+        }
+        let visibleCommands = orientedCommands.filter { $0.modifiers == activeModifiers }
+        let modifierCount = Set(orientedCommands.map(\.modifiers)).count
+        let metrics = WindowLayoutCheatsheetMetrics(
+            commands: visibleCommands,
+            modifierCount: modifierCount,
+            availableSize: screen.visibleFrame.size)
         let content = WindowLayoutCheatsheetView(
             commands: commands,
             orientation: orientation,
-            activeModifiers: activeModifiers)
+            activeModifiers: activeModifiers,
+            commandColumnCount: metrics.commandColumnCount)
         if let window {
             window.contentViewController = NSHostingController(rootView: content)
+            window.setContentSize(metrics.windowSize)
         } else {
             let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 1040, height: 600),
+                contentRect: NSRect(origin: .zero, size: metrics.windowSize),
                 styleMask: [.titled, .nonactivatingPanel, .utilityWindow],
                 backing: .buffered,
                 defer: false)
@@ -34,10 +46,15 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentViewController = NSHostingController(rootView: content)
             panel.delegate = self
-            panel.center()
             self.window = panel
         }
 
+        if let window {
+            let frame = screen.visibleFrame
+            window.setFrameOrigin(NSPoint(
+                x: frame.midX - window.frame.width / 2,
+                y: frame.midY - window.frame.height / 2))
+        }
         window?.orderFrontRegardless()
     }
 
@@ -50,6 +67,7 @@ struct WindowLayoutCheatsheetView: View {
     let commands: [MagnetShortcutCommand]
     let orientation: MagnetDisplayOrientation
     let activeModifiers: Set<MagnetShortcutModifier>
+    let commandColumnCount: Int
 
     private var modifierCombinations: [Set<MagnetShortcutModifier>] {
         Array(Set(commands.lazy
@@ -92,6 +110,12 @@ struct WindowLayoutCheatsheetView: View {
 
     private var commandColors: [String: Color] {
         WindowLayoutCommandColors.colors(for: visibleCommands)
+    }
+
+    private var commandColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 210), spacing: 12, alignment: .top),
+            count: commandColumnCount)
     }
 
     var body: some View {
@@ -142,27 +166,16 @@ struct WindowLayoutCheatsheetView: View {
 
                     Divider()
 
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            ForEach(sections, id: \.self) { section in
-                                VStack(alignment: .leading, spacing: 7) {
-                                    Text(section)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(sections, id: \.self) { section in
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(section)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
 
+                                LazyVGrid(columns: commandColumns, alignment: .leading, spacing: 7) {
                                     ForEach(visibleCommands.filter { $0.section == section }) { command in
-                                        HStack(spacing: 8) {
-                                            WindowLayoutGlyph(
-                                                command: command,
-                                                color: commandColors[command.id] ?? .accentColor)
-                                                .frame(width: 28, height: 20)
-                                            Text(command.name)
-                                                .lineLimit(1)
-                                            Spacer(minLength: 12)
-                                            Text(command.shortcutText)
-                                                .font(.system(.caption, design: .rounded, weight: .semibold))
-                                                .foregroundStyle(commandColors[command.id] ?? .accentColor)
-                                        }
+                                        commandRow(command)
                                     }
                                 }
                             }
@@ -170,7 +183,7 @@ struct WindowLayoutCheatsheetView: View {
                     }
                 }
                 .padding(16)
-                .frame(width: 340)
+                .frame(width: max(340, CGFloat(commandColumnCount) * 245))
 
                 Divider()
 
@@ -183,7 +196,55 @@ struct WindowLayoutCheatsheetView: View {
                 .padding(.trailing, 18)
             }
         }
-        .frame(minWidth: 900, minHeight: 500)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .debugLabel("windowLayoutCheatsheetView")
+    }
+
+    private func commandRow(_ command: MagnetShortcutCommand) -> some View {
+        HStack(spacing: 8) {
+            WindowLayoutGlyph(
+                command: command,
+                color: commandColors[command.id] ?? .accentColor)
+                .frame(width: 28, height: 20)
+            Text(command.name)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Text(command.shortcutText)
+                .font(.system(.caption, design: .rounded, weight: .semibold))
+                .foregroundStyle(commandColors[command.id] ?? .accentColor)
+        }
+    }
+}
+
+private struct WindowLayoutCheatsheetMetrics {
+    let commandColumnCount: Int
+    let windowSize: NSSize
+
+    init(
+        commands: [MagnetShortcutCommand],
+        modifierCount: Int,
+        availableSize: NSSize
+    ) {
+        let sections = Dictionary(grouping: commands, by: \.section)
+        let maximumHeight = max(500, availableSize.height - 32)
+        let fixedHeight = 145 + CGFloat(modifierCount) * 31
+
+        var selectedColumns = 1
+        var requiredHeight = maximumHeight
+        for columns in 1...4 {
+            let commandRows = sections.values.reduce(0) {
+                $0 + Int(ceil(Double($1.count) / Double(columns)))
+            }
+            let candidateHeight = fixedHeight + CGFloat(sections.count) * 27 + CGFloat(commandRows) * 31
+            selectedColumns = columns
+            requiredHeight = candidateHeight
+            if candidateHeight <= maximumHeight { break }
+        }
+
+        commandColumnCount = selectedColumns
+        let desiredWidth = max(1040, 700 + CGFloat(selectedColumns) * 245)
+        windowSize = NSSize(
+            width: min(desiredWidth, max(900, availableSize.width - 32)),
+            height: min(max(520, requiredHeight), maximumHeight))
     }
 }
