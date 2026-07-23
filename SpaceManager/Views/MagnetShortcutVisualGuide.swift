@@ -30,6 +30,10 @@ struct MagnetShortcutVisualGuide: View {
         visibleCommands.first { $0.id == selection } ?? visibleCommands.first
     }
 
+    private var highlightedModifiers: Set<MagnetShortcutModifier> {
+        groupCommands.reduce(into: []) { $0.formUnion($1.modifiers) }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             controls
@@ -50,8 +54,8 @@ struct MagnetShortcutVisualGuide: View {
                         .frame(maxWidth: 760)
 
                         MacKeyboardView(
-                            highlightedModifiers: command.modifiers,
-                            highlightedKey: command.destinationKey
+                            highlightedModifiers: highlightedModifiers,
+                            highlightedKeys: WindowLayoutSectionColors.keyboardHighlights(for: groupCommands)
                         )
                         .frame(maxWidth: 760)
                     }
@@ -118,6 +122,7 @@ struct MagnetShortcutVisualGuide: View {
                 .stroke(.secondary.opacity(0.45), lineWidth: 1)
 
             ForEach(visibleCommands) { command in
+                let color = WindowLayoutSectionColors.color(for: command.section)
                 Button {
                     selection = command.id
                 } label: {
@@ -125,9 +130,9 @@ struct MagnetShortcutVisualGuide: View {
                         let isSelected = selection == command.id
                         ZStack {
                             Rectangle()
-                                .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
+                                .fill(color.opacity(isSelected ? 0.3 : 0.12))
                             Rectangle()
-                                .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: isSelected ? 2 : 1)
+                                .stroke(color.opacity(isSelected ? 1 : 0.55), lineWidth: isSelected ? 2 : 1)
                             VStack(spacing: 2) {
                                 Text(command.shortcutText)
                                     .font(.system(.caption, design: .rounded, weight: .semibold))

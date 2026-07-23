@@ -50,6 +50,54 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertEqual(commands.map(\.section), Array(repeating: "Full Height", count: 4))
     }
 
+    func testHorizontalLeftAndRightHalvesUseArrowKeys() throws {
+        let configuration = makeConfiguration(horizontal: [
+            makeCommand(
+                id: "left-half",
+                name: "command:default.name.left",
+                orientation: .horizontal,
+                frame: .init(x: 0, y: 0, width: 12, height: 12),
+                keyCode: 18),
+            makeCommand(
+                id: "right-half",
+                name: "command:default.name.right",
+                orientation: .horizontal,
+                frame: .init(x: 12, y: 0, width: 12, height: 12),
+                keyCode: 19)
+        ])
+
+        let edits = adapter.editorCommands(from: configuration)
+        XCTAssertEqual(edits.map(\.destinationKey), ["←", "→"])
+
+        let updated = try adapter.applying(edits, to: configuration)
+        XCTAssertEqual(
+            updated.commands(for: .horizontal).compactMap { $0.shortcut?.carbonKeyCode },
+            [123, 124])
+    }
+
+    func testNumberShortcutsAcceptNumberRowAndKeypadCodes() {
+        let expected: [String: [UInt32]] = [
+            "0": [29, 82], "1": [18, 83], "2": [19, 84], "3": [20, 85],
+            "4": [21, 86], "5": [23, 87], "6": [22, 88], "7": [26, 89],
+            "8": [28, 91], "9": [25, 92]
+        ]
+        for (number, codes) in expected {
+            XCTAssertEqual(MagnetKeyCodes.codes(for: number), codes)
+            XCTAssertEqual(MagnetKeyCodes.codes(for: "KP\(number)"), codes)
+        }
+        XCTAssertEqual(MagnetKeyCodes.codes(for: "Q"), [12])
+    }
+
+    func testKeyboardHighlightsShowBothNumberLocations() {
+        let highlights = WindowLayoutSectionColors.keyboardHighlights(for: [("3", .blue)])
+        XCTAssertNotNil(highlights["3"])
+        XCTAssertNotNil(highlights["kp3"])
+
+        let keypadHighlights = WindowLayoutSectionColors.keyboardHighlights(for: [("KP8", .red)])
+        XCTAssertNotNil(keypadHighlights["8"])
+        XCTAssertNotNil(keypadHighlights["kp8"])
+    }
+
     @MainActor
     func testOnlyExactWindowActionNamesReceiveSpecialRouting() {
         XCTAssertEqual(WindowLayoutManager.operation(for: "Center"), .center)

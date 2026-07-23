@@ -33,6 +33,24 @@ enum MagnetKeyCodes {
 
     static func code(for name: String) -> UInt32? { byName[name] }
     static func name(for code: UInt32) -> String? { byCode[code] }
+
+    static func codes(for name: String) -> [UInt32] {
+        let uppercased = name.uppercased()
+        let number: String?
+        if uppercased.count == 1, uppercased.first?.isNumber == true {
+            number = uppercased
+        } else if uppercased.hasPrefix("KP"), uppercased.dropFirst(2).count == 1,
+                  uppercased.last?.isNumber == true {
+            number = String(uppercased.suffix(1))
+        } else {
+            number = nil
+        }
+        guard let number,
+              let numberRow = byName[number],
+              let keypad = byName["KP\(number)"]
+        else { return code(for: name).map { [$0] } ?? [] }
+        return [numberRow, keypad]
+    }
 }
 
 enum MagnetShortcutEditorError: LocalizedError {
@@ -126,7 +144,8 @@ struct MagnetShortcutEditorAdapter {
             orientation: displayOrientation,
             group: group,
             section: Self.section(for: command, displayName: name, group: group),
-            destinationKey: Self.cornerKey(for: name) ?? shortcut.flatMap { MagnetKeyCodes.name(for: $0.carbonKeyCode) } ?? "",
+            destinationKey: Self.fixedKey(for: name) ??
+                shortcut.flatMap { MagnetKeyCodes.name(for: $0.carbonKeyCode) } ?? "",
             modifiers: shortcut.map { Self.modifiers(for: $0.carbonModifiers) } ?? [],
             isEnabled: command.isShortcutEnabled,
             x: frame.x,
@@ -246,12 +265,14 @@ struct MagnetShortcutEditorAdapter {
         return names[key] ?? rawName
     }
 
-    private static func cornerKey(for displayName: String) -> String? {
+    private static func fixedKey(for displayName: String) -> String? {
         switch displayName {
         case "Top Left Corner": return "Q"
         case "Top Right Corner": return "W"
         case "Bottom Left Corner": return "A"
         case "Bottom Right Corner": return "S"
+        case "Left Half": return "←"
+        case "Right Half": return "→"
         default: return nil
         }
     }
@@ -278,7 +299,8 @@ struct MagnetShortcutEditorAdapter {
 
     private static let spaceManagerReservedShortcuts: Set<MagnetShortcut> = [
         MagnetShortcut(carbonKeyCode: 37, carbonModifiers: control | option | command), // L
-        MagnetShortcut(carbonKeyCode: 46, carbonModifiers: control | option | command)  // M
+        MagnetShortcut(carbonKeyCode: 46, carbonModifiers: control | option | command), // M
+        MagnetShortcut(carbonKeyCode: 44, carbonModifiers: control | option) // / (cheatsheet)
     ]
 
 }

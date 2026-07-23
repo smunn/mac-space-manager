@@ -7,7 +7,30 @@ import SwiftUI
 
 struct MacKeyboardView: View {
     let highlightedModifiers: Set<MagnetShortcutModifier>
-    let highlightedKey: String
+    let highlightedKeys: [String: Color]
+    let modifierColor: Color
+
+    init(
+        highlightedModifiers: Set<MagnetShortcutModifier>,
+        highlightedKey: String,
+        highlightColor: Color = .accentColor,
+        modifierColor: Color = Color(nsColor: .labelColor)
+    ) {
+        self.highlightedModifiers = highlightedModifiers
+        self.highlightedKeys = WindowLayoutSectionColors.keyboardHighlights(
+            for: [(highlightedKey, highlightColor)])
+        self.modifierColor = modifierColor
+    }
+
+    init(
+        highlightedModifiers: Set<MagnetShortcutModifier>,
+        highlightedKeys: [String: Color],
+        modifierColor: Color = Color(nsColor: .labelColor)
+    ) {
+        self.highlightedModifiers = highlightedModifiers
+        self.highlightedKeys = highlightedKeys
+        self.modifierColor = modifierColor
+    }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -73,7 +96,7 @@ struct MacKeyboardView: View {
                     Color.clear
                 } else {
                     let item = key(label)
-                    KeyboardKeyView(item: item, isHighlighted: isHighlighted(item))
+                    KeyboardKeyView(item: item, highlightColor: highlightColor(for: item))
                 }
             }
         }
@@ -93,7 +116,7 @@ struct MacKeyboardView: View {
                     } else {
                         KeyboardKeyView(
                             item: item,
-                            isHighlighted: isHighlighted(item)
+                            highlightColor: highlightColor(for: item)
                         )
                         .frame(width: unitWidth * item.width)
                     }
@@ -103,11 +126,11 @@ struct MacKeyboardView: View {
         .frame(height: 34)
     }
 
-    private func isHighlighted(_ item: KeyboardKey) -> Bool {
+    private func highlightColor(for item: KeyboardKey) -> Color? {
         if let modifier = item.modifier {
-            return highlightedModifiers.contains(modifier)
+            return highlightedModifiers.contains(modifier) ? modifierColor : nil
         }
-        return normalized(item.label) == normalized(highlightedKey)
+        return highlightedKeys[normalized(item.label)]
     }
 
     private func normalized(_ value: String) -> String {
@@ -141,18 +164,18 @@ private struct KeyboardKey: Identifiable {
 
 private struct KeyboardKeyView: View {
     let item: KeyboardKey
-    let isHighlighted: Bool
+    let highlightColor: Color?
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
-                .fill(isHighlighted ? Color.accentColor.opacity(0.16) : Color(nsColor: .windowBackgroundColor))
+                .fill(highlightColor?.opacity(0.2) ?? Color(nsColor: .windowBackgroundColor))
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isHighlighted ? Color.accentColor : Color.secondary.opacity(0.35), lineWidth: isHighlighted ? 1.5 : 1)
+                .stroke(highlightColor ?? Color.secondary.opacity(0.35), lineWidth: highlightColor == nil ? 1 : 2)
 
             Text(displayLabel)
-                .font(.system(size: item.label.count > 2 ? 8 : 11, weight: isHighlighted ? .semibold : .regular, design: .rounded))
-                .foregroundStyle(isHighlighted ? Color.accentColor : Color.primary)
+                .font(.system(size: item.label.count > 2 ? 8 : 11, weight: highlightColor == nil ? .regular : .semibold, design: .rounded))
+                .foregroundStyle(highlightColor ?? Color.primary)
                 .lineLimit(1)
         }
         .debugLabel("KeyboardKeyView")
@@ -166,5 +189,51 @@ private struct KeyboardKeyView: View {
             return String(item.label.dropFirst(2)).uppercased()
         }
         return item.label.uppercased()
+    }
+}
+
+enum WindowLayoutSectionColors {
+    private static let colors: [String: Color] = [
+        "Corners": .blue,
+        "Halves": .red,
+        "Two Thirds": .green,
+        "Full Width": .orange,
+        "Full Height": .yellow,
+        "Grid": .purple,
+        "Split": .mint,
+        "Displays": .cyan,
+        "Window": .pink
+    ]
+    private static let fallback: [Color] = [
+        .indigo, .yellow, .teal, .brown, .blue, .red, .green, .orange, .purple, .pink
+    ]
+
+    static func color(for section: String) -> Color {
+        if let color = colors[section] { return color }
+        let value = section.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
+        return fallback[Int(value.magnitude % UInt(fallback.count))]
+    }
+
+    static func keyboardHighlights(for commands: [MagnetShortcutCommand]) -> [String: Color] {
+        keyboardHighlights(for: commands.map { ($0.destinationKey, color(for: $0.section)) })
+    }
+
+    static func keyboardHighlights(for entries: [(String, Color)]) -> [String: Color] {
+        var result: [String: Color] = [:]
+        for (key, color) in entries {
+            let normalized = normalize(key)
+            result[normalized] = color
+            if normalized.count == 1, normalized.first?.isNumber == true {
+                result["kp\(normalized)"] = color
+            } else if normalized.hasPrefix("kp"), normalized.dropFirst(2).count == 1,
+                      normalized.last?.isNumber == true {
+                result[String(normalized.suffix(1))] = color
+            }
+        }
+        return result
+    }
+
+    private static func normalize(_ value: String) -> String {
+        value.replacingOccurrences(of: " ", with: "").lowercased()
     }
 }

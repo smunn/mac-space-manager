@@ -48,6 +48,7 @@
 		B6389B5374D0DC9DD7D5D685 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0F9A7165BF4C3B5090A6F3 /* Extensions.swift */; };
 		BAB71C62BD296928E7E6AF80 /* MacKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BCB9E1598F6942EDC06D82 /* MacKeyboardView.swift */; };
 		C2FF8DF14C94F31C2DFAFA57 /* MagnetShortcutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */; };
+		C9F1AAFCEDA975E3CC921748 /* WindowLayoutCheatsheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */; };
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
 		D20BCC1BD20F3DDB8573D221 /* SpaceLabelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836855BE97116D239959D8B6 /* SpaceLabelStore.swift */; };
 		DBE2A6EADF22BC51A5D7EA32 /* SpaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */; };
@@ -106,6 +107,7 @@
 		836855BE97116D239959D8B6 /* SpaceLabelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceLabelStore.swift; sourceTree = "<group>"; };
 		85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8932DC9C7664E1571139F07C /* SpaceDisplayName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDisplayName.swift; sourceTree = "<group>"; };
+		8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutCheatsheet.swift; sourceTree = "<group>"; };
 		916A36F8B2959D8EE6EF272A /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
 		97E618C1148A91CB03E3A7C8 /* WorkspaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceEditorView.swift; sourceTree = "<group>"; };
 		993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcher.swift; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 				85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */,
 				2F3938CF4E3895AE556C6F75 /* SpaceLabelController.swift */,
 				5C9412D33F0D096D25CDA4C3 /* StatusBarController.swift */,
+				8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */,
 				82362D22A0A79C23B8BCABF9 /* WindowMoveController.swift */,
 				916A36F8B2959D8EE6EF272A /* WorkspaceDetailView.swift */,
 				97E618C1148A91CB03E3A7C8 /* WorkspaceEditorView.swift */,
@@ -402,6 +405,7 @@
 				79B306578A1BD5062718CBD7 /* View+DebugLabel.swift in Sources */,
 				E0AE7021A47D9FBC637112CF /* WallpaperResetter.swift in Sources */,
 				ABE439E098D8935AC52C38F2 /* WindowDetector.swift in Sources */,
+				C9F1AAFCEDA975E3CC921748 /* WindowLayoutCheatsheet.swift in Sources */,
 				60A9D8AE5AB70F3D365068C8 /* WindowLayoutManager.swift in Sources */,
 				924902E76D958E3E141E46E2 /* WindowMoveController.swift in Sources */,
 				EBAA87AA89A1D4720B95BE9A /* WindowMoveLog.swift in Sources */,

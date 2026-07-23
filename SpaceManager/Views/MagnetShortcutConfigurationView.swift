@@ -245,7 +245,14 @@ struct MagnetShortcutConfigurationView: View {
             .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 360)
         } detail: {
             if let command = model.selectedCommand {
-                MagnetShortcutCommandEditor(command: command) { model.update($0) }
+                MagnetShortcutCommandEditor(
+                    command: command,
+                    groupCommands: model.commands.filter {
+                        $0.orientation == command.orientation &&
+                        $0.group == command.group &&
+                        $0.isEnabled
+                    }
+                ) { model.update($0) }
                     .id(command.id)
             } else {
                 Text("Select a shortcut")
@@ -283,11 +290,14 @@ struct MagnetShortcutConfigurationView: View {
     private var commandList: some View {
         List(selection: $model.selection) {
             ForEach(Dictionary(grouping: model.filteredCommands, by: \.section).keys.sorted(), id: \.self) { section in
-                Section(section) {
+                Section {
                     ForEach(model.filteredCommands.filter { $0.section == section }) { command in
                         MagnetShortcutCommandRow(command: command)
                             .tag(command.id)
                     }
+                } header: {
+                    Text(section)
+                        .foregroundStyle(WindowLayoutSectionColors.color(for: section))
                 }
             }
         }
@@ -326,10 +336,16 @@ private struct MagnetShortcutCommandRow: View {
 
 private struct MagnetShortcutCommandEditor: View {
     @State private var command: MagnetShortcutCommand
+    let groupCommands: [MagnetShortcutCommand]
     let onChange: (MagnetShortcutCommand) -> Void
 
-    init(command: MagnetShortcutCommand, onChange: @escaping (MagnetShortcutCommand) -> Void) {
+    init(
+        command: MagnetShortcutCommand,
+        groupCommands: [MagnetShortcutCommand],
+        onChange: @escaping (MagnetShortcutCommand) -> Void
+    ) {
         _command = State(initialValue: command)
+        self.groupCommands = groupCommands
         self.onChange = onChange
     }
 
@@ -353,8 +369,8 @@ private struct MagnetShortcutCommandEditor: View {
                 Divider()
 
                 MacKeyboardView(
-                    highlightedModifiers: command.modifiers,
-                    highlightedKey: command.destinationKey
+                    highlightedModifiers: groupCommands.reduce(into: []) { $0.formUnion($1.modifiers) },
+                    highlightedKeys: WindowLayoutSectionColors.keyboardHighlights(for: groupCommands)
                 )
                 .frame(maxWidth: 720)
             }
@@ -439,6 +455,12 @@ struct ShortcutToggleButtonStyle: ButtonStyle {
 
 struct WindowLayoutGlyph: View {
     let command: MagnetShortcutCommand
+    let color: Color
+
+    init(command: MagnetShortcutCommand, color: Color? = nil) {
+        self.command = command
+        self.color = color ?? WindowLayoutSectionColors.color(for: command.section)
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -446,7 +468,7 @@ struct WindowLayoutGlyph: View {
                 RoundedRectangle(cornerRadius: 3)
                     .stroke(.secondary.opacity(0.45), lineWidth: 1)
                 Rectangle()
-                    .fill(Color.accentColor.opacity(0.65))
+                    .fill(color.opacity(0.72))
                     .frame(
                         width: proxy.size.width * command.width,
                         height: proxy.size.height * command.height
@@ -587,8 +609,8 @@ extension MagnetShortcutCommand {
             : ["Left Two Thirds", "Center Two Thirds", "Right Two Thirds"]
 
         let regions: [Region] = [
-            (.halves, "Halves", "Left Half", orientation == .portrait ? "←" : "1", baseModifiers, 0, 0, 0.5, 1),
-            (.halves, "Halves", "Right Half", orientation == .portrait ? "→" : "2", baseModifiers, 0.5, 0, 0.5, 1),
+            (.halves, "Halves", "Left Half", "←", baseModifiers, 0, 0, 0.5, 1),
+            (.halves, "Halves", "Right Half", "→", baseModifiers, 0.5, 0, 0.5, 1),
             (.halves, "Halves", "Top Half", orientation == .portrait ? "1" : "↑", baseModifiers, 0, 0, 1, 0.5),
             (.halves, "Halves", "Bottom Half", orientation == .portrait ? "2" : "↓", baseModifiers, 0, 0.5, 1, 0.5),
             (.halves, "Corners", "Top Left Corner", cornerKeys[0], baseModifiers, 0, 0, 0.5, 0.5),
