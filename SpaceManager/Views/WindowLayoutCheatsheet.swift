@@ -17,11 +17,12 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
         } else {
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 1040, height: 600),
-                styleMask: [.titled, .closable, .resizable, .utilityWindow],
+                styleMask: [.titled, .nonactivatingPanel, .utilityWindow],
                 backing: .buffered,
                 defer: false)
             panel.title = "Window Layout Cheatsheet"
             panel.isFloatingPanel = true
+            panel.becomesKeyOnlyIfNeeded = true
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentViewController = NSHostingController(rootView: content)
@@ -30,8 +31,11 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
             self.window = panel
         }
 
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
+    }
+
+    func hide() {
+        window?.orderOut(nil)
     }
 }
 
@@ -56,6 +60,10 @@ struct WindowLayoutCheatsheetView: View {
 
     private var modifiers: Set<MagnetShortcutModifier> {
         visibleCommands.reduce(into: []) { $0.formUnion($1.modifiers) }
+    }
+
+    private var commandColors: [String: Color] {
+        WindowLayoutCommandColors.colors(for: visibleCommands)
     }
 
     var body: some View {
@@ -89,18 +97,20 @@ struct WindowLayoutCheatsheetView: View {
                             VStack(alignment: .leading, spacing: 7) {
                                 Text(section)
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(WindowLayoutSectionColors.color(for: section))
+                                    .foregroundStyle(.secondary)
 
                                 ForEach(visibleCommands.filter { $0.section == section }) { command in
                                     HStack(spacing: 8) {
-                                        WindowLayoutGlyph(command: command)
+                                        WindowLayoutGlyph(
+                                            command: command,
+                                            color: commandColors[command.id] ?? .accentColor)
                                             .frame(width: 28, height: 20)
                                         Text(command.name)
                                             .lineLimit(1)
                                         Spacer(minLength: 12)
                                         Text(command.shortcutText)
                                             .font(.system(.caption, design: .rounded, weight: .semibold))
-                                            .foregroundStyle(WindowLayoutSectionColors.color(for: section))
+                                            .foregroundStyle(commandColors[command.id] ?? .accentColor)
                                     }
                                 }
                             }
@@ -114,7 +124,7 @@ struct WindowLayoutCheatsheetView: View {
 
                 MacKeyboardView(
                     highlightedModifiers: modifiers,
-                    highlightedKeys: WindowLayoutSectionColors.keyboardHighlights(for: visibleCommands)
+                    highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: visibleCommands)
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)

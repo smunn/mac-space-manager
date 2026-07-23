@@ -89,13 +89,30 @@ final class WindowLayoutTests: XCTestCase {
     }
 
     func testKeyboardHighlightsShowBothNumberLocations() {
-        let highlights = WindowLayoutSectionColors.keyboardHighlights(for: [("3", .blue)])
+        let highlights = WindowLayoutCommandColors.keyboardHighlights(for: [("3", .blue)])
         XCTAssertNotNil(highlights["3"])
         XCTAssertNotNil(highlights["kp3"])
 
-        let keypadHighlights = WindowLayoutSectionColors.keyboardHighlights(for: [("KP8", .red)])
+        let keypadHighlights = WindowLayoutCommandColors.keyboardHighlights(for: [("KP8", .red)])
         XCTAssertNotNil(keypadHighlights["8"])
         XCTAssertNotNil(keypadHighlights["kp8"])
+    }
+
+    func testEveryShortcutInAGroupGetsItsOwnColorToken() {
+        for orientation in MagnetDisplayOrientation.allCases {
+            for group in MagnetShortcutGroup.allCases {
+                let commands = MagnetShortcutCommand.standardSet.filter {
+                    $0.orientation == orientation && $0.group == group
+                }
+                let tokens = commands.map {
+                    WindowLayoutCommandColors.token(for: $0, among: commands)
+                }
+                XCTAssertEqual(
+                    Set(tokens).count,
+                    commands.count,
+                    "Duplicate color token in \(orientation.rawValue) \(group.title)")
+            }
+        }
     }
 
     @MainActor

@@ -34,6 +34,10 @@ struct MagnetShortcutVisualGuide: View {
         groupCommands.reduce(into: []) { $0.formUnion($1.modifiers) }
     }
 
+    private var commandColors: [String: Color] {
+        WindowLayoutCommandColors.colors(for: groupCommands)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             controls
@@ -55,7 +59,7 @@ struct MagnetShortcutVisualGuide: View {
 
                         MacKeyboardView(
                             highlightedModifiers: highlightedModifiers,
-                            highlightedKeys: WindowLayoutSectionColors.keyboardHighlights(for: groupCommands)
+                            highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: groupCommands)
                         )
                         .frame(maxWidth: 760)
                     }
@@ -122,7 +126,7 @@ struct MagnetShortcutVisualGuide: View {
                 .stroke(.secondary.opacity(0.45), lineWidth: 1)
 
             ForEach(visibleCommands) { command in
-                let color = WindowLayoutSectionColors.color(for: command.section)
+                let color = commandColors[command.id] ?? .accentColor
                 Button {
                     selection = command.id
                 } label: {

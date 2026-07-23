@@ -288,16 +288,21 @@ struct MagnetShortcutConfigurationView: View {
     }
 
     private var commandList: some View {
-        List(selection: $model.selection) {
+        let groupCommands = model.commands.filter {
+            $0.orientation == model.orientation && $0.group == model.group
+        }
+        let colors = WindowLayoutCommandColors.colors(for: groupCommands)
+        return List(selection: $model.selection) {
             ForEach(Dictionary(grouping: model.filteredCommands, by: \.section).keys.sorted(), id: \.self) { section in
                 Section {
                     ForEach(model.filteredCommands.filter { $0.section == section }) { command in
-                        MagnetShortcutCommandRow(command: command)
+                        MagnetShortcutCommandRow(
+                            command: command,
+                            color: colors[command.id] ?? .accentColor)
                             .tag(command.id)
                     }
                 } header: {
                     Text(section)
-                        .foregroundStyle(WindowLayoutSectionColors.color(for: section))
                 }
             }
         }
@@ -313,10 +318,11 @@ struct MagnetShortcutConfigurationView: View {
 
 private struct MagnetShortcutCommandRow: View {
     let command: MagnetShortcutCommand
+    let color: Color
 
     var body: some View {
         HStack(spacing: 8) {
-            WindowLayoutGlyph(command: command)
+            WindowLayoutGlyph(command: command, color: color)
                 .frame(width: 28, height: 22)
             Text(command.name)
                 .lineLimit(1)
@@ -361,7 +367,9 @@ private struct MagnetShortcutCommandEditor: View {
                 }
 
                 HStack(alignment: .top, spacing: 16) {
-                    WindowLayoutPreview(command: command)
+                    WindowLayoutPreview(
+                        command: command,
+                        color: WindowLayoutCommandColors.color(for: command, among: groupCommands))
                         .frame(width: 220, height: 280)
                     shortcutControls
                 }
@@ -370,7 +378,7 @@ private struct MagnetShortcutCommandEditor: View {
 
                 MacKeyboardView(
                     highlightedModifiers: groupCommands.reduce(into: []) { $0.formUnion($1.modifiers) },
-                    highlightedKeys: WindowLayoutSectionColors.keyboardHighlights(for: groupCommands)
+                    highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: groupCommands)
                 )
                 .frame(maxWidth: 720)
             }
@@ -441,12 +449,13 @@ struct ShortcutToggleButtonStyle: ButtonStyle {
     let isSelected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
-            .background(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+        let selectedColor = Color(nsColor: .labelColor)
+        return configuration.label
+            .foregroundStyle(isSelected ? selectedColor : Color.primary)
+            .background(isSelected ? selectedColor.opacity(0.12) : Color.clear)
             .overlay {
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.35), lineWidth: 1)
+                    .stroke(isSelected ? selectedColor : Color.secondary.opacity(0.35), lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 6))
             .opacity(configuration.isPressed ? 0.7 : 1)
@@ -459,7 +468,7 @@ struct WindowLayoutGlyph: View {
 
     init(command: MagnetShortcutCommand, color: Color? = nil) {
         self.command = command
-        self.color = color ?? WindowLayoutSectionColors.color(for: command.section)
+        self.color = color ?? .accentColor
     }
 
     var body: some View {
@@ -486,6 +495,7 @@ struct WindowLayoutGlyph: View {
 
 struct WindowLayoutPreview: View {
     let command: MagnetShortcutCommand
+    let color: Color
 
     var body: some View {
         GeometryReader { proxy in
@@ -493,7 +503,7 @@ struct WindowLayoutPreview: View {
             let width = min(proxy.size.width, proxy.size.height * aspect)
             let height = width / aspect
 
-            WindowLayoutGlyph(command: command)
+            WindowLayoutGlyph(command: command, color: color)
                 .frame(width: width, height: height)
                 .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
         }

@@ -33,6 +33,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private weak var lastExternalApplication: NSRunningApplication?
     private var restoreFrames: [WindowIdentity: CGRect] = [:]
     private var cheatsheetController: WindowLayoutCheatsheetController?
+    private var cheatsheetShortcutIsDown = false
+    private var cheatsheetKeyMonitor: Timer?
 
     private override init() {
         let requested = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
@@ -92,13 +94,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         toggle.state = isEnabled ? .on : .off
         menu.addItem(toggle)
 
-        let cheatsheet = NSMenuItem(
-            title: "Show Cheatsheet",
-            action: #selector(showCheatsheet),
-            keyEquivalent: "/")
-        cheatsheet.keyEquivalentModifierMask = [.control, .option]
-        cheatsheet.target = self
-        cheatsheet.isEnabled = isEnabled
+        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold ⌃⌥/", action: nil, keyEquivalent: "")
+        cheatsheet.isEnabled = false
         menu.addItem(cheatsheet)
 
         let orientation: MagnetDisplayOrientation = focusedWindow().map {
@@ -203,29 +200,39 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             }
         }
 
-        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let status = InstallEventHandler(
-            GetApplicationEventTarget(),
-            { _, event, _ in
-                var hotKeyID = EventHotKeyID()
-                guard let event,
-                      GetEventParameter(
-                        event,
-                        EventParamName(kEventParamDirectObject),
-                        EventParamType(typeEventHotKeyID),
-                        nil,
-                        MemoryLayout<EventHotKeyID>.size,
-                        nil,
-                        &hotKeyID) == noErr,
-                      hotKeyID.signature == WindowLayoutManager.hotKeySignature
-                else { return OSStatus(eventNotHandledErr) }
-                Task { @MainActor in WindowLayoutManager.shared.handleHotKey(hotKeyID.id) }
-                return noErr
-            },
-            1,
-            &eventType,
-            nil,
-            &eventHandler)
+        var eventTypes = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))
+        ]
+        let status = eventTypes.withUnsafeMutableBufferPointer { types in
+            InstallEventHandler(
+                GetApplicationEventTarget(),
+                { _, event, _ in
+                    var hotKeyID = EventHotKeyID()
+                    guard let event,
+                          GetEventParameter(
+                            event,
+                            EventParamName(kEventParamDirectObject),
+                            EventParamType(typeEventHotKeyID),
+                            nil,
+                            MemoryLayout<EventHotKeyID>.size,
+                            nil,
+                            &hotKeyID) == noErr,
+                          hotKeyID.signature == WindowLayoutManager.hotKeySignature
+                    else { return OSStatus(eventNotHandledErr) }
+                    let kind = GetEventKind(event)
+                    Task { @MainActor in
+                        WindowLayoutManager.shared.handleHotKey(
+                            hotKeyID.id,
+                            isPressed: kind == UInt32(kEventHotKeyPressed))
+                    }
+                    return noErr
+                },
+                types.count,
+                types.baseAddress,
+                nil,
+                &eventHandler)
+        }
         guard status == noErr else { throw WindowLayoutError.hotKeyRegistration(status) }
 
         var cheatsheetReference: EventHotKeyRef?
@@ -266,6 +273,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func unregisterHotKeys() {
+        hideCheatsheet()
         hotKeys.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()
         commandsByHotKeyID.removeAll()
@@ -275,11 +283,19 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
     }
 
-    private func handleHotKey(_ id: UInt32) {
+    private func handleHotKey(_ id: UInt32, isPressed: Bool) {
         if id == Self.cheatsheetHotKeyID {
-            showCheatsheet()
+            if isPressed {
+                guard !cheatsheetShortcutIsDown else { return }
+                cheatsheetShortcutIsDown = true
+                showCheatsheet()
+                startCheatsheetKeyMonitor()
+            } else {
+                hideCheatsheet()
+            }
             return
         }
+        guard isPressed else { return }
         guard isEnabled, let window = focusedWindow() else { return }
         let orientation = orientation(for: screen(containing: window.frame))
         guard let command = commandsByHotKeyID[id]?[orientation] else { return }
@@ -479,7 +495,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
     }
 
-    @objc private func showCheatsheet() {
+    private func showCheatsheet() {
         let orientation = focusedWindow().map {
             self.orientation(for: screen(containing: $0.frame))
         } ?? .horizontal
@@ -489,6 +505,27 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         cheatsheetController?.show(
             commands: commands.filter(\.isEnabled),
             orientation: orientation)
+    }
+
+    private func startCheatsheetKeyMonitor() {
+        cheatsheetKeyMonitor?.invalidate()
+        cheatsheetKeyMonitor = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let flags = CGEventSource.flagsState(.combinedSessionState)
+                let slashIsDown = CGEventSource.keyState(.combinedSessionState, key: 44)
+                if !slashIsDown || !flags.contains(.maskControl) || !flags.contains(.maskAlternate) {
+                    self.hideCheatsheet()
+                }
+            }
+        }
+    }
+
+    private func hideCheatsheet() {
+        cheatsheetShortcutIsDown = false
+        cheatsheetKeyMonitor?.invalidate()
+        cheatsheetKeyMonitor = nil
+        cheatsheetController?.hide()
     }
 
     private func rememberExternalApplication(_ application: NSRunningApplication?) {
