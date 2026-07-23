@@ -56,7 +56,18 @@
 		EBAA87AA89A1D4720B95BE9A /* WindowMoveLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C699A48A6374BCDA24048F9 /* WindowMoveLog.swift */; };
 		FAD3E7233747EED2C11B3847 /* MagnetShortcutConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 367E188D03117764FA04A9EF /* MagnetShortcutConfigurationView.swift */; };
 		FBF3EE083A0E3DBC49D5D0AE /* SpaceCloser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */; };
+		FCFFC68046E4FB4B6E757EBE /* WindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CD377A54FA26EB37C0EFFD9B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 367A1CCC41F3B1D5879E880A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CD8E8DD9F1C64583FCDEA062;
+			remoteInfo = SpaceManager;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		03B99185D9C24C01012E8373 /* GitHubIssue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubIssue.swift; sourceTree = "<group>"; };
@@ -75,6 +86,7 @@
 		57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayDirection.swift; sourceTree = "<group>"; };
 		5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperResetter.swift; sourceTree = "<group>"; };
 		58BCB9E1598F6942EDC06D82 /* MacKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacKeyboardView.swift; sourceTree = "<group>"; };
+		5AB200E69E9DB31D40DEAAC7 /* SpaceManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpaceManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B4013259C7C740B1425CD77 /* SpaceManager.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SpaceManager.entitlements; sourceTree = "<group>"; };
 		5C5673C90FAED6A821AE32F2 /* SpaceManager-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SpaceManager-Bridging-Header.h"; sourceTree = "<group>"; };
 		5C9412D33F0D096D25CDA4C3 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
@@ -109,6 +121,7 @@
 		CDB5ABC3FBCE1E8E6B1A8576 /* SpaceWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceWindow.swift; sourceTree = "<group>"; };
 		D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutVisualGuide.swift; sourceTree = "<group>"; };
 		DAFBD5367F897BA06D1AE068 /* SpaceNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceNameStore.swift; sourceTree = "<group>"; };
+		DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutTests.swift; sourceTree = "<group>"; };
 		E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceAutomation.swift; sourceTree = "<group>"; };
 		E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutEditorAdapter.swift; sourceTree = "<group>"; };
 		E4FF5B5E97D65212F53962BB /* View+DebugLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+DebugLabel.swift"; sourceTree = "<group>"; };
@@ -169,6 +182,7 @@
 			isa = PBXGroup;
 			children = (
 				A7006896FA9F1C39D36D131D /* SpaceManager */,
+				CCBE2A393062A6302C59F676 /* SpaceManagerTests */,
 				B8A9BD527EB8361B08F19780 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -191,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				CB7E606BD09EE855032540E6 /* SpaceManager.app */,
+				5AB200E69E9DB31D40DEAAC7 /* SpaceManagerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -202,6 +217,14 @@
 				5DCE0867DD1ECA0FD468D3D0 /* SpaceManagerApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		CCBE2A393062A6302C59F676 /* SpaceManagerTests */ = {
+			isa = PBXGroup;
+			children = (
+				DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */,
+			);
+			path = SpaceManagerTests;
 			sourceTree = "<group>";
 		};
 		D4752FDB1EB779A673719473 /* Views */ = {
@@ -241,6 +264,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3B88B6136CB5D8D716C524AF /* SpaceManagerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5DDB01D5D4430325C59CFDCD /* Build configuration list for PBXNativeTarget "SpaceManagerTests" */;
+			buildPhases = (
+				213B08643B49364D23AC4A5D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B7E720EAE3965F59C4ACA09F /* PBXTargetDependency */,
+			);
+			name = SpaceManagerTests;
+			packageProductDependencies = (
+			);
+			productName = SpaceManagerTests;
+			productReference = 5AB200E69E9DB31D40DEAAC7 /* SpaceManagerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		CD8E8DD9F1C64583FCDEA062 /* SpaceManager */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A7D81D75D60BA45E4898BC70 /* Build configuration list for PBXNativeTarget "SpaceManager" */;
@@ -268,6 +309,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					3B88B6136CB5D8D716C524AF = {
+						DevelopmentTeam = YXX3W2NJA2;
+						ProvisioningStyle = Automatic;
+					};
 					CD8E8DD9F1C64583FCDEA062 = {
 						DevelopmentTeam = YXX3W2NJA2;
 						ProvisioningStyle = Automatic;
@@ -289,6 +334,7 @@
 			projectRoot = "";
 			targets = (
 				CD8E8DD9F1C64583FCDEA062 /* SpaceManager */,
+				3B88B6136CB5D8D716C524AF /* SpaceManagerTests */,
 			);
 		};
 /* End PBXProject section */
@@ -305,6 +351,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		213B08643B49364D23AC4A5D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCFFC68046E4FB4B6E757EBE /* WindowLayoutTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		625EB252E3B458EC5A55730A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -361,6 +415,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B7E720EAE3965F59C4ACA09F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CD8E8DD9F1C64583FCDEA062 /* SpaceManager */;
+			targetProxy = CD377A54FA26EB37C0EFFD9B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		366F3CBE96C0E33529E7B8C1 /* Debug */ = {
@@ -425,6 +487,25 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
+		};
+		898D4DDF2C1D57BA600FC251 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = YXX3W2NJA2;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.smunn.SpaceManagerTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Space Manager.app/Contents/MacOS/Space Manager";
+			};
+			name = Release;
 		};
 		B54B78BAB571B0F303083811 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -507,6 +588,25 @@
 			};
 			name = Release;
 		};
+		E5CBF5F291C7C90265AECCFF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = YXX3W2NJA2;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.smunn.SpaceManagerTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Space Manager.app/Contents/MacOS/Space Manager";
+			};
+			name = Debug;
+		};
 		F394943AB2959F1783A07DE0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -535,6 +635,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		5DDB01D5D4430325C59CFDCD /* Build configuration list for PBXNativeTarget "SpaceManagerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5CBF5F291C7C90265AECCFF /* Debug */,
+				898D4DDF2C1D57BA600FC251 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		9C38E6B378ECD79F32744610 /* Build configuration list for PBXProject "SpaceManager" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

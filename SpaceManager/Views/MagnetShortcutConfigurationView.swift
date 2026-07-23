@@ -416,7 +416,7 @@ private struct MagnetShortcutCommandEditor: View {
     private static let destinationKeys =
         Array("1234567890QWERTYUIOPASDFGHJKLZXCVBNM").map(String.init) +
         (0...9).map { "KP\($0)" } +
-        ["KP=", "KP/", "KP*", "KP-", "KP+", "KP.", "KP enter",
+        ["KP=", "KP/", "KP*", "KP-", "KP+", "KP.", "KP Enter", "Clear",
          "F13", "F14", "F15", "F16", "F17", "F18", "F19",
          "←", "→", "↑", "↓", "Return", "Delete", "Space"]
 }
@@ -486,7 +486,7 @@ extension MagnetShortcutCommand {
     }
 
     private static var portraitCommands: [MagnetShortcutCommand] {
-        MagnetShortcutGroup.allCases.filter { $0 != .basics }.flatMap { group -> [MagnetShortcutCommand] in
+        MagnetShortcutGroup.allCases.filter { $0.rawValue >= 3 }.flatMap { group -> [MagnetShortcutCommand] in
             let count = group.rawValue
             let full = (0..<count).map { index in
                 make(
@@ -519,7 +519,7 @@ extension MagnetShortcutCommand {
     }
 
     private static var horizontalCommands: [MagnetShortcutCommand] {
-        MagnetShortcutGroup.allCases.filter { $0 != .basics }.flatMap { group -> [MagnetShortcutCommand] in
+        MagnetShortcutGroup.allCases.filter { $0.rawValue >= 3 }.flatMap { group -> [MagnetShortcutCommand] in
             let columns = group.rawValue > 4 ? group.rawValue / 2 : group.rawValue
             let rows = group.rawValue > 4 ? 2 : 1
             let topKeys = rows == 1

@@ -32,3 +32,18 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
+
+  SpaceManagerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: SpaceManagerTests
+    dependencies:
+      - target: SpaceManager
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Space Manager.app/Contents/MacOS/Space Manager"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        DEVELOPMENT_TEAM: YXX3W2NJA2
+        CODE_SIGN_STYLE: Automatic

@@ -146,8 +146,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func enable() throws {
         guard !magnetIsRunning() else { throw WindowLayoutError.magnetRunning }
-        commands = try loadCommands().filter(\.isEnabled)
-        guard !commands.isEmpty else { throw WindowLayoutError.noCommands }
+        commands = try loadCommands()
+        guard commands.contains(where: \.isEnabled) else { throw WindowLayoutError.noCommands }
         try registerHotKeys()
         guard !magnetIsRunning() else {
             unregisterHotKeys()
@@ -177,8 +177,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private func registerHotKeys() throws {
         unregisterHotKeys()
         var routes: [MagnetShortcut: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
-        for command in commands {
+        for command in commands where command.isEnabled {
             guard let shortcut = shortcut(for: command) else { continue }
+            if routes[shortcut]?[command.orientation] != nil {
+                throw WindowLayoutError.duplicateShortcut(command.shortcutText)
+            }
             routes[shortcut, default: [:]][command.orientation] = command
         }
 
@@ -248,8 +251,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func apply(_ command: MagnetShortcutCommand, to window: FocusedWindow) {
-        let lowerName = command.name.lowercased()
-        if lowerName == "restore" {
+        let operation = Self.operation(for: command.name)
+        if operation == .restore {
             guard let frame = restoreFrames.removeValue(forKey: window.identity) else { return }
             set(frame: frame, for: window.element, attemptsRemaining: 3)
             return
@@ -258,14 +261,14 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         restoreFrames[window.identity] = restoreFrames[window.identity] ?? window.frame
         let sourceScreen = screen(containing: window.frame)
         let target: CGRect
-        if lowerName.contains("next display") || lowerName.contains("previous display") {
-            guard let destination = adjacentScreen(from: sourceScreen, next: lowerName.contains("next")) else { return }
+        if operation == .nextDisplay || operation == .previousDisplay {
+            guard let destination = adjacentScreen(from: sourceScreen, next: operation == .nextDisplay) else { return }
             target = translatedFrame(window.frame, from: sourceScreen, to: destination)
-        } else if lowerName == "center" {
+        } else if operation == .center {
             let visible = accessibilityVisibleFrame(for: sourceScreen)
             let size = CGSize(width: min(window.frame.width, visible.width), height: min(window.frame.height, visible.height))
             target = CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height)
-        } else if lowerName == "maximize" {
+        } else if operation == .maximize {
             target = accessibilityVisibleFrame(for: sourceScreen)
         } else {
             let visible = accessibilityVisibleFrame(for: sourceScreen)
@@ -276,6 +279,17 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 height: visible.height * command.height).integral
         }
         set(frame: target, for: window.element, attemptsRemaining: 3)
+    }
+
+    static func operation(for name: String) -> WindowLayoutOperation {
+        switch name.lowercased() {
+        case "restore": return .restore
+        case "next display": return .nextDisplay
+        case "previous display": return .previousDisplay
+        case "center": return .center
+        case "maximize": return .maximize
+        default: return .frame
+        }
     }
 
     private func set(frame: CGRect, for element: AXUIElement, attemptsRemaining: Int) {
@@ -355,9 +369,24 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             y: primaryScreenTop - accessibilityFrame.maxY,
             width: accessibilityFrame.width,
             height: accessibilityFrame.height)
-        return NSScreen.screens.max { lhs, rhs in
-            lhs.frame.intersection(appKitFrame).area < rhs.frame.intersection(appKitFrame).area
-        } ?? NSScreen.main ?? NSScreen.screens[0]
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else { return NSScreen.main! }
+        return screens[Self.bestScreenIndex(for: appKitFrame, screenFrames: screens.map(\.frame))]
+    }
+
+    static func bestScreenIndex(for windowFrame: CGRect, screenFrames: [CGRect]) -> Int {
+        precondition(!screenFrames.isEmpty)
+        let intersections = screenFrames.map { $0.intersection(windowFrame).area }
+        if let index = intersections.indices.max(by: { intersections[$0] < intersections[$1] }),
+           intersections[index] > 0 {
+            return index
+        }
+
+        let center = CGPoint(x: windowFrame.midX, y: windowFrame.midY)
+        if let index = screenFrames.firstIndex(where: { $0.contains(center) }) { return index }
+        return screenFrames.indices.min { lhs, rhs in
+            screenFrames[lhs].centerDistanceSquared(to: center) < screenFrames[rhs].centerDistanceSquared(to: center)
+        } ?? 0
     }
 
     private func orientation(for screen: NSScreen) -> MagnetDisplayOrientation {
@@ -400,7 +429,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func shortcut(for command: MagnetShortcutCommand) -> MagnetShortcut? {
-        guard let keyCode = keyCodes[command.destinationKey], command.modifiers.count >= 2 else { return nil }
+        guard let keyCode = MagnetKeyCodes.code(for: command.destinationKey), command.modifiers.count >= 2 else { return nil }
         let modifiers = command.modifiers.reduce(UInt32(0)) { result, modifier in
             switch modifier {
             case .control: return result | UInt32(controlKey)
@@ -435,8 +464,17 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         })
         observers.append(center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) { [weak self] note in
             let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            guard application?.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier else { return }
-            Task { @MainActor in self?.refreshMagnetStatus() }
+            guard let application else { return }
+            Task { @MainActor in
+                guard let self else { return }
+                self.restoreFrames = self.restoreFrames.filter { $0.key.pid != application.processIdentifier }
+                if self.lastExternalApplication?.processIdentifier == application.processIdentifier {
+                    self.lastExternalApplication = nil
+                }
+                if application.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier {
+                    self.refreshMagnetStatus()
+                }
+            }
         })
     }
 
@@ -445,9 +483,19 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             forName: Notification.Name("WindowLayoutConfigurationDidChange"), object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.isEnabled else { return }
-                self.disable()
-                self.setEnabled(true)
+                guard let self else { return }
+                do {
+                    let updated = try self.loadCommands()
+                    guard updated.contains(where: \.isEnabled) || !self.isEnabled else {
+                        throw WindowLayoutError.noCommands
+                    }
+                    self.commands = updated
+                    if self.isEnabled { try self.registerHotKeys() }
+                    self.lastError = nil
+                } catch {
+                    if self.isEnabled { self.disable() }
+                    self.lastError = error.localizedDescription
+                }
             }
         }
     }
@@ -492,22 +540,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         menu.addItem(item)
     }
 
-    private let keyCodes: [String: UInt32] = [
-        "A": 0, "S": 1, "D": 2, "F": 3, "H": 4, "G": 5, "Z": 6, "X": 7,
-        "C": 8, "V": 9, "B": 11, "Q": 12, "W": 13, "E": 14, "R": 15,
-        "Y": 16, "T": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
-        "5": 23, "=": 24, "9": 25, "7": 26, "-": 27, "8": 28, "0": 29,
-        "]": 30, "O": 31, "U": 32, "[": 33, "I": 34, "P": 35, "Return": 36,
-        "L": 37, "J": 38, "'": 39, "K": 40, ";": 41, "\\": 42, ",": 43,
-        "/": 44, "N": 45, "M": 46, ".": 47, "Space": 49, "Delete": 51,
-        "KP.": 65, "KP*": 67, "KP+": 69, "Clear": 71, "KP/": 75, "KP Enter": 76,
-        "KP-": 78, "KP=": 81, "KP0": 82, "KP1": 83, "KP2": 84, "KP3": 85,
-        "KP4": 86, "KP5": 87, "KP6": 88, "KP7": 89, "KP8": 91, "KP9": 92,
-        "F5": 96, "F6": 97, "F7": 98, "F3": 99, "F8": 100, "F9": 101,
-        "F11": 103, "F13": 105, "F16": 106, "F14": 107, "F10": 109, "F12": 111,
-        "F15": 113, "F4": 118, "F2": 120, "F1": 122, "←": 123, "→": 124,
-        "↓": 125, "↑": 126
-    ]
+}
+
+enum WindowLayoutOperation: Equatable {
+    case frame
+    case restore
+    case nextDisplay
+    case previousDisplay
+    case center
+    case maximize
 }
 
 private struct WindowIdentity: Hashable {
@@ -525,6 +566,7 @@ private enum WindowLayoutError: LocalizedError {
     case magnetRunning
     case magnetDidNotQuit
     case noCommands
+    case duplicateShortcut(String)
     case hotKeyRegistration(OSStatus)
 
     var errorDescription: String? {
@@ -532,6 +574,7 @@ private enum WindowLayoutError: LocalizedError {
         case .magnetRunning: return "Quit Magnet before enabling Window Layouts."
         case .magnetDidNotQuit: return "Magnet did not quit."
         case .noCommands: return "No window layout shortcuts are configured."
+        case .duplicateShortcut(let shortcut): return "The shortcut \(shortcut) is assigned more than once for the same display orientation."
         case .hotKeyRegistration(let status): return "A window layout shortcut could not be registered (\(status))."
         }
     }
@@ -539,4 +582,10 @@ private enum WindowLayoutError: LocalizedError {
 
 private extension CGRect {
     var area: CGFloat { isNull ? 0 : width * height }
+
+    func centerDistanceSquared(to point: CGPoint) -> CGFloat {
+        let dx = midX - point.x
+        let dy = midY - point.y
+        return dx * dx + dy * dy
+    }
 }

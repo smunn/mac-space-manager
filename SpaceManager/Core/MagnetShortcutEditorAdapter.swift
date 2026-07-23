@@ -7,6 +7,34 @@
 
 import Foundation
 
+enum MagnetKeyCodes {
+    static let byName: [String: UInt32] = [
+        "A": 0, "S": 1, "D": 2, "F": 3, "H": 4, "G": 5, "Z": 6, "X": 7,
+        "C": 8, "V": 9, "B": 11, "Q": 12, "W": 13, "E": 14, "R": 15,
+        "Y": 16, "T": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
+        "5": 23, "=": 24, "9": 25, "7": 26, "-": 27, "8": 28, "0": 29,
+        "]": 30, "O": 31, "U": 32, "[": 33, "I": 34, "P": 35,
+        "Return": 36, "L": 37, "J": 38, "'": 39, "K": 40, ";": 41,
+        "\\": 42, ",": 43, "/": 44, "N": 45, "M": 46, ".": 47,
+        "Space": 49, "Delete": 51,
+        "F17": 64, "KP.": 65, "KP*": 67, "KP+": 69, "Clear": 71,
+        "KP/": 75, "KP Enter": 76, "KP-": 78, "F18": 79, "F19": 80,
+        "KP=": 81, "KP0": 82, "KP1": 83, "KP2": 84, "KP3": 85,
+        "KP4": 86, "KP5": 87, "KP6": 88, "KP7": 89, "KP8": 91, "KP9": 92,
+        "F5": 96, "F6": 97, "F7": 98, "F3": 99, "F8": 100, "F9": 101,
+        "F11": 103, "F13": 105, "F16": 106, "F14": 107, "F10": 109,
+        "F12": 111, "F15": 113, "F4": 118, "F2": 120, "F1": 122,
+        "←": 123, "→": 124, "↓": 125, "↑": 126
+    ]
+
+    private static let byCode: [UInt32: String] = Dictionary(
+        uniqueKeysWithValues: byName.map { ($0.value, $0.key) }
+    )
+
+    static func code(for name: String) -> UInt32? { byName[name] }
+    static func name(for code: UInt32) -> String? { byCode[code] }
+}
+
 enum MagnetShortcutEditorError: LocalizedError {
     case unsupportedKey(String)
     case insufficientModifiers(String)
@@ -49,11 +77,14 @@ struct MagnetShortcutEditorAdapter {
             var commands = updated.commands(for: orientation)
             for index in commands.indices {
                 guard let edit = editsByID[commands[index].id] else { continue }
+                if commands[index].name == "Top 3/8 Left" {
+                    commands[index].primaryTargetFrame = MagnetTargetFrame(x: 0, y: 6, width: 6, height: 3)
+                }
                 if edit.isEnabled {
                     guard edit.modifiers.count >= 2 else {
                         throw MagnetShortcutEditorError.insufficientModifiers(edit.name)
                     }
-                    guard let keyCode = Self.keyCode(for: edit.destinationKey) else {
+                    guard let keyCode = MagnetKeyCodes.code(for: edit.destinationKey) else {
                         throw MagnetShortcutEditorError.unsupportedKey(edit.destinationKey)
                     }
                     let shortcut = MagnetShortcut(
@@ -95,7 +126,7 @@ struct MagnetShortcutEditorAdapter {
             orientation: displayOrientation,
             group: group,
             section: Self.section(for: command, displayName: name, group: group),
-            destinationKey: Self.cornerKey(for: name) ?? shortcut.flatMap { Self.keyName(for: $0.carbonKeyCode) } ?? "",
+            destinationKey: Self.cornerKey(for: name) ?? shortcut.flatMap { MagnetKeyCodes.name(for: $0.carbonKeyCode) } ?? "",
             modifiers: shortcut.map { Self.modifiers(for: $0.carbonModifiers) } ?? [],
             isEnabled: command.isShortcutEnabled,
             x: frame.x,
@@ -160,6 +191,9 @@ struct MagnetShortcutEditorAdapter {
         for command: MagnetCommand,
         orientation: MagnetOrientation
     ) -> MagnetTargetFrame {
+        if orientation == .vertical, command.name == "Top 3/8 Left" {
+            return MagnetTargetFrame(x: 0, y: 0.25, width: 0.5, height: 0.125)
+        }
         guard let frame = command.primaryTargetFrame else {
             return MagnetTargetFrame(x: 0, y: 0, width: 1, height: 1)
         }
@@ -178,11 +212,13 @@ struct MagnetShortcutEditorAdapter {
             canvasWidth = command.name.hasPrefix("command:default.name.") ? 24 : 12
             canvasHeight = 12
         }
+        let x = max(0, min(1, frame.x / canvasWidth))
+        let y = max(0, min(1, frame.y / canvasHeight))
         return MagnetTargetFrame(
-            x: max(0, min(1, frame.x / canvasWidth)),
-            y: max(0, min(1, frame.y / canvasHeight)),
-            width: max(0, min(1, frame.width / canvasWidth)),
-            height: max(0, min(1, frame.height / canvasHeight))
+            x: x,
+            y: y,
+            width: max(0, min(1 - x, frame.width / canvasWidth)),
+            height: max(0, min(1 - y, frame.height / canvasHeight))
         )
     }
 
@@ -245,29 +281,4 @@ struct MagnetShortcutEditorAdapter {
         MagnetShortcut(carbonKeyCode: 46, carbonModifiers: control | option | command)  // M
     ]
 
-    private static let keyCodes: [String: UInt32] = [
-        "A": 0, "S": 1, "D": 2, "F": 3, "H": 4, "G": 5, "Z": 6, "X": 7,
-        "C": 8, "V": 9, "B": 11, "Q": 12, "W": 13, "E": 14, "R": 15,
-        "Y": 16, "T": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
-        "5": 23, "=": 24, "9": 25, "7": 26, "-": 27, "8": 28, "0": 29,
-        "]": 30, "O": 31, "U": 32, "[": 33, "I": 34, "P": 35,
-        "Return": 36, "L": 37, "J": 38, "'": 39, "K": 40, ";": 41,
-        "\\": 42, ",": 43, "/": 44, "N": 45, "M": 46, ".": 47,
-        "Space": 49, "Delete": 51,
-        "KP.": 65, "KP*": 67, "KP+": 69, "Clear": 71, "KP/": 75,
-        "KP Enter": 76, "KP-": 78, "KP=": 81, "KP0": 82, "KP1": 83,
-        "KP2": 84, "KP3": 85, "KP4": 86, "KP5": 87, "KP6": 88,
-        "KP7": 89, "KP8": 91, "KP9": 92,
-        "F5": 96, "F6": 97, "F7": 98, "F3": 99, "F8": 100, "F9": 101,
-        "F11": 103, "F13": 105, "F16": 106, "F14": 107, "F10": 109,
-        "F12": 111, "F15": 113, "F4": 118, "F2": 120, "F1": 122,
-        "←": 123, "→": 124, "↓": 125, "↑": 126
-    ]
-
-    private static let keyNames: [UInt32: String] = Dictionary(
-        uniqueKeysWithValues: keyCodes.map { ($0.value, $0.key) }
-    )
-
-    private static func keyCode(for name: String) -> UInt32? { keyCodes[name] }
-    private static func keyName(for code: UInt32) -> String? { keyNames[code] }
 }
