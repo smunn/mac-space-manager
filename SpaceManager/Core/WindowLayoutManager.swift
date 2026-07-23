@@ -39,6 +39,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var cheatsheetShortcutIsDown = false
     private var cheatsheetKeyMonitor: Timer?
     private var activeCheatsheetModifiers: Set<MagnetShortcutModifier>?
+    private var interactionMonitors: [Any] = []
+    private var lastMouseInteraction: InteractionTarget?
+    private var lastKeyboardInteraction: InteractionTarget?
 
     private override init() {
         let requested = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
@@ -48,6 +51,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
         rememberExternalApplication(NSWorkspace.shared.frontmostApplication)
         observeApplications()
+        observeUserInteraction()
         observeConfigurationChanges()
         magnetMonitor = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshMagnetStatus() }
@@ -551,15 +555,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func showCheatsheet(modifiers: Set<MagnetShortcutModifier>) {
-        let targetScreen: NSScreen
-        let orientation: MagnetDisplayOrientation
-        if let window = focusedWindow() {
-            targetScreen = screen(containing: window.frame)
-            orientation = self.orientation(for: targetScreen)
-        } else {
-            targetScreen = NSScreen.main ?? NSScreen.screens[0]
-            orientation = self.orientation(for: targetScreen)
-        }
+        let targetScreen = cheatsheetTargetScreen()
+        let orientation = self.orientation(for: targetScreen)
         if cheatsheetController == nil {
             cheatsheetController = WindowLayoutCheatsheetController()
         }
@@ -609,6 +606,64 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         if flags.contains(.maskShift) { modifiers.insert(.shift) }
         if flags.contains(.maskCommand) { modifiers.insert(.command) }
         return modifiers
+    }
+
+    private func observeUserInteraction() {
+        if let mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved, handler: { [weak self] event in
+            let timestamp = event.timestamp
+            let location = NSEvent.mouseLocation
+            Task { @MainActor in
+                guard let self, let screen = self.screen(at: location) else { return }
+                self.lastMouseInteraction = InteractionTarget(
+                    timestamp: timestamp,
+                    displayID: self.displayID(for: screen))
+            }
+        }) {
+            interactionMonitors.append(mouseMonitor)
+        }
+
+        if let keyboardMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] event in
+            // The slash that opens the cheatsheet is a control gesture, not a
+            // change of focus. Excluding it preserves whichever real mouse or
+            // keyboard interaction happened immediately beforehand.
+            guard event.keyCode != 44 else { return }
+            let timestamp = event.timestamp
+            Task { @MainActor in
+                guard let self, let window = self.focusedWindow() else { return }
+                let screen = self.screen(containing: window.frame)
+                self.lastKeyboardInteraction = InteractionTarget(
+                    timestamp: timestamp,
+                    displayID: self.displayID(for: screen))
+            }
+        }) {
+            interactionMonitors.append(keyboardMonitor)
+        }
+    }
+
+    private func cheatsheetTargetScreen() -> NSScreen {
+        let latest = [lastMouseInteraction, lastKeyboardInteraction]
+            .compactMap { $0 }
+            .max { $0.timestamp < $1.timestamp }
+        if let latest, let screen = screen(withDisplayID: latest.displayID) {
+            return screen
+        }
+        if let window = focusedWindow() {
+            return screen(containing: window.frame)
+        }
+        return screen(at: NSEvent.mouseLocation) ?? NSScreen.main ?? NSScreen.screens[0]
+    }
+
+    private func screen(at point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first { $0.frame.contains(point) }
+    }
+
+    private func displayID(for screen: NSScreen) -> CGDirectDisplayID {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?
+            .uint32Value ?? 0
+    }
+
+    private func screen(withDisplayID displayID: CGDirectDisplayID) -> NSScreen? {
+        NSScreen.screens.first { self.displayID(for: $0) == displayID }
     }
 
     private func rememberExternalApplication(_ application: NSRunningApplication?) {
@@ -724,6 +779,11 @@ enum WindowLayoutOperation: Equatable {
 private struct WindowIdentity: Hashable {
     let pid: pid_t
     let windowID: CGWindowID
+}
+
+private struct InteractionTarget {
+    let timestamp: TimeInterval
+    let displayID: CGDirectDisplayID
 }
 
 private struct FocusedWindow {
