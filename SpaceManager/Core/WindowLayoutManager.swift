@@ -249,7 +249,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func apply(_ command: MagnetShortcutCommand, to window: FocusedWindow) {
         let lowerName = command.name.lowercased()
-        if lowerName.contains("restore") {
+        if lowerName == "restore" {
             guard let frame = restoreFrames.removeValue(forKey: window.identity) else { return }
             set(frame: frame, for: window.element, attemptsRemaining: 3)
             return
@@ -261,11 +261,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         if lowerName.contains("next display") || lowerName.contains("previous display") {
             guard let destination = adjacentScreen(from: sourceScreen, next: lowerName.contains("next")) else { return }
             target = translatedFrame(window.frame, from: sourceScreen, to: destination)
-        } else if lowerName.contains("center") {
+        } else if lowerName == "center" {
             let visible = accessibilityVisibleFrame(for: sourceScreen)
             let size = CGSize(width: min(window.frame.width, visible.width), height: min(window.frame.height, visible.height))
             target = CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height)
-        } else if lowerName.contains("maximize") {
+        } else if lowerName == "maximize" {
             target = accessibilityVisibleFrame(for: sourceScreen)
         } else {
             let visible = accessibilityVisibleFrame(for: sourceScreen)
