@@ -59,6 +59,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     func setEnabled(_ enabled: Bool) {
         lastError = nil
         if enabled {
+            if magnetIsRunning() {
+                guard confirmClosingMagnet() else { return }
+                do {
+                    try quitMagnet()
+                } catch {
+                    lastError = error.localizedDescription
+                    return
+                }
+            }
             do {
                 try enable()
             } catch {
@@ -426,9 +435,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             guard application?.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier else { return }
             Task { @MainActor in
-                guard self?.isEnabled == true else { return }
-                self?.lastError = "Window Layouts were disabled because Magnet opened."
-                self?.disable()
+                self?.disableIfMagnetIsRunning()
             }
         })
     }
@@ -453,6 +460,34 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         guard isEnabled, magnetIsRunning() else { return }
         lastError = "Window Layouts were disabled because Magnet opened."
         disable()
+
+        let alert = NSAlert()
+        alert.messageText = "Magnet Opened"
+        alert.informativeText = "Window Layouts was turned off to prevent shortcut conflicts."
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+
+    private func confirmClosingMagnet() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "This will close Magnet. Should you proceed?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Close Magnet and Enable")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func quitMagnet() throws {
+        let applications = NSRunningApplication.runningApplications(
+            withBundleIdentifier: MagnetShortcutManager.magnetBundleIdentifier)
+        applications.forEach { $0.terminate() }
+
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline {
+            if applications.allSatisfy(\.isTerminated) { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        throw WindowLayoutError.magnetDidNotQuit
     }
 
     private func addHeader(_ title: String, to menu: NSMenu) {
@@ -495,12 +530,14 @@ private struct FocusedWindow {
 
 private enum WindowLayoutError: LocalizedError {
     case magnetRunning
+    case magnetDidNotQuit
     case noCommands
     case hotKeyRegistration(OSStatus)
 
     var errorDescription: String? {
         switch self {
         case .magnetRunning: return "Quit Magnet before enabling Window Layouts."
+        case .magnetDidNotQuit: return "Magnet did not quit."
         case .noCommands: return "No window layout shortcuts are configured."
         case .hotKeyRegistration(let status): return "A window layout shortcut could not be registered (\(status))."
         }
