@@ -1,3 +1,4 @@
+import ApplicationServices
 import XCTest
 @testable import Space_Manager
 
@@ -144,6 +145,7 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertEqual(WindowLayoutManager.operation(for: "Center Two Thirds"), .frame)
         XCTAssertEqual(WindowLayoutManager.operation(for: "Maximize"), .maximize)
         XCTAssertEqual(WindowLayoutManager.operation(for: "Restore"), .restore)
+        XCTAssertEqual(WindowLayoutManager.operation(for: "Restore Original"), .restore)
         XCTAssertEqual(WindowLayoutManager.operation(for: "Next Display"), .nextDisplay)
         XCTAssertEqual(WindowLayoutManager.operation(for: "Previous Display"), .previousDisplay)
     }
@@ -216,6 +218,77 @@ final class WindowLayoutTests: XCTestCase {
                 XCTAssertLessThanOrEqual(command.y + command.height, 1.000_001, command.name)
             }
         }
+    }
+
+    func testBasicsAndHalvesUseDistinctCheatsheetModifiers() {
+        let commands = MagnetShortcutCommand.standardSet.filter { $0.orientation == .portrait }
+        let halves = commands.filter { $0.group == .halves }
+        let basics = commands.filter { $0.group == .basics && $0.section != "Displays" }
+        let displays = commands.filter { $0.group == .basics && $0.section == "Displays" }
+
+        XCTAssertTrue(halves.allSatisfy { $0.modifiers == [.control, .option] })
+        XCTAssertTrue(basics.allSatisfy { $0.modifiers == [.option, .command] })
+        XCTAssertTrue(displays.allSatisfy { $0.modifiers == [.control, .option, .command] })
+    }
+
+    func testRestoreSequenceKeepsOriginalAcrossManagedMoves() {
+        let original = CGRect(x: 40, y: 60, width: 900, height: 700)
+        let firstLayout = CGRect(x: 0, y: 0, width: 600, height: 800)
+        let secondLayout = CGRect(x: 600, y: 0, width: 600, height: 800)
+        var sequence = WindowLayoutRestoreSequence(
+            originalFrame: original,
+            lastAppliedFrame: firstLayout)
+
+        sequence.recordAppliedMove(from: firstLayout, to: secondLayout)
+
+        XCTAssertEqual(sequence.originalFrame, original)
+        XCTAssertEqual(sequence.lastAppliedFrame, secondLayout)
+    }
+
+    func testRestoreSequenceResetsAfterManualWindowChange() {
+        let original = CGRect(x: 40, y: 60, width: 900, height: 700)
+        let firstLayout = CGRect(x: 0, y: 0, width: 600, height: 800)
+        let manualFrame = CGRect(x: 125, y: 175, width: 750, height: 500)
+        let nextLayout = CGRect(x: 600, y: 0, width: 600, height: 800)
+        var sequence = WindowLayoutRestoreSequence(
+            originalFrame: original,
+            lastAppliedFrame: firstLayout)
+
+        sequence.recordAppliedMove(from: manualFrame, to: nextLayout)
+
+        XCTAssertEqual(sequence.originalFrame, manualFrame)
+        XCTAssertEqual(sequence.lastAppliedFrame, nextLayout)
+    }
+
+    func testSlashEventRoutingMatchesEveryExactRegisteredModifierSet() {
+        let allModifiers: Set<MagnetShortcutModifier> = [.control, .option, .shift, .command]
+        let registered: Set<Set<MagnetShortcutModifier>> = [
+            [.control, .option],
+            [.option, .command],
+            allModifiers
+        ]
+        let flags: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+
+        XCTAssertEqual(
+            CheatsheetSlashEventRouting.matchedModifiers(
+                keyCode: 44,
+                flags: flags,
+                registered: registered),
+            allModifiers)
+        XCTAssertNil(CheatsheetSlashEventRouting.matchedModifiers(
+            keyCode: 44,
+            flags: [.maskControl, .maskAlternate, .maskShift],
+            registered: registered))
+        XCTAssertNil(CheatsheetSlashEventRouting.matchedModifiers(
+            keyCode: 12,
+            flags: flags,
+            registered: registered))
+    }
+
+    func testRestoreUsesClearOriginalLabelWithoutChangingStoredCommandName() {
+        let command = MagnetShortcutCommand.standardSet.first { $0.name == "Restore" }
+        XCTAssertEqual(command?.displayName, "Restore Original")
+        XCTAssertEqual(command?.name, "Restore")
     }
 
     func testEveryOfferedExtendedKeyRoundTripsThroughMagnetConfiguration() throws {

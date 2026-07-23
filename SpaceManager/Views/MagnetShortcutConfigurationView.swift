@@ -37,7 +37,7 @@ enum MagnetShortcutGroup: Int, CaseIterable, Identifiable, Codable {
 
     var modifiers: Set<MagnetShortcutModifier> {
         switch self {
-        case .basics: [.control, .option]
+        case .basics: [.option, .command]
         case .halves: [.control, .option]
         case .thirds: [.control, .command]
         case .quarters: [.control, .option, .shift]
@@ -85,6 +85,10 @@ struct MagnetShortcutCommand: Identifiable, Equatable, Codable {
             .map(\.glyph)
             .joined() + destinationKey.uppercased()
     }
+
+    var displayName: String {
+        name == "Restore" ? "Restore Original" : name
+    }
 }
 
 @MainActor
@@ -120,7 +124,7 @@ final class MagnetShortcutConfigurationModel: ObservableObject {
             command.orientation == orientation &&
             command.group == group &&
             (searchText.isEmpty ||
-             command.name.localizedCaseInsensitiveContains(searchText) ||
+             command.displayName.localizedCaseInsensitiveContains(searchText) ||
              command.shortcutText.localizedCaseInsensitiveContains(searchText))
         }
     }
@@ -324,7 +328,7 @@ private struct MagnetShortcutCommandRow: View {
         HStack(spacing: 8) {
             WindowLayoutGlyph(command: command, color: color)
                 .frame(width: 28, height: 22)
-            Text(command.name)
+            Text(command.displayName)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Text(command.shortcutText)
@@ -359,7 +363,7 @@ private struct MagnetShortcutCommandEditor: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(command.name)
+                    Text(command.displayName)
                         .font(.title2.weight(.semibold))
                     Spacer()
                     Toggle("Enabled", isOn: $command.isEnabled)
@@ -611,7 +615,8 @@ extension MagnetShortcutCommand {
             group: MagnetShortcutGroup, section: String, name: String, key: String,
             modifiers: Set<MagnetShortcutModifier>?, x: Double, y: Double, width: Double, height: Double
         )
-        let baseModifiers: Set<MagnetShortcutModifier> = [.control, .option]
+        let halfModifiers: Set<MagnetShortcutModifier> = [.control, .option]
+        let basicModifiers: Set<MagnetShortcutModifier> = [.option, .command]
         let displayModifiers: Set<MagnetShortcutModifier> = [.control, .option, .command]
         let cornerKeys = ["Q", "W", "A", "S"]
         let twoThirdNames = orientation == .portrait
@@ -619,22 +624,22 @@ extension MagnetShortcutCommand {
             : ["Left Two Thirds", "Center Two Thirds", "Right Two Thirds"]
 
         let regions: [Region] = [
-            (.halves, "Halves", "Left Half", "←", baseModifiers, 0, 0, 0.5, 1),
-            (.halves, "Halves", "Right Half", "→", baseModifiers, 0.5, 0, 0.5, 1),
-            (.halves, "Halves", "Top Half", orientation == .portrait ? "1" : "↑", baseModifiers, 0, 0, 1, 0.5),
-            (.halves, "Halves", "Bottom Half", orientation == .portrait ? "2" : "↓", baseModifiers, 0, 0.5, 1, 0.5),
-            (.halves, "Corners", "Top Left Corner", cornerKeys[0], baseModifiers, 0, 0, 0.5, 0.5),
-            (.halves, "Corners", "Top Right Corner", cornerKeys[1], baseModifiers, 0.5, 0, 0.5, 0.5),
-            (.halves, "Corners", "Bottom Left Corner", cornerKeys[2], baseModifiers, 0, 0.5, 0.5, 0.5),
-            (.halves, "Corners", "Bottom Right Corner", cornerKeys[3], baseModifiers, 0.5, 0.5, 0.5, 0.5),
-            (.basics, "Two Thirds", twoThirdNames[0], "E", baseModifiers, 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            (.basics, "Two Thirds", twoThirdNames[1], "R", baseModifiers, orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            (.basics, "Two Thirds", twoThirdNames[2], "T", baseModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.halves, "Halves", "Left Half", "←", halfModifiers, 0, 0, 0.5, 1),
+            (.halves, "Halves", "Right Half", "→", halfModifiers, 0.5, 0, 0.5, 1),
+            (.halves, "Halves", "Top Half", orientation == .portrait ? "1" : "↑", halfModifiers, 0, 0, 1, 0.5),
+            (.halves, "Halves", "Bottom Half", orientation == .portrait ? "2" : "↓", halfModifiers, 0, 0.5, 1, 0.5),
+            (.halves, "Corners", "Top Left Corner", cornerKeys[0], halfModifiers, 0, 0, 0.5, 0.5),
+            (.halves, "Corners", "Top Right Corner", cornerKeys[1], halfModifiers, 0.5, 0, 0.5, 0.5),
+            (.halves, "Corners", "Bottom Left Corner", cornerKeys[2], halfModifiers, 0, 0.5, 0.5, 0.5),
+            (.halves, "Corners", "Bottom Right Corner", cornerKeys[3], halfModifiers, 0.5, 0.5, 0.5, 0.5),
+            (.basics, "Two Thirds", twoThirdNames[0], "E", basicModifiers, 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[1], "R", basicModifiers, orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[2], "T", basicModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
             (.basics, "Displays", "Next Display", "→", displayModifiers, 0, 0, 1, 1),
             (.basics, "Displays", "Previous Display", "←", displayModifiers, 0, 0, 1, 1),
-            (.basics, "Window", "Maximize", "Return", baseModifiers, 0, 0, 1, 1),
-            (.basics, "Window", "Center", "C", baseModifiers, 0, 0, 1, 1),
-            (.basics, "Window", "Restore", "Delete", baseModifiers, 0, 0, 1, 1)
+            (.basics, "Window", "Maximize", "Return", basicModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Center", "C", basicModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Restore", "Delete", basicModifiers, 0, 0, 1, 1)
         ]
 
         return regions.enumerated().map { index, region in

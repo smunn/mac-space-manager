@@ -1292,7 +1292,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Top Two Thirds",
     "orientation" : "Portrait",
@@ -1309,7 +1309,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Center Two Thirds",
     "orientation" : "Portrait",
@@ -1326,7 +1326,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Bottom Two Thirds",
     "orientation" : "Portrait",
@@ -1379,7 +1379,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Maximize",
     "orientation" : "Portrait",
@@ -1396,7 +1396,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Center",
     "orientation" : "Portrait",
@@ -1412,8 +1412,8 @@
     "id" : "54C5531D-09BA-4F2F-BAB8-5E8562D92759",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Restore",
     "orientation" : "Portrait",
@@ -1948,8 +1948,8 @@
     "id" : "531E4C43-0B53-4C7F-AED8-0654F38CAFE0",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Left Two Thirds",
     "orientation" : "Horizontal",
@@ -1966,7 +1966,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Center Two Thirds",
     "orientation" : "Horizontal",
@@ -1983,7 +1983,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Right Two Thirds",
     "orientation" : "Horizontal",
@@ -2036,7 +2036,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Maximize",
     "orientation" : "Horizontal",
@@ -2053,7 +2053,7 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "control"
+      "command"
     ],
     "name" : "Center",
     "orientation" : "Horizontal",
@@ -2069,8 +2069,8 @@
     "id" : "3D1FF37C-012E-48E6-A3FA-4D01E02C74C8",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Restore",
     "orientation" : "Horizontal",

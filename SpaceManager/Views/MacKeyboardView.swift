@@ -171,12 +171,15 @@ private struct KeyboardKeyView: View {
                 Text(modifier.glyph)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                 Text(item.label.lowercased())
-                    .font(.system(size: 7, weight: .regular, design: .rounded))
+                    .font(.system(size: 6.5, weight: .regular, design: .rounded))
+                    .minimumScaleFactor(0.5)
+                    .allowsTightening(true)
+                    .lineLimit(1)
             }
         } else {
             labelContents
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-                .padding(.horizontal, 6)
+                .padding(.horizontal, 3)
                 .padding(.vertical, 5)
         }
     }
@@ -189,10 +192,22 @@ private struct KeyboardKeyView: View {
             }
             if item.label != "touch id" {
                 Text(displayLabel)
-                    .font(.system(size: item.label.count > 7 ? 7 : 10, weight: highlightColor == nil ? .regular : .semibold, design: .rounded))
-                    .minimumScaleFactor(0.6)
+                    .font(.system(
+                        size: labelFontSize,
+                        weight: highlightColor == nil ? .regular : .semibold,
+                        design: .rounded))
+                    .minimumScaleFactor(0.5)
+                    .allowsTightening(true)
                     .lineLimit(1)
             }
+        }
+    }
+
+    private var labelFontSize: CGFloat {
+        switch displayLabel.count {
+        case 9...: return 6
+        case 7...: return 7
+        default: return 10
         }
     }
 
@@ -205,6 +220,9 @@ private struct KeyboardKeyView: View {
     }
 
     private var displayLabel: String {
+        if item.label.caseInsensitiveCompare("eject") == .orderedSame {
+            return "⏏"
+        }
         if item.label.lowercased().hasPrefix("kp") {
             return String(item.label.dropFirst(2))
                 .trimmingCharacters(in: .whitespaces)
@@ -239,24 +257,29 @@ private struct KeyboardLayout {
             includeStandardArrows: false,
             includeFunctionSymbols: false,
             includeFunctionRow: true)
+        // The original Magic Keyboard with Numeric Keypad places Eject at the
+        // far-right edge of the main typing block. F13-F15 sit over the
+        // navigation cluster, and F16-F19 sit over the keypad.
+        keys += [key("Eject", 13.5, 0, placement: .bottomTrailing)]
         keys += [
-            key("f13", 16, 0), key("f14", 17, 0), key("f15", 18, 0),
-            key("f16", 19.5, 0), key("f17", 20.5, 0), key("f18", 21.5, 0),
-            key("f19", 22.5, 0)
+            key("f13", 14.75, 0), key("f14", 15.75, 0), key("f15", 16.75, 0),
+            key("f16", 18, 0), key("f17", 19, 0), key("f18", 20, 0),
+            key("f19", 21, 0)
         ]
         keys += [
-            key("fn", 16, 1, placement: .bottomLeading), key("home", 17, 1), key("page up", 18, 1),
-            key("delete", 16, 2, placement: .bottomLeading), key("end", 17, 2), key("page down", 18, 2),
-            key("↑", 17, 5, height: 0.5),
-            key("←", 16, 5.5, height: 0.5), key("↓", 17, 5.5, height: 0.5),
-            key("→", 18, 5.5, height: 0.5),
-            key("Clear", 19.5, 1), key("KP=", 20.5, 1), key("KP/", 21.5, 1), key("KP*", 22.5, 1),
-            key("KP7", 19.5, 2), key("KP8", 20.5, 2), key("KP9", 21.5, 2), key("KP-", 22.5, 2),
-            key("KP4", 19.5, 3), key("KP5", 20.5, 3), key("KP6", 21.5, 3), key("KP+", 22.5, 3, height: 2),
-            key("KP1", 19.5, 4), key("KP2", 20.5, 4), key("KP3", 21.5, 4),
-            key("KP0", 19.5, 5, width: 2), key("KP.", 21.5, 5), key("KP Enter", 22.5, 4, height: 2)
+            key("home", 15.75, 1), key("page up", 16.75, 1),
+            key("delete", 14.75, 2, placement: .bottomLeading), key("end", 15.75, 2), key("page down", 16.75, 2),
+            // Extended Apple keyboards use four full-size arrow keys rather
+            // than the half-height arrows on compact Magic Keyboards.
+            key("↑", 15.75, 4),
+            key("←", 14.75, 5), key("↓", 15.75, 5), key("→", 16.75, 5),
+            key("Clear", 18, 1), key("KP=", 19, 1), key("KP/", 20, 1), key("KP*", 21, 1),
+            key("KP7", 18, 2), key("KP8", 19, 2), key("KP9", 20, 2), key("KP-", 21, 2),
+            key("KP4", 18, 3), key("KP5", 19, 3), key("KP6", 20, 3), key("KP+", 21, 3),
+            key("KP1", 18, 4), key("KP2", 19, 4), key("KP3", 20, 4),
+            key("KP0", 18, 5, width: 2), key("KP.", 20, 5), key("KP Enter", 21, 4, height: 2)
         ]
-        return KeyboardLayout(width: 23.5, height: 6, keys: keys)
+        return KeyboardLayout(width: 22, height: 6, keys: keys)
     }
 
     private static func mainKeys(
@@ -266,29 +289,43 @@ private struct KeyboardLayout {
     ) -> [KeyboardKeySpec] {
         var keys: [KeyboardKeySpec] = []
         if includeFunctionRow {
-            keys = [key("esc", 0, 0, width: 1.25, placement: .bottomLeading)]
-            keys += functionKeys(range: 1...12, startX: 2, includeSymbols: includeFunctionSymbols)
+            keys = [key("esc", 0, 0, width: 1.5, placement: .bottomLeading)]
+            keys += functionKeys(range: 1...12, startX: 1.5, includeSymbols: includeFunctionSymbols)
         }
         keys += row(["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="], y: 1)
-        keys.append(key("delete", 13, 1, width: 2, placement: .bottomTrailing))
+        keys.append(key("delete", 13, 1, width: includeStandardArrows ? 2 : 1.5, placement: .bottomTrailing))
         keys += row(Array("QWERTYUIOP").map(String.init) + ["[", "]"], y: 2, startX: 1.5)
         keys.append(key("tab", 0, 2, width: 1.5, placement: .bottomLeading))
-        keys.append(key("\\", 13.5, 2, width: 1.5))
+        keys.append(key("\\", 13.5, 2, width: includeStandardArrows ? 1.5 : 1))
         keys += row(Array("ASDFGHJKL").map(String.init) + [";", "'"], y: 3, startX: 1.75)
         keys.append(key("caps lock", 0, 3, width: 1.75, placement: .bottomLeading))
-        keys.append(key("return", 12.75, 3, width: 2.25, placement: .bottomTrailing))
+        keys.append(key("return", 12.75, 3, width: includeStandardArrows ? 2.25 : 1.75, placement: .bottomTrailing))
         keys += row(Array("ZXCVBNM").map(String.init) + [",", ".", "/"], y: 4, startX: 2.25)
         keys.append(key("⇧ shift", 0, 4, width: 2.25, modifier: .shift, placement: .bottomLeading))
-        keys.append(key("shift ⇧", 12.25, 4, width: 2.75, modifier: .shift, placement: .bottomTrailing))
-        keys += [
-            key("fn", 0, 5, placement: .bottomLeading),
-            key("control", 1, 5, modifier: .control, placement: .stackedModifier),
-            key("option", 2, 5, width: 1.25, modifier: .option, placement: .stackedModifier),
-            key("command", 3.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
-            key("space", 4.75, 5, width: includeStandardArrows ? 4.5 : 5.5),
-            key("command", includeStandardArrows ? 9.25 : 10.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
-            key("option", includeStandardArrows ? 10.75 : 11.75, 5, width: 1.25, modifier: .option, placement: .stackedModifier)
-        ]
+        keys.append(key("shift ⇧", 12.25, 4, width: includeStandardArrows ? 2.75 : 2.25, modifier: .shift, placement: .bottomTrailing))
+        if includeStandardArrows {
+            keys += [
+                key("fn", 0, 5, placement: .bottomLeading),
+                key("control", 1, 5, modifier: .control, placement: .stackedModifier),
+                key("option", 2, 5, width: 1.25, modifier: .option, placement: .stackedModifier),
+                key("command", 3.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
+                key("space", 4.75, 5, width: 4.5),
+                key("command", 9.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
+                key("option", 10.75, 5, width: 1.25, modifier: .option, placement: .stackedModifier)
+            ]
+        } else {
+            // The extended layout has paired Control/Option/Command keys. Its
+            // space bar spans precisely between the paired Command keys.
+            keys += [
+                key("control", 0, 5, width: 1.5, modifier: .control, placement: .stackedModifier),
+                key("option", 1.5, 5, width: 1.25, modifier: .option, placement: .stackedModifier),
+                key("command", 2.75, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
+                key("space", 4.25, 5, width: 6),
+                key("command", 10.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
+                key("option", 11.75, 5, width: 1.25, modifier: .option, placement: .stackedModifier),
+                key("control", 13, 5, width: 1.5, modifier: .control, placement: .stackedModifier)
+            ]
+        }
         if includeStandardArrows {
             keys += [
                 key("←", 12, 5.5, height: 0.5), key("↑", 13, 5, height: 0.5),
@@ -361,10 +398,19 @@ private enum KeyboardHardwareDetector {
             else { continue }
 
             let product = (values["Product"] as? String ?? "").lowercased()
-            if product.contains("virtual") || product.contains("karabiner") { continue }
+            let isVirtual = (values["HIDVirtualDevice"] as? NSNumber)?.boolValue == true
+            if isVirtual || product.contains("virtual") || product.contains("karabiner") { continue }
             let vendor = (values["VendorID"] as? NSNumber)?.intValue
             let productID = (values["ProductID"] as? NSNumber)?.intValue
-            if (vendor == 0x004C || vendor == 0x05AC), productID == 0x026C {
+            // Apple uses 0x004c for these keyboards over Bluetooth and 0x05ac
+            // over USB. 0x026c is the ANSI Magic Keyboard with Numeric
+            // Keypad attached to this Mac; the adjacent IDs are its ISO/JIS
+            // hardware variants. The product name cannot be the primary test
+            // because macOS substitutes a user's custom Bluetooth name.
+            let appleExtendedProductIDs: Set<Int> = [0x026C, 0x026D, 0x026E]
+            if (vendor == 0x004C || vendor == 0x05AC),
+               let productID,
+               appleExtendedProductIDs.contains(productID) {
                 return .numericKeypad
             }
             if product.contains("numeric keypad") || product.contains("extended keyboard") {

@@ -91,6 +91,13 @@ struct WindowLayoutCheatsheetView: View {
             .joined()
     }
 
+    private func modifierNames(_ modifiers: Set<MagnetShortcutModifier>) -> String {
+        MagnetShortcutModifier.allCases
+            .filter(modifiers.contains)
+            .map(\.title)
+            .joined(separator: " + ")
+    }
+
     private var visibleCommands: [MagnetShortcutCommand] {
         commands.filter {
             $0.orientation == orientation &&
@@ -99,8 +106,14 @@ struct WindowLayoutCheatsheetView: View {
         }
     }
 
-    private var sections: [String] {
-        Array(Set(visibleCommands.map(\.section))).sorted()
+    private var visibleGroups: [MagnetShortcutGroup] {
+        MagnetShortcutGroup.allCases.filter { group in
+            visibleCommands.contains { $0.group == group }
+        }
+    }
+
+    private func sections(in group: MagnetShortcutGroup) -> [String] {
+        Array(Set(visibleCommands.lazy.filter { $0.group == group }.map(\.section))).sorted()
     }
 
     private var commandColors: [String: Color] {
@@ -125,8 +138,9 @@ struct WindowLayoutCheatsheetView: View {
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(.secondary)
 
-                Text("\(modifierText(activeModifiers))/")
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                Text("Hold \(modifierText(activeModifiers)), press / twice to pin; press \(modifierText(activeModifiers))/ again to dismiss.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 if isPinned {
                     Text("Pinned")
@@ -152,8 +166,10 @@ struct WindowLayoutCheatsheetView: View {
                             HStack(spacing: 8) {
                                 Text(row.group.title)
                                     .frame(width: 72, alignment: .leading)
-                                Text(row.combinations.map { "\(modifierText($0))/" }.joined(separator: "   "))
-                                    .font(.system(.body, design: .rounded, weight: .semibold))
+                                Text(row.combinations.map {
+                                    "\(modifierText($0))/ — \(modifierNames($0)) + Slash"
+                                }.joined(separator: "   "))
+                                    .font(.system(.body, design: .rounded, weight: .medium))
                                 Spacer()
                             }
                             .foregroundStyle(isActive ? .primary : .secondary)
@@ -169,16 +185,25 @@ struct WindowLayoutCheatsheetView: View {
 
                     Divider()
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(sections, id: \.self) { section in
-                            VStack(alignment: .leading, spacing: 7) {
-                                Text(section)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 18) {
+                        ForEach(visibleGroups) { group in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(group.title)
+                                    .font(.headline)
 
-                                LazyVGrid(columns: commandColumns, alignment: .leading, spacing: 7) {
-                                    ForEach(visibleCommands.filter { $0.section == section }) { command in
-                                        commandRow(command)
+                                ForEach(sections(in: group), id: \.self) { section in
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        Text(section)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+
+                                        LazyVGrid(columns: commandColumns, alignment: .leading, spacing: 7) {
+                                            ForEach(visibleCommands.filter {
+                                                $0.group == group && $0.section == section
+                                            }) { command in
+                                                commandRow(command)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -209,7 +234,7 @@ struct WindowLayoutCheatsheetView: View {
                 command: command,
                 color: commandColors[command.id] ?? .accentColor)
                 .frame(width: 28, height: 20)
-            Text(command.name)
+            Text(command.displayName)
                 .lineLimit(1)
             Spacer(minLength: 8)
             Text(command.shortcutText)
@@ -230,7 +255,8 @@ private struct WindowLayoutCheatsheetMetrics {
     ) {
         let sections = Dictionary(grouping: commands, by: \.section)
         let maximumHeight = max(500, availableSize.height - 32)
-        let fixedHeight = 145 + CGFloat(modifierRowCount) * 31
+        let groupCount = Set(commands.map(\.group)).count
+        let fixedHeight = 145 + CGFloat(modifierRowCount) * 31 + CGFloat(groupCount) * 28
 
         var selectedColumns = 1
         var requiredHeight = maximumHeight

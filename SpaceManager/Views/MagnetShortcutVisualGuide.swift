@@ -49,7 +49,7 @@ struct MagnetShortcutVisualGuide: View {
 
                     if let command = selectedCommand {
                         HStack {
-                            Text(command.name)
+                            Text(command.displayName)
                                 .font(.headline)
                             Spacer()
                             Text(command.shortcutText)
@@ -141,7 +141,7 @@ struct MagnetShortcutVisualGuide: View {
                                 Text(command.shortcutText)
                                     .font(.system(.caption, design: .rounded, weight: .semibold))
                                 if proxy.size.width > 100 && proxy.size.height > 50 {
-                                    Text(command.name)
+                                    Text(command.displayName)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)

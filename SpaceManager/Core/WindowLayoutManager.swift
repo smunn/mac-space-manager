@@ -32,10 +32,13 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var cheatsheetModifiersByHotKeyID: [UInt32: Set<MagnetShortcutModifier>] = [:]
     private var hotKeys: [EventHotKeyRef] = []
     private var eventHandler: EventHandlerRef?
+    private var cheatsheetEventTap: CFMachPort?
+    private var cheatsheetEventTapSource: CFRunLoopSource?
+    private var cheatsheetEventTapContext: CheatsheetEventTapContext?
     private var observers: [NSObjectProtocol] = []
     private var magnetMonitor: Timer?
     private weak var lastExternalApplication: NSRunningApplication?
-    private var restoreFrames: [WindowIdentity: CGRect] = [:]
+    private var restoreSequences: [WindowIdentity: WindowLayoutRestoreSequence] = [:]
     private var cheatsheetController: WindowLayoutCheatsheetController?
     private var cheatsheetShortcutIsDown = false
     private var cheatsheetKeyMonitor: Timer?
@@ -125,7 +128,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             addHeader(section, to: menu)
             for command in grouped[section, default: []] {
                 let item = NSMenuItem(
-                    title: command.name,
+                    title: command.displayName,
                     action: #selector(applyMenuCommand(_:)),
                     keyEquivalent: "")
                 item.target = self
@@ -140,7 +143,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             menu.addItem(.separator())
             addHeader(section, to: menu)
             for command in grouped[section, default: []] {
-                let item = NSMenuItem(title: command.name, action: #selector(applyMenuCommand(_:)), keyEquivalent: "")
+                let item = NSMenuItem(title: command.displayName, action: #selector(applyMenuCommand(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = command.id
                 item.isEnabled = isEnabled
@@ -265,6 +268,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         let modifierSets = Set(commands.lazy.filter(\.isEnabled).map(\.modifiers))
             .filter { $0.count >= 2 }
             .sorted { Self.carbonModifiers(for: $0) < Self.carbonModifiers(for: $1) }
+        installCheatsheetEventTap(for: Set(modifierSets))
         for (index, modifiers) in modifierSets.enumerated() {
             let id = Self.cheatsheetHotKeyIDBase + UInt32(index)
             var reference: EventHotKeyRef?
@@ -322,6 +326,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func unregisterHotKeys() {
         hideCheatsheet()
+        removeCheatsheetEventTap()
         hotKeys.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()
         commandsByHotKeyID.removeAll()
@@ -334,38 +339,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func handleHotKey(_ id: UInt32, isPressed: Bool) {
         if let modifiers = cheatsheetModifiersByHotKeyID[id] {
-            if isPressed {
-                guard !cheatsheetShortcutIsDown else { return }
-                cheatsheetShortcutIsDown = true
-                let now = ProcessInfo.processInfo.systemUptime
-
-                if cheatsheetIsPinned {
-                    if activeCheatsheetModifiers == modifiers {
-                        lastCheatsheetPress = nil
-                        hideCheatsheet()
-                    } else {
-                        activeCheatsheetModifiers = modifiers
-                        showCheatsheet(modifiers: modifiers)
-                    }
-                    return
-                }
-
-                let isDoubleTap = lastCheatsheetPress.map {
-                    $0.modifiers == modifiers && now - $0.timestamp <= Self.cheatsheetDoubleTapInterval
-                } ?? false
-                lastCheatsheetPress = (modifiers, now)
-                activeCheatsheetModifiers = modifiers
-                if isDoubleTap {
-                    cheatsheetIsPinned = true
-                    cheatsheetKeyMonitor?.invalidate()
-                    cheatsheetKeyMonitor = nil
-                }
-                showCheatsheet(modifiers: modifiers)
-                if !cheatsheetIsPinned { startCheatsheetKeyMonitor() }
-            } else {
-                cheatsheetShortcutIsDown = false
-                if !cheatsheetIsPinned { hideCheatsheet() }
-            }
+            handleCheatsheetKey(modifiers: modifiers, isPressed: isPressed)
             return
         }
         if id == Self.settingsHotKeyID {
@@ -383,15 +357,99 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         apply(command, to: window)
     }
 
+    fileprivate func handleCheatsheetKey(
+        modifiers: Set<MagnetShortcutModifier>,
+        isPressed: Bool
+    ) {
+        if isPressed {
+            guard !cheatsheetShortcutIsDown else { return }
+            cheatsheetShortcutIsDown = true
+            let now = ProcessInfo.processInfo.systemUptime
+
+            if cheatsheetIsPinned {
+                if activeCheatsheetModifiers == modifiers {
+                    lastCheatsheetPress = nil
+                    hideCheatsheet()
+                } else {
+                    activeCheatsheetModifiers = modifiers
+                    showCheatsheet(modifiers: modifiers)
+                }
+                return
+            }
+
+            let isDoubleTap = lastCheatsheetPress.map {
+                $0.modifiers == modifiers && now - $0.timestamp <= Self.cheatsheetDoubleTapInterval
+            } ?? false
+            lastCheatsheetPress = (modifiers, now)
+            activeCheatsheetModifiers = modifiers
+            if isDoubleTap {
+                cheatsheetIsPinned = true
+                cheatsheetKeyMonitor?.invalidate()
+                cheatsheetKeyMonitor = nil
+            }
+            showCheatsheet(modifiers: modifiers)
+            if !cheatsheetIsPinned { startCheatsheetKeyMonitor() }
+        } else {
+            cheatsheetShortcutIsDown = false
+            if !cheatsheetIsPinned { hideCheatsheet() }
+        }
+    }
+
+    private func installCheatsheetEventTap(
+        for modifierSets: Set<Set<MagnetShortcutModifier>>
+    ) {
+        removeCheatsheetEventTap()
+        guard !modifierSets.isEmpty else { return }
+
+        let context = CheatsheetEventTapContext(modifierSets: modifierSets)
+        let eventMask = (CGEventMask(1) << CGEventType.keyDown.rawValue) |
+            (CGEventMask(1) << CGEventType.keyUp.rawValue)
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: eventMask,
+            callback: cheatsheetEventTapCallback,
+            userInfo: Unmanaged.passUnretained(context).toOpaque())
+        else { return }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        cheatsheetEventTapContext = context
+        cheatsheetEventTap = tap
+        cheatsheetEventTapSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func removeCheatsheetEventTap() {
+        if let source = cheatsheetEventTapSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        }
+        if let tap = cheatsheetEventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        cheatsheetEventTapSource = nil
+        cheatsheetEventTap = nil
+        cheatsheetEventTapContext = nil
+    }
+
+    fileprivate func reenableCheatsheetEventTap() {
+        if let tap = cheatsheetEventTap {
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+    }
+
     private func apply(_ command: MagnetShortcutCommand, to window: FocusedWindow) {
         let operation = Self.operation(for: command.name)
         if operation == .restore {
-            guard let frame = restoreFrames.removeValue(forKey: window.identity) else { return }
-            set(frame: frame, for: window.element, attemptsRemaining: 3)
+            guard let sequence = restoreSequences[window.identity],
+                  set(frame: sequence.originalFrame, for: window.element, attemptsRemaining: 3)
+            else { return }
+            restoreSequences.removeValue(forKey: window.identity)
             return
         }
 
-        restoreFrames[window.identity] = restoreFrames[window.identity] ?? window.frame
         let sourceScreen = screen(containing: window.frame)
         let target: CGRect
         if operation == .nextDisplay || operation == .previousDisplay {
@@ -411,12 +469,21 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 width: visible.width * command.width,
                 height: visible.height * command.height).integral
         }
-        set(frame: target, for: window.element, attemptsRemaining: 3)
+        guard set(frame: target, for: window.element, attemptsRemaining: 3) else { return }
+
+        if var sequence = restoreSequences[window.identity] {
+            sequence.recordAppliedMove(from: window.frame, to: target)
+            restoreSequences[window.identity] = sequence
+        } else {
+            restoreSequences[window.identity] = WindowLayoutRestoreSequence(
+                originalFrame: window.frame,
+                lastAppliedFrame: target)
+        }
     }
 
     static func operation(for name: String) -> WindowLayoutOperation {
         switch name.lowercased() {
-        case "restore": return .restore
+        case "restore", "restore original": return .restore
         case "next display": return .nextDisplay
         case "previous display": return .previousDisplay
         case "center": return .center
@@ -425,12 +492,13 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
     }
 
-    private func set(frame: CGRect, for element: AXUIElement, attemptsRemaining: Int) {
+    @discardableResult
+    private func set(frame: CGRect, for element: AXUIElement, attemptsRemaining: Int) -> Bool {
         var position = frame.origin
         var size = frame.size
         guard let positionValue = AXValueCreate(.cgPoint, &position),
               let sizeValue = AXValueCreate(.cgSize, &size)
-        else { return }
+        else { return false }
 
         let positionStatus = AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, positionValue)
         let sizeStatus = AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, sizeValue)
@@ -438,14 +506,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         guard positionStatus == .success, sizeStatus == .success else {
             NSLog("WindowLayoutManager: AX frame update failed position=%d size=%d", positionStatus.rawValue, sizeStatus.rawValue)
             NSSound.beep()
-            return
+            return false
         }
 
-        guard attemptsRemaining > 1 else { return }
+        guard attemptsRemaining > 1 else { return true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
             guard let self, let actual = self.frame(of: element), !self.framesMatch(actual, frame) else { return }
             self.set(frame: frame, for: element, attemptsRemaining: attemptsRemaining - 1)
         }
+        return true
     }
 
     private func focusedWindow() -> FocusedWindow? {
@@ -720,7 +789,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             guard let application else { return }
             Task { @MainActor in
                 guard let self else { return }
-                self.restoreFrames = self.restoreFrames.filter { $0.key.pid != application.processIdentifier }
+                self.restoreSequences = self.restoreSequences.filter { $0.key.pid != application.processIdentifier }
                 if self.lastExternalApplication?.processIdentifier == application.processIdentifier {
                     self.lastExternalApplication = nil
                 }
@@ -804,6 +873,23 @@ enum WindowLayoutOperation: Equatable {
     case maximize
 }
 
+struct WindowLayoutRestoreSequence: Equatable {
+    private(set) var originalFrame: CGRect
+    private(set) var lastAppliedFrame: CGRect
+
+    mutating func recordAppliedMove(from currentFrame: CGRect, to targetFrame: CGRect) {
+        if !Self.framesMatch(currentFrame, lastAppliedFrame) {
+            originalFrame = currentFrame
+        }
+        lastAppliedFrame = targetFrame
+    }
+
+    private static func framesMatch(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
+        abs(lhs.minX - rhs.minX) <= 2 && abs(lhs.minY - rhs.minY) <= 2 &&
+        abs(lhs.width - rhs.width) <= 2 && abs(lhs.height - rhs.height) <= 2
+    }
+}
+
 private struct WindowIdentity: Hashable {
     let pid: pid_t
     let windowID: CGWindowID
@@ -818,6 +904,85 @@ private struct FocusedWindow {
     let identity: WindowIdentity
     let element: AXUIElement
     let frame: CGRect
+}
+
+struct CheatsheetSlashEventRouting {
+    static let slashKeyCode: Int64 = 44
+
+    static func modifiers(from flags: CGEventFlags) -> Set<MagnetShortcutModifier> {
+        var modifiers: Set<MagnetShortcutModifier> = []
+        if flags.contains(.maskControl) { modifiers.insert(.control) }
+        if flags.contains(.maskAlternate) { modifiers.insert(.option) }
+        if flags.contains(.maskShift) { modifiers.insert(.shift) }
+        if flags.contains(.maskCommand) { modifiers.insert(.command) }
+        return modifiers
+    }
+
+    static func matchedModifiers(
+        keyCode: Int64,
+        flags: CGEventFlags,
+        registered: Set<Set<MagnetShortcutModifier>>
+    ) -> Set<MagnetShortcutModifier>? {
+        guard keyCode == slashKeyCode else { return nil }
+        let modifiers = modifiers(from: flags)
+        return registered.contains(modifiers) ? modifiers : nil
+    }
+}
+
+private final class CheatsheetEventTapContext {
+    let modifierSets: Set<Set<MagnetShortcutModifier>>
+    var activeModifiers: Set<MagnetShortcutModifier>?
+
+    init(modifierSets: Set<Set<MagnetShortcutModifier>>) {
+        self.modifierSets = modifierSets
+    }
+}
+
+private let cheatsheetEventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        Task { @MainActor in
+            WindowLayoutManager.shared.reenableCheatsheetEventTap()
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    guard (type == .keyDown || type == .keyUp), let userInfo else {
+        return Unmanaged.passUnretained(event)
+    }
+    let context = Unmanaged<CheatsheetEventTapContext>
+        .fromOpaque(userInfo)
+        .takeUnretainedValue()
+    let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+    let modifiers: Set<MagnetShortcutModifier>?
+    if type == .keyDown {
+        modifiers = CheatsheetSlashEventRouting.matchedModifiers(
+            keyCode: keyCode,
+            flags: event.flags,
+            registered: context.modifierSets)
+        if let modifiers { context.activeModifiers = modifiers }
+    } else if keyCode == CheatsheetSlashEventRouting.slashKeyCode {
+        // A user can release a modifier before releasing Slash. The key-up
+        // event then no longer carries the same modifier flags, so retain the
+        // combination that matched key-down instead of leaving the pinned
+        // state machine stuck in its pressed state.
+        modifiers = context.activeModifiers ?? CheatsheetSlashEventRouting.matchedModifiers(
+            keyCode: keyCode,
+            flags: event.flags,
+            registered: context.modifierSets)
+        context.activeModifiers = nil
+    } else {
+        modifiers = nil
+    }
+    guard let modifiers else { return Unmanaged.passUnretained(event) }
+
+    Task { @MainActor in
+        WindowLayoutManager.shared.handleCheatsheetKey(
+            modifiers: modifiers,
+            isPressed: type == .keyDown)
+    }
+    // Prevent macOS's Command-Shift-/ Help shortcut (and any other system
+    // handling) only when this is one of our exact cheatsheet combinations.
+    return nil
 }
 
 private enum WindowLayoutError: LocalizedError {
