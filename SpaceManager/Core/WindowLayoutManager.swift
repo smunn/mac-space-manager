@@ -20,7 +20,6 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
 
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
-    private static let cheatsheetHotKeyIDBase: UInt32 = 900
     private static let settingsHotKeyID: UInt32 = 990
     private static let cheatsheetDoubleTapInterval: TimeInterval = 0.45
     static let settingsShortcutText = "⌃⌥⌘,"
@@ -29,7 +28,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         carbonModifiers: UInt32(controlKey | optionKey | cmdKey))
     private var commands: [MagnetShortcutCommand] = []
     private var commandsByHotKeyID: [UInt32: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
-    private var cheatsheetModifiersByHotKeyID: [UInt32: Set<MagnetShortcutModifier>] = [:]
+    private var cheatsheetModifierSets: Set<Set<MagnetShortcutModifier>> = []
     private var hotKeys: [EventHotKeyRef] = []
     private var eventHandler: EventHandlerRef?
     private var cheatsheetEventTap: CFMachPort?
@@ -40,8 +39,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private weak var lastExternalApplication: NSRunningApplication?
     private var restoreSequences: [WindowIdentity: WindowLayoutRestoreSequence] = [:]
     private var cheatsheetController: WindowLayoutCheatsheetController?
+    private let keyboardInputDeviceMonitor = KeyboardInputDeviceMonitor()
+    private var activeCheatsheetKeyboardStyle: MacKeyboardStyle?
     private var cheatsheetShortcutIsDown = false
-    private var cheatsheetKeyMonitor: Timer?
     private var activeCheatsheetModifiers: Set<MagnetShortcutModifier>?
     private var cheatsheetIsPinned = false
     private var lastCheatsheetPress: (modifiers: Set<MagnetShortcutModifier>, timestamp: TimeInterval)?
@@ -55,6 +55,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         isMagnetRunning = false
         super.init()
 
+        keyboardInputDeviceMonitor.onSlashStyle = { [weak self] style in
+            Task { @MainActor in
+                self?.updateCheatsheetKeyboardStyle(style)
+            }
+        }
         rememberExternalApplication(NSWorkspace.shared.frontmostApplication)
         observeApplications()
         observeUserInteraction()
@@ -268,24 +273,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         let modifierSets = Set(commands.lazy.filter(\.isEnabled).map(\.modifiers))
             .filter { $0.count >= 2 }
             .sorted { Self.carbonModifiers(for: $0) < Self.carbonModifiers(for: $1) }
-        installCheatsheetEventTap(for: Set(modifierSets))
-        for (index, modifiers) in modifierSets.enumerated() {
-            let id = Self.cheatsheetHotKeyIDBase + UInt32(index)
-            var reference: EventHotKeyRef?
-            let registration = RegisterEventHotKey(
-                44,
-                Self.carbonModifiers(for: modifiers),
-                EventHotKeyID(signature: Self.hotKeySignature, id: id),
-                GetApplicationEventTarget(),
-                0,
-                &reference)
-            guard registration == noErr, let reference else {
-                unregisterHotKeys()
-                throw WindowLayoutError.hotKeyRegistration(registration)
-            }
-            hotKeys.append(reference)
-            cheatsheetModifiersByHotKeyID[id] = modifiers
-        }
+        cheatsheetModifierSets = Set(modifierSets)
+        installCheatsheetEventTap(for: cheatsheetModifierSets)
+        keyboardInputDeviceMonitor.start()
 
         var settingsReference: EventHotKeyRef?
         let settingsRegistration = RegisterEventHotKey(
@@ -327,10 +317,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private func unregisterHotKeys() {
         hideCheatsheet()
         removeCheatsheetEventTap()
+        keyboardInputDeviceMonitor.stop()
         hotKeys.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()
         commandsByHotKeyID.removeAll()
-        cheatsheetModifiersByHotKeyID.removeAll()
+        cheatsheetModifierSets.removeAll()
         if let eventHandler {
             RemoveEventHandler(eventHandler)
             self.eventHandler = nil
@@ -338,10 +329,6 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func handleHotKey(_ id: UInt32, isPressed: Bool) {
-        if let modifiers = cheatsheetModifiersByHotKeyID[id] {
-            handleCheatsheetKey(modifiers: modifiers, isPressed: isPressed)
-            return
-        }
         if id == Self.settingsHotKeyID {
             guard isPressed else { return }
             hideCheatsheet()
@@ -367,13 +354,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             let now = ProcessInfo.processInfo.systemUptime
 
             if cheatsheetIsPinned {
-                if activeCheatsheetModifiers == modifiers {
-                    lastCheatsheetPress = nil
-                    hideCheatsheet()
-                } else {
-                    activeCheatsheetModifiers = modifiers
-                    showCheatsheet(modifiers: modifiers)
-                }
+                lastCheatsheetPress = nil
+                hideCheatsheet()
                 return
             }
 
@@ -384,11 +366,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             activeCheatsheetModifiers = modifiers
             if isDoubleTap {
                 cheatsheetIsPinned = true
-                cheatsheetKeyMonitor?.invalidate()
-                cheatsheetKeyMonitor = nil
             }
             showCheatsheet(modifiers: modifiers)
-            if !cheatsheetIsPinned { startCheatsheetKeyMonitor() }
         } else {
             cheatsheetShortcutIsDown = false
             if !cheatsheetIsPinned { hideCheatsheet() }
@@ -652,6 +631,13 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private func showCheatsheet(modifiers: Set<MagnetShortcutModifier>) {
         let targetScreen = cheatsheetTargetScreen()
         let orientation = self.orientation(for: targetScreen)
+        if activeCheatsheetKeyboardStyle == nil {
+            // Direct raw-HID access to the built-in keyboard is blocked on
+            // current macOS versions. The monitor watches only extended Apple
+            // keyboards, so a trigger without an external match is built-in.
+            activeCheatsheetKeyboardStyle =
+                keyboardInputDeviceMonitor.recentSlashStyle() ?? .standard
+        }
         if cheatsheetController == nil {
             cheatsheetController = WindowLayoutCheatsheetController()
         }
@@ -660,49 +646,36 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             orientation: orientation,
             activeModifiers: modifiers,
             isPinned: cheatsheetIsPinned,
-            screen: targetScreen)
+            screen: targetScreen,
+            keyboardStyle: activeCheatsheetKeyboardStyle,
+            onSelectModifiers: { [weak self] selectedModifiers in
+                self?.selectPinnedCheatsheetModifiers(selectedModifiers)
+            })
     }
 
-    private func startCheatsheetKeyMonitor() {
-        cheatsheetKeyMonitor?.invalidate()
-        cheatsheetKeyMonitor = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                let flags = CGEventSource.flagsState(.combinedSessionState)
-                let slashIsDown = CGEventSource.keyState(.combinedSessionState, key: 44)
-                guard slashIsDown else {
-                    self.hideCheatsheet()
-                    return
-                }
-                let modifiers = Self.modifiers(from: flags)
-                guard self.cheatsheetModifiersByHotKeyID.values.contains(modifiers) else {
-                    self.hideCheatsheet()
-                    return
-                }
-                if modifiers != self.activeCheatsheetModifiers {
-                    self.activeCheatsheetModifiers = modifiers
-                    self.showCheatsheet(modifiers: modifiers)
-                }
-            }
-        }
+    private func updateCheatsheetKeyboardStyle(_ style: MacKeyboardStyle) {
+        guard cheatsheetShortcutIsDown || cheatsheetIsPinned,
+              activeCheatsheetKeyboardStyle != style,
+              let modifiers = activeCheatsheetModifiers
+        else { return }
+        activeCheatsheetKeyboardStyle = style
+        showCheatsheet(modifiers: modifiers)
+    }
+
+    private func selectPinnedCheatsheetModifiers(
+        _ modifiers: Set<MagnetShortcutModifier>
+    ) {
+        guard cheatsheetIsPinned, cheatsheetModifierSets.contains(modifiers) else { return }
+        activeCheatsheetModifiers = modifiers
+        showCheatsheet(modifiers: modifiers)
     }
 
     private func hideCheatsheet() {
         cheatsheetShortcutIsDown = false
         cheatsheetIsPinned = false
-        cheatsheetKeyMonitor?.invalidate()
-        cheatsheetKeyMonitor = nil
+        activeCheatsheetKeyboardStyle = nil
         activeCheatsheetModifiers = nil
         cheatsheetController?.hide()
-    }
-
-    private static func modifiers(from flags: CGEventFlags) -> Set<MagnetShortcutModifier> {
-        var modifiers: Set<MagnetShortcutModifier> = []
-        if flags.contains(.maskControl) { modifiers.insert(.control) }
-        if flags.contains(.maskAlternate) { modifiers.insert(.option) }
-        if flags.contains(.maskShift) { modifiers.insert(.shift) }
-        if flags.contains(.maskCommand) { modifiers.insert(.command) }
-        return modifiers
     }
 
     private func observeUserInteraction() {

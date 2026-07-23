@@ -7,10 +7,10 @@ final class WindowLayoutTests: XCTestCase {
 
     func testBuiltInHorizontalCornersUseHalfWidthQuadrantsAndUnifiedKeys() throws {
         let source: [(String, MagnetTargetFrame, String)] = [
-            ("command:default.name.topLeft", .init(x: 0, y: 0, width: 12, height: 6), "Q"),
-            ("command:default.name.topRight", .init(x: 12, y: 0, width: 12, height: 6), "W"),
-            ("command:default.name.bottomLeft", .init(x: 0, y: 6, width: 12, height: 6), "A"),
-            ("command:default.name.bottomRight", .init(x: 12, y: 6, width: 12, height: 6), "S")
+            ("command:default.name.topLeft", .init(x: 0, y: 0, width: 12, height: 6), "U"),
+            ("command:default.name.topRight", .init(x: 12, y: 0, width: 12, height: 6), "I"),
+            ("command:default.name.bottomLeft", .init(x: 0, y: 6, width: 12, height: 6), "J"),
+            ("command:default.name.bottomRight", .init(x: 12, y: 6, width: 12, height: 6), "K")
         ]
         let configuration = makeConfiguration(horizontal: source.enumerated().map { index, item in
             makeCommand(
@@ -229,6 +229,28 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertTrue(halves.allSatisfy { $0.modifiers == [.control, .option] })
         XCTAssertTrue(basics.allSatisfy { $0.modifiers == [.option, .command] })
         XCTAssertTrue(displays.allSatisfy { $0.modifiers == [.control, .option, .command] })
+    }
+
+    func testPortraitSplitGridsUseContiguousRightAlignedKeyboardBlocks() {
+        let expected: [MagnetShortcutGroup: [String]] = [
+            .thirds: ["I", "K", "O", "L", "P", ";"],
+            .quarters: ["U", "J", "I", "K", "O", "L", "P", ";"],
+            .sixths: ["T", "G", "Y", "H", "U", "J", "I", "K", "O", "L", "P", ";"],
+            .eighths: ["E", "D", "R", "F", "T", "G", "Y", "H", "U", "J", "I", "K", "O", "L", "P", ";"]
+        ]
+
+        for (group, keys) in expected {
+            let commands = MagnetShortcutCommand.standardSet
+                .filter {
+                    $0.orientation == .portrait &&
+                    $0.group == group &&
+                    $0.section == "Split"
+                }
+                .sorted {
+                    $0.y == $1.y ? $0.x < $1.x : $0.y < $1.y
+                }
+            XCTAssertEqual(commands.map(\.destinationKey), keys)
+        }
     }
 
     func testRestoreSequenceKeepsOriginalAcrossManagedMoves() {

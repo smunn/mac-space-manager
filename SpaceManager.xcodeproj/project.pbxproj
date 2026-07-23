@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		01F247F34B89EA9F1382185B /* MagnetShortcutVisualGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */; };
+		070D55FA33D9602F263A9519 /* MacKeyboardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */; };
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
@@ -19,6 +20,7 @@
 		356A486F57BE432D0C285854 /* SpaceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1761DA8F106DAD6C9F477D /* SpaceObserver.swift */; };
 		35CEEC8DA0FF59D622D38FD4 /* WorkspaceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E24B9AD41807749EE20B419 /* WorkspaceConfig.swift */; };
 		36EF5488F31DCCDF32170042 /* Space.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703E83622E4EE8A035214A5A /* Space.swift */; };
+		3861A00F36F20075D5670561 /* KeyboardInputDeviceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */; };
 		395E9E0BE6F06804E330AF08 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */; };
 		3CA4D8E78B9433E0C9B72FB8 /* SpaceWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDB5ABC3FBCE1E8E6B1A8576 /* SpaceWindow.swift */; };
 		4F637416B7091FFFD42D867A /* MissionControlAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */; };
@@ -128,7 +130,9 @@
 		E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceAutomation.swift; sourceTree = "<group>"; };
 		E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutEditorAdapter.swift; sourceTree = "<group>"; };
 		E4FF5B5E97D65212F53962BB /* View+DebugLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+DebugLabel.swift"; sourceTree = "<group>"; };
+		F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacKeyboardStyle.swift; sourceTree = "<group>"; };
 		F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutShortcutStore.swift; sourceTree = "<group>"; };
+		FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardInputDeviceMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -137,6 +141,7 @@
 			children = (
 				57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */,
 				03B99185D9C24C01012E8373 /* GitHubIssue.swift */,
+				F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */,
 				092DF061F688877214A88C9C /* MagnetShortcutModels.swift */,
 				703E83622E4EE8A035214A5A /* Space.swift */,
 				A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */,
@@ -160,6 +165,7 @@
 			children = (
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
 				4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */,
+				FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */,
 				E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */,
 				2196E4946DDBA0E3FB3790BD /* MagnetShortcutEditorCoordinator.swift */,
 				C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */,
@@ -376,7 +382,9 @@
 				B6389B5374D0DC9DD7D5D685 /* Extensions.swift in Sources */,
 				8F9A388C81D2E5728AB512AF /* GitHubIssue.swift in Sources */,
 				24A9D30786C44A008BDA5342 /* GitHubIssueFetcher.swift in Sources */,
+				3861A00F36F20075D5670561 /* KeyboardInputDeviceMonitor.swift in Sources */,
 				16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */,
+				070D55FA33D9602F263A9519 /* MacKeyboardStyle.swift in Sources */,
 				BAB71C62BD296928E7E6AF80 /* MacKeyboardView.swift in Sources */,
 				FAD3E7233747EED2C11B3847 /* MagnetShortcutConfigurationView.swift in Sources */,
 				567F3FFB06A59C22CFD17A4A /* MagnetShortcutEditorAdapter.swift in Sources */,

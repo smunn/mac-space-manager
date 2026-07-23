@@ -3,7 +3,6 @@
 //  SpaceManager
 //
 
-import IOKit
 import SwiftUI
 
 struct MacKeyboardView: View {
@@ -11,12 +10,14 @@ struct MacKeyboardView: View {
     let highlightedModifiers: Set<MagnetShortcutModifier>
     let highlightedKeys: [String: Color]
     let modifierColor: Color
+    let keyboardStyleOverride: MacKeyboardStyle?
 
     init(
         highlightedModifiers: Set<MagnetShortcutModifier>,
         highlightedKey: String,
         highlightColor: Color = .accentColor,
-        modifierColor: Color = Color(nsColor: .labelColor)
+        modifierColor: Color = Color(nsColor: .labelColor),
+        keyboardStyleOverride: MacKeyboardStyle? = nil
     ) {
         _keyboardStyleRaw = AppStorage(
             wrappedValue: KeyboardHardwareDetector.detectedStyle.rawValue,
@@ -25,12 +26,14 @@ struct MacKeyboardView: View {
         self.highlightedKeys = WindowLayoutCommandColors.keyboardHighlights(
             for: [(highlightedKey, highlightColor)])
         self.modifierColor = modifierColor
+        self.keyboardStyleOverride = keyboardStyleOverride
     }
 
     init(
         highlightedModifiers: Set<MagnetShortcutModifier>,
         highlightedKeys: [String: Color],
-        modifierColor: Color = Color(nsColor: .labelColor)
+        modifierColor: Color = Color(nsColor: .labelColor),
+        keyboardStyleOverride: MacKeyboardStyle? = nil
     ) {
         _keyboardStyleRaw = AppStorage(
             wrappedValue: KeyboardHardwareDetector.detectedStyle.rawValue,
@@ -38,20 +41,23 @@ struct MacKeyboardView: View {
         self.highlightedModifiers = highlightedModifiers
         self.highlightedKeys = highlightedKeys
         self.modifierColor = modifierColor
+        self.keyboardStyleOverride = keyboardStyleOverride
     }
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack {
-                Spacer()
-                Picker("Keyboard", selection: keyboardStyleBinding) {
-                    ForEach(MacKeyboardStyle.allCases) { style in
-                        Text(style.title).tag(style)
+            if keyboardStyleOverride == nil {
+                HStack {
+                    Spacer()
+                    Picker("Keyboard", selection: keyboardStyleBinding) {
+                        ForEach(MacKeyboardStyle.allCases) { style in
+                            Text(style.title).tag(style)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 230)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 230)
             }
 
             GeometryReader { proxy in
@@ -98,7 +104,9 @@ struct MacKeyboardView: View {
     }
 
     private var keyboardStyle: MacKeyboardStyle {
-        MacKeyboardStyle(rawValue: keyboardStyleRaw) ?? KeyboardHardwareDetector.detectedStyle
+        keyboardStyleOverride
+            ?? MacKeyboardStyle(rawValue: keyboardStyleRaw)
+            ?? KeyboardHardwareDetector.detectedStyle
     }
 
     private var keyboardStyleBinding: Binding<MacKeyboardStyle> {
@@ -118,14 +126,6 @@ struct MacKeyboardView: View {
         value.replacingOccurrences(of: " ", with: "").lowercased()
     }
 
-}
-
-enum MacKeyboardStyle: String, CaseIterable, Identifiable {
-    case standard
-    case numericKeypad
-
-    var id: String { rawValue }
-    var title: String { self == .standard ? "Standard" : "Numeric Keypad" }
 }
 
 private struct KeyboardKeySpec: Identifiable {
@@ -150,12 +150,13 @@ private enum KeyboardLabelPlacement {
 private struct KeyboardKeyView: View {
     let item: KeyboardKeySpec
     let highlightColor: Color?
+    var isCompact = false
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                 .fill(highlightColor?.opacity(0.2) ?? Color(nsColor: .windowBackgroundColor))
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                 .stroke(highlightColor ?? Color.secondary.opacity(0.35), lineWidth: highlightColor == nil ? 1 : 2)
 
             keyLabel
@@ -169,9 +170,9 @@ private struct KeyboardKeyView: View {
         if item.labelPlacement == .stackedModifier, let modifier = item.modifier {
             VStack(spacing: 0) {
                 Text(modifier.glyph)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .font(.system(size: isCompact ? 8 : 10, weight: .medium, design: .rounded))
                 Text(item.label.lowercased())
-                    .font(.system(size: 6.5, weight: .regular, design: .rounded))
+                    .font(.system(size: isCompact ? 5 : 6.5, weight: .regular, design: .rounded))
                     .minimumScaleFactor(0.5)
                     .allowsTightening(true)
                     .lineLimit(1)
@@ -179,8 +180,8 @@ private struct KeyboardKeyView: View {
         } else {
             labelContents
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 5)
+                .padding(.horizontal, isCompact ? 2 : 3)
+                .padding(.vertical, isCompact ? 2 : 5)
         }
     }
 
@@ -188,7 +189,9 @@ private struct KeyboardKeyView: View {
         VStack(spacing: 1) {
             if let symbol = item.symbol {
                 Image(systemName: symbol)
-                    .font(.system(size: item.label == "touch id" ? 15 : 10, weight: .medium))
+                    .font(.system(
+                        size: isCompact ? 8 : (item.label == "touch id" ? 15 : 10),
+                        weight: .medium))
             }
             if item.label != "touch id" {
                 Text(displayLabel)
@@ -204,6 +207,9 @@ private struct KeyboardKeyView: View {
     }
 
     private var labelFontSize: CGFloat {
+        if isCompact {
+            return displayLabel.count > 5 ? 7 : 9
+        }
         switch displayLabel.count {
         case 9...: return 6
         case 7...: return 7
@@ -229,6 +235,66 @@ private struct KeyboardKeyView: View {
                 .lowercased()
         }
         return item.label.lowercased()
+    }
+}
+
+struct KeyboardShortcutView: View {
+    let modifiers: Set<MagnetShortcutModifier>
+    let key: String
+    let color: Color
+
+    init(
+        modifiers: Set<MagnetShortcutModifier>,
+        key: String,
+        color: Color = .accentColor
+    ) {
+        self.modifiers = modifiers
+        self.key = key
+        self.color = color
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(MagnetShortcutModifier.allCases.filter(modifiers.contains)) { modifier in
+                keycap(label: modifier.title, modifier: modifier)
+            }
+            keycap(label: key)
+        }
+        .fixedSize()
+        .debugLabel("KeyboardShortcutView")
+    }
+
+    private func keycap(
+        label: String,
+        modifier: MagnetShortcutModifier? = nil
+    ) -> some View {
+        KeyboardKeyView(
+            item: KeyboardKeySpec(
+                id: modifier?.rawValue ?? label,
+                label: label,
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+                modifier: modifier,
+                symbol: nil,
+                labelPlacement: modifier == nil ? .center : .stackedModifier),
+            highlightColor: color,
+            isCompact: true)
+            .frame(width: keycapWidth(label: label, modifier: modifier), height: 24)
+    }
+
+    private func keycapWidth(
+        label: String,
+        modifier: MagnetShortcutModifier?
+    ) -> CGFloat {
+        if modifier != nil { return 31 }
+        switch label.count {
+        case 8...: return 54
+        case 5...: return 46
+        case 2...: return 34
+        default: return 25
+        }
     }
 }
 
@@ -376,49 +442,6 @@ private struct KeyboardLayout {
             width: width, height: height, modifier: modifier, symbol: symbol,
             labelPlacement: placement)
     }
-}
-
-private enum KeyboardHardwareDetector {
-    static let detectedStyle: MacKeyboardStyle = {
-        var iterator: io_iterator_t = 0
-        guard let matching = IOServiceMatching("IOHIDDevice"),
-              IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS
-        else { return .standard }
-        defer { IOObjectRelease(iterator) }
-
-        while true {
-            let service = IOIteratorNext(iterator)
-            guard service != 0 else { break }
-            defer { IOObjectRelease(service) }
-            var properties: Unmanaged<CFMutableDictionary>?
-            guard IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-                  let values = properties?.takeRetainedValue() as? [String: Any],
-                  (values["PrimaryUsagePage"] as? NSNumber)?.intValue == 1,
-                  (values["PrimaryUsage"] as? NSNumber)?.intValue == 6
-            else { continue }
-
-            let product = (values["Product"] as? String ?? "").lowercased()
-            let isVirtual = (values["HIDVirtualDevice"] as? NSNumber)?.boolValue == true
-            if isVirtual || product.contains("virtual") || product.contains("karabiner") { continue }
-            let vendor = (values["VendorID"] as? NSNumber)?.intValue
-            let productID = (values["ProductID"] as? NSNumber)?.intValue
-            // Apple uses 0x004c for these keyboards over Bluetooth and 0x05ac
-            // over USB. 0x026c is the ANSI Magic Keyboard with Numeric
-            // Keypad attached to this Mac; the adjacent IDs are its ISO/JIS
-            // hardware variants. The product name cannot be the primary test
-            // because macOS substitutes a user's custom Bluetooth name.
-            let appleExtendedProductIDs: Set<Int> = [0x026C, 0x026D, 0x026E]
-            if (vendor == 0x004C || vendor == 0x05AC),
-               let productID,
-               appleExtendedProductIDs.contains(productID) {
-                return .numericKeypad
-            }
-            if product.contains("numeric keypad") || product.contains("extended keyboard") {
-                return .numericKeypad
-            }
-        }
-        return .standard
-    }()
 }
 
 enum WindowLayoutCommandColors {

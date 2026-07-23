@@ -532,8 +532,12 @@ extension MagnetShortcutCommand {
                     width: 1, height: 1 / Double(count)
                 )
             }
-            let firstKeys = Array("QWERTYUI").map(String.init)
-            let secondKeys = Array("ASDFGHJK").map(String.init)
+            // Portrait split grids always occupy one contiguous keyboard block.
+            // Smaller grids use the rightmost columns; larger grids extend left
+            // without wrapping, while every row measured from the bottom keeps
+            // the same physical key across thirds, quarters, sixths, and eighths.
+            let firstKeys = Array(Array("ERTYUIOP").suffix(count)).map(String.init)
+            let secondKeys = Array(Array("DFGHJKL;").suffix(count)).map(String.init)
             let left = (0..<count).map { index in
                 make(
                     orientation: .portrait, group: group, section: "Split",
@@ -560,8 +564,8 @@ extension MagnetShortcutCommand {
             let rows = group.rawValue > 4 ? 2 : 1
             let topKeys = rows == 1
                 ? (1...columns).map(String.init)
-                : Array("QWERTYUI").prefix(columns).map(String.init)
-            let bottomKeys = Array("ASDFGHJK").prefix(columns).map(String.init)
+                : Array("UIOP").prefix(columns).map(String.init)
+            let bottomKeys = Array("JKL;").prefix(columns).map(String.init)
 
             return (0..<rows).flatMap { row in
                 (0..<columns).map { column in
@@ -618,7 +622,8 @@ extension MagnetShortcutCommand {
         let halfModifiers: Set<MagnetShortcutModifier> = [.control, .option]
         let basicModifiers: Set<MagnetShortcutModifier> = [.option, .command]
         let displayModifiers: Set<MagnetShortcutModifier> = [.control, .option, .command]
-        let cornerKeys = ["Q", "W", "A", "S"]
+        let cornerKeys = ["U", "I", "J", "K"]
+        let twoThirdKeys = ["U", "I", "O"]
         let twoThirdNames = orientation == .portrait
             ? ["Top Two Thirds", "Center Two Thirds", "Bottom Two Thirds"]
             : ["Left Two Thirds", "Center Two Thirds", "Right Two Thirds"]
@@ -632,13 +637,13 @@ extension MagnetShortcutCommand {
             (.halves, "Corners", "Top Right Corner", cornerKeys[1], halfModifiers, 0.5, 0, 0.5, 0.5),
             (.halves, "Corners", "Bottom Left Corner", cornerKeys[2], halfModifiers, 0, 0.5, 0.5, 0.5),
             (.halves, "Corners", "Bottom Right Corner", cornerKeys[3], halfModifiers, 0.5, 0.5, 0.5, 0.5),
-            (.basics, "Two Thirds", twoThirdNames[0], "E", basicModifiers, 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            (.basics, "Two Thirds", twoThirdNames[1], "R", basicModifiers, orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            (.basics, "Two Thirds", twoThirdNames[2], "T", basicModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[0], twoThirdKeys[0], basicModifiers, 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[1], twoThirdKeys[1], basicModifiers, orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[2], twoThirdKeys[2], basicModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
             (.basics, "Displays", "Next Display", "→", displayModifiers, 0, 0, 1, 1),
             (.basics, "Displays", "Previous Display", "←", displayModifiers, 0, 0, 1, 1),
             (.basics, "Window", "Maximize", "Return", basicModifiers, 0, 0, 1, 1),
-            (.basics, "Window", "Center", "C", basicModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Center", "J", basicModifiers, 0, 0, 1, 1),
             (.basics, "Window", "Restore", "Delete", basicModifiers, 0, 0, 1, 1)
         ]
 

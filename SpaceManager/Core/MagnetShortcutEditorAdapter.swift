@@ -267,10 +267,10 @@ struct MagnetShortcutEditorAdapter {
 
     private static func fixedKey(for displayName: String) -> String? {
         switch displayName {
-        case "Top Left Corner": return "Q"
-        case "Top Right Corner": return "W"
-        case "Bottom Left Corner": return "A"
-        case "Bottom Right Corner": return "S"
+        case "Top Left Corner": return "U"
+        case "Top Right Corner": return "I"
+        case "Bottom Left Corner": return "J"
+        case "Bottom Right Corner": return "K"
         case "Left Half": return "←"
         case "Right Half": return "→"
         default: return nil

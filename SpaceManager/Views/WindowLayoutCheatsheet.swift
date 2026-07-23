@@ -15,7 +15,9 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
         orientation: MagnetDisplayOrientation,
         activeModifiers: Set<MagnetShortcutModifier>,
         isPinned: Bool,
-        screen: NSScreen
+        screen: NSScreen,
+        keyboardStyle: MacKeyboardStyle?,
+        onSelectModifiers: @escaping (Set<MagnetShortcutModifier>) -> Void
     ) {
         let orientedCommands = commands.filter {
             $0.orientation == orientation && $0.isEnabled
@@ -31,7 +33,9 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
             orientation: orientation,
             activeModifiers: activeModifiers,
             isPinned: isPinned,
-            commandColumnCount: metrics.commandColumnCount)
+            commandColumnCount: metrics.commandColumnCount,
+            keyboardStyle: keyboardStyle,
+            onSelectModifiers: onSelectModifiers)
         if let window {
             window.contentViewController = NSHostingController(rootView: content)
             window.setContentSize(metrics.windowSize)
@@ -71,6 +75,8 @@ struct WindowLayoutCheatsheetView: View {
     let activeModifiers: Set<MagnetShortcutModifier>
     let isPinned: Bool
     let commandColumnCount: Int
+    let keyboardStyle: MacKeyboardStyle?
+    let onSelectModifiers: (Set<MagnetShortcutModifier>) -> Void
 
     private var modifierRows: [ModifierGroupRow] {
         MagnetShortcutGroup.allCases.compactMap { group in
@@ -89,13 +95,6 @@ struct WindowLayoutCheatsheetView: View {
             .filter(modifiers.contains)
             .map(\.glyph)
             .joined()
-    }
-
-    private func modifierNames(_ modifiers: Set<MagnetShortcutModifier>) -> String {
-        MagnetShortcutModifier.allCases
-            .filter(modifiers.contains)
-            .map(\.title)
-            .joined(separator: " + ")
     }
 
     private var visibleCommands: [MagnetShortcutCommand] {
@@ -122,8 +121,14 @@ struct WindowLayoutCheatsheetView: View {
 
     private var commandColumns: [GridItem] {
         Array(
-            repeating: GridItem(.flexible(minimum: 210), spacing: 12, alignment: .top),
+            repeating: GridItem(.flexible(minimum: 280), spacing: 12, alignment: .top),
             count: commandColumnCount)
+    }
+
+    private var modifierColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 220), spacing: 10, alignment: .top),
+            count: 2)
     }
 
     var body: some View {
@@ -138,7 +143,7 @@ struct WindowLayoutCheatsheetView: View {
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(.secondary)
 
-                Text("Hold \(modifierText(activeModifiers)), press / twice to pin; press \(modifierText(activeModifiers))/ again to dismiss.")
+                Text("Hold \(modifierText(activeModifiers))/ to show; press twice to pin; press any combination again to dismiss.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -160,26 +165,40 @@ struct WindowLayoutCheatsheetView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
-                    VStack(spacing: 4) {
+                    LazyVGrid(columns: modifierColumns, alignment: .leading, spacing: 8) {
                         ForEach(modifierRows) { row in
-                            let isActive = row.combinations.contains(activeModifiers)
-                            HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 5) {
                                 Text(row.group.title)
-                                    .frame(width: 72, alignment: .leading)
-                                Text(row.combinations.map {
-                                    "\(modifierText($0))/ — \(modifierNames($0)) + Slash"
-                                }.joined(separator: "   "))
-                                    .font(.system(.body, design: .rounded, weight: .medium))
-                                Spacer()
+                                    .font(.subheadline.weight(.semibold))
+
+                                ForEach(row.combinations, id: \.self) { modifiers in
+                                    let isActive = modifiers == activeModifiers
+                                    Button {
+                                        onSelectModifiers(modifiers)
+                                    } label: {
+                                        HStack {
+                                            KeyboardShortcutView(
+                                                modifiers: modifiers,
+                                                key: "/",
+                                                color: isActive
+                                                    ? Color(nsColor: .selectedContentBackgroundColor)
+                                                    : .secondary)
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 5)
+                                        .background(
+                                            isActive
+                                                ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.16)
+                                                : Color.clear,
+                                            in: RoundedRectangle(cornerRadius: 6))
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(!isPinned)
+                                }
                             }
-                            .foregroundStyle(isActive ? .primary : .secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(
-                                isActive
-                                    ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.55)
-                                    : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 6))
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                     }
 
@@ -211,13 +230,14 @@ struct WindowLayoutCheatsheetView: View {
                     }
                 }
                 .padding(16)
-                .frame(width: max(340, CGFloat(commandColumnCount) * 245))
+                .frame(width: max(500, CGFloat(commandColumnCount) * 315))
 
                 Divider()
 
                 MacKeyboardView(
                     highlightedModifiers: activeModifiers,
-                    highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: visibleCommands)
+                    highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: visibleCommands),
+                    keyboardStyleOverride: keyboardStyle
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
@@ -236,11 +256,15 @@ struct WindowLayoutCheatsheetView: View {
                 .frame(width: 28, height: 20)
             Text(command.displayName)
                 .lineLimit(1)
+                .layoutPriority(1)
             Spacer(minLength: 8)
-            Text(command.shortcutText)
-                .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(commandColors[command.id] ?? .accentColor)
+            KeyboardShortcutView(
+                modifiers: command.modifiers,
+                key: command.destinationKey,
+                color: commandColors[command.id] ?? .accentColor)
         }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .debugLabel("windowLayoutCommandRow")
     }
 }
 
@@ -256,11 +280,15 @@ private struct WindowLayoutCheatsheetMetrics {
         let sections = Dictionary(grouping: commands, by: \.section)
         let maximumHeight = max(500, availableSize.height - 32)
         let groupCount = Set(commands.map(\.group)).count
-        let fixedHeight = 145 + CGFloat(modifierRowCount) * 31 + CGFloat(groupCount) * 28
+        let modifierGridRowCount = Int(ceil(Double(modifierRowCount) / 2))
+        let fixedHeight = 194 + CGFloat(modifierGridRowCount) * 58 + CGFloat(groupCount) * 28
 
         var selectedColumns = 1
         var requiredHeight = maximumHeight
-        for columns in 1...4 {
+        let widthBasedColumnCount = max(
+            1,
+            min(4, Int((availableSize.width - 700) / 315)))
+        for columns in 1...widthBasedColumnCount {
             let commandRows = sections.values.reduce(0) {
                 $0 + Int(ceil(Double($1.count) / Double(columns)))
             }
@@ -271,7 +299,7 @@ private struct WindowLayoutCheatsheetMetrics {
         }
 
         commandColumnCount = selectedColumns
-        let desiredWidth = max(1040, 700 + CGFloat(selectedColumns) * 245)
+        let desiredWidth = max(1120, 700 + CGFloat(selectedColumns) * 315)
         windowSize = NSSize(
             width: min(desiredWidth, max(900, availableSize.width - 32)),
             height: min(max(520, requiredHeight), maximumHeight))
