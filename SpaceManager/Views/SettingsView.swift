@@ -59,13 +59,29 @@ struct SettingsView: View {
 
                     Divider()
 
-                    Toggle(
-                        "Window layouts",
-                        isOn: Binding(
-                            get: { windowLayouts.isEnabled },
-                            set: { windowLayouts.setEnabled($0) }
+                    HStack(spacing: 8) {
+                        Toggle(
+                            "Window layouts",
+                            isOn: Binding(
+                                get: { windowLayouts.isEnabled },
+                                set: { windowLayouts.setEnabled($0) }
+                            )
                         )
-                    )
+                        .disabled(windowLayouts.isMagnetRunning && !windowLayouts.isEnabled)
+
+                        Spacer()
+
+                        if windowLayouts.isMagnetRunning {
+                            Text("Conflict: Magnet is running")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+
+                            Button("Quit Magnet") {
+                                windowLayouts.quitMagnet()
+                            }
+                            .font(.caption)
+                        }
+                    }
 
                     if let error = windowLayouts.lastError {
                         Text(error)

@@ -16,6 +16,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     static let enabledDefaultsKey = "windowLayoutsEnabled"
 
     @Published private(set) var isEnabled: Bool
+    @Published private(set) var isMagnetRunning: Bool
     @Published private(set) var lastError: String?
 
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
@@ -25,21 +26,22 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var eventHandler: EventHandlerRef?
     private var observers: [NSObjectProtocol] = []
     private var magnetMonitor: Timer?
-    private var hasWarnedAboutMagnet = false
     private weak var lastExternalApplication: NSRunningApplication?
     private var restoreFrames: [WindowIdentity: CGRect] = [:]
 
     private override init() {
         let requested = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
         isEnabled = false
+        isMagnetRunning = false
         super.init()
 
         rememberExternalApplication(NSWorkspace.shared.frontmostApplication)
         observeApplications()
         observeConfigurationChanges()
         magnetMonitor = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.warnIfMagnetIsRunning() }
+            Task { @MainActor in self?.refreshMagnetStatus() }
         }
+        refreshMagnetStatus()
         commands = (try? loadCommands()) ?? MagnetShortcutCommand.standardSet
 
         if requested {
@@ -60,14 +62,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     func setEnabled(_ enabled: Bool) {
         lastError = nil
         if enabled {
-            if magnetIsRunning() {
-                guard confirmClosingMagnet() else { return }
-                do {
-                    try quitMagnet()
-                } catch {
-                    lastError = error.localizedDescription
-                    return
-                }
+            if isMagnetRunning {
+                lastError = "Conflict: Magnet is running."
+                return
             }
             do {
                 try enable()
@@ -163,7 +160,6 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private func disable() {
         unregisterHotKeys()
         isEnabled = false
-        hasWarnedAboutMagnet = false
         UserDefaults.standard.set(false, forKey: Self.enabledDefaultsKey)
     }
 
@@ -434,8 +430,13 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             guard application?.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier else { return }
             Task { @MainActor in
-                self?.warnIfMagnetIsRunning()
+                self?.refreshMagnetStatus()
             }
+        })
+        observers.append(center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            guard application?.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier else { return }
+            Task { @MainActor in self?.refreshMagnetStatus() }
         })
     }
 
@@ -455,32 +456,21 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         !NSRunningApplication.runningApplications(withBundleIdentifier: MagnetShortcutManager.magnetBundleIdentifier).isEmpty
     }
 
-    private func warnIfMagnetIsRunning() {
-        guard isEnabled else { return }
-        guard magnetIsRunning() else {
-            hasWarnedAboutMagnet = false
-            return
+    private func refreshMagnetStatus() {
+        isMagnetRunning = magnetIsRunning()
+    }
+
+    func quitMagnet() {
+        lastError = nil
+        do {
+            try terminateMagnet()
+            refreshMagnetStatus()
+        } catch {
+            lastError = error.localizedDescription
         }
-        guard !hasWarnedAboutMagnet else { return }
-        hasWarnedAboutMagnet = true
-
-        let alert = NSAlert()
-        alert.messageText = "Magnet Opened"
-        alert.informativeText = "Magnet and Window Layouts may have conflicting shortcuts."
-        alert.alertStyle = .warning
-        alert.runModal()
     }
 
-    private func confirmClosingMagnet() -> Bool {
-        let alert = NSAlert()
-        alert.messageText = "This will close Magnet. Should you proceed?"
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Close Magnet and Enable")
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
-    }
-
-    private func quitMagnet() throws {
+    private func terminateMagnet() throws {
         let applications = NSRunningApplication.runningApplications(
             withBundleIdentifier: MagnetShortcutManager.magnetBundleIdentifier)
         applications.forEach { $0.terminate() }
