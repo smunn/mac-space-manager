@@ -7,6 +7,7 @@ import SwiftUI
 
 struct MacKeyboardView: View {
     @AppStorage("windowLayoutKeyboardStyle") private var keyboardStyleRaw = MacKeyboardStyle.standard.rawValue
+    @State private var manualKeyboardStyle: MacKeyboardStyle?
     let highlightedModifiers: Set<MagnetShortcutModifier>
     let highlightedKeys: [String: Color]
     let modifierColor: Color
@@ -46,18 +47,16 @@ struct MacKeyboardView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            if keyboardStyleOverride == nil {
-                HStack {
-                    Spacer()
-                    Picker("Keyboard", selection: keyboardStyleBinding) {
-                        ForEach(MacKeyboardStyle.allCases) { style in
-                            Text(style.title).tag(style)
-                        }
+            HStack {
+                Spacer()
+                Picker("Keyboard", selection: keyboardStyleBinding) {
+                    ForEach(MacKeyboardStyle.allCases) { style in
+                        Text(style.title).tag(style)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 230)
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 230)
             }
 
             GeometryReader { proxy in
@@ -104,7 +103,8 @@ struct MacKeyboardView: View {
     }
 
     private var keyboardStyle: MacKeyboardStyle {
-        keyboardStyleOverride
+        manualKeyboardStyle
+            ?? keyboardStyleOverride
             ?? MacKeyboardStyle(rawValue: keyboardStyleRaw)
             ?? KeyboardHardwareDetector.detectedStyle
     }
@@ -112,7 +112,10 @@ struct MacKeyboardView: View {
     private var keyboardStyleBinding: Binding<MacKeyboardStyle> {
         Binding(
             get: { keyboardStyle },
-            set: { keyboardStyleRaw = $0.rawValue })
+            set: {
+                manualKeyboardStyle = $0
+                keyboardStyleRaw = $0.rawValue
+            })
     }
 
     private func highlightColor(for item: KeyboardKeySpec) -> Color? {

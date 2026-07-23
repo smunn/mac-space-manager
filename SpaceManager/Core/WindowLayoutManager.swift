@@ -632,11 +632,17 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         let targetScreen = cheatsheetTargetScreen()
         let orientation = self.orientation(for: targetScreen)
         if activeCheatsheetKeyboardStyle == nil {
-            // Direct raw-HID access to the built-in keyboard is blocked on
-            // current macOS versions. The monitor watches only extended Apple
-            // keyboards, so a trigger without an external match is built-in.
             activeCheatsheetKeyboardStyle =
                 keyboardInputDeviceMonitor.recentSlashStyle() ?? .standard
+            // Karabiner writes the physical source immediately before it
+            // forwards Slash. Its shell action can finish just after the event
+            // tap, so check once more after that very short handoff.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                guard let self,
+                      let style = self.keyboardInputDeviceMonitor.recentSlashStyle(maxAge: 0.5)
+                else { return }
+                self.updateCheatsheetKeyboardStyle(style)
+            }
         }
         if cheatsheetController == nil {
             cheatsheetController = WindowLayoutCheatsheetController()

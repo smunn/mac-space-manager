@@ -5,6 +5,77 @@ import XCTest
 final class WindowLayoutTests: XCTestCase {
     private let adapter = MagnetShortcutEditorAdapter()
 
+    func testKarabinerKeyboardSourceUsesSharedKarabinerMarkerPath() {
+        XCTAssertEqual(
+            KarabinerKeyboardSource.sourceURL.path,
+            "/tmp/com.smunn.SpaceManager.keyboard-source")
+    }
+
+    func testKarabinerKeyboardSourceReadsFreshPhysicalKeyboardMarker() throws {
+        let sourceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: sourceURL) }
+        let now = Date()
+
+        try MacKeyboardStyle.standard.rawValue.write(
+            to: sourceURL,
+            atomically: true,
+            encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.modificationDate: now],
+            ofItemAtPath: sourceURL.path)
+        XCTAssertEqual(
+            KarabinerKeyboardSource.currentStyle(
+                sourceURL: sourceURL,
+                maxAge: 0.5,
+                now: now),
+            .standard)
+
+        try MacKeyboardStyle.numericKeypad.rawValue.write(
+            to: sourceURL,
+            atomically: true,
+            encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.modificationDate: now],
+            ofItemAtPath: sourceURL.path)
+        XCTAssertEqual(
+            KarabinerKeyboardSource.currentStyle(
+                sourceURL: sourceURL,
+                maxAge: 0.5,
+                now: now),
+            .numericKeypad)
+    }
+
+    func testKarabinerKeyboardSourceRejectsStaleOrInvalidMarkers() throws {
+        let sourceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: sourceURL) }
+        let now = Date()
+
+        try MacKeyboardStyle.standard.rawValue.write(
+            to: sourceURL,
+            atomically: true,
+            encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.modificationDate: now.addingTimeInterval(-1)],
+            ofItemAtPath: sourceURL.path)
+        XCTAssertNil(
+            KarabinerKeyboardSource.currentStyle(
+                sourceURL: sourceURL,
+                maxAge: 0.5,
+                now: now))
+
+        try "invalid".write(to: sourceURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.modificationDate: now],
+            ofItemAtPath: sourceURL.path)
+        XCTAssertNil(
+            KarabinerKeyboardSource.currentStyle(
+                sourceURL: sourceURL,
+                maxAge: 0.5,
+                now: now))
+    }
+
     func testBuiltInHorizontalCornersUseHalfWidthQuadrantsAndUnifiedKeys() throws {
         let source: [(String, MagnetTargetFrame, String)] = [
             ("command:default.name.topLeft", .init(x: 0, y: 0, width: 12, height: 6), "U"),

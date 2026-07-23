@@ -3,116 +3,251 @@
 //  Space Manager
 //
 //  CGEvent and Carbon hot-key callbacks omit the originating physical device.
-//  This narrowly scoped IOHID listener records only Slash key-down events so
-//  the Window Layout Cheatsheet can render the keyboard that opened it.
+//  This narrowly scoped monitor observes Slash on extended Apple keyboards.
+//  A cheatsheet trigger without that external match is treated as built-in.
 //
 
+import CoreHID
 import IOKit.hid
 
 final class KeyboardInputDeviceMonitor {
     var onSlashStyle: ((MacKeyboardStyle) -> Void)?
 
-    private let manager = IOHIDManagerCreate(
+    private let legacyManager = IOHIDManagerCreate(
         kCFAllocatorDefault,
         IOOptionBits(kIOHIDOptionsTypeNone))
     private let lock = NSLock()
     private var latestSlash: (style: MacKeyboardStyle, timestamp: TimeInterval)?
+    private var coreHIDTask: Task<Void, Never>?
+    private var coreHIDDeviceTasks: [UInt64: Task<Void, Never>] = [:]
     private var isRunning = false
 
     func start() {
         guard !isRunning else { return }
-        // macOS protects direct access to the built-in keyboard on current
-        // systems. We only need to observe extended Apple keyboards: when an
-        // external Slash is seen the cheatsheet uses the numeric layout;
-        // otherwise the existing CGEvent trigger is treated as built-in.
-        let appleVendors = [0x004C, 0x05AC]
-        let extendedProductIDs = [0x026C, 0x026D, 0x026E]
-        var matching: [[String: Any]] = []
-        for vendor in appleVendors {
-            for productID in extendedProductIDs {
-                matching.append([
-                    kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
-                    kIOHIDDeviceUsageKey: kHIDUsage_GD_Keyboard,
-                    kIOHIDVendorIDKey: vendor,
-                    kIOHIDProductIDKey: productID
-                ])
-            }
-        }
-        IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
-        IOHIDManagerRegisterInputValueCallback(
-            manager,
-            keyboardInputValueCallback,
-            Unmanaged.passUnretained(self).toOpaque())
-        IOHIDManagerScheduleWithRunLoop(
-            manager,
-            CFRunLoopGetMain(),
-            CFRunLoopMode.commonModes.rawValue)
-        let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        let deviceCount = (IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice>)?.count ?? 0
-        SpaceOperationLog.write("Keyboard monitor start devices=\(deviceCount) openResult=\(openResult)")
-        guard openResult == kIOReturnSuccess else {
-            NSLog("KeyboardInputDeviceMonitor: IOHIDManagerOpen failed (\(openResult))")
-            IOHIDManagerUnscheduleFromRunLoop(
-                manager,
-                CFRunLoopGetMain(),
-                CFRunLoopMode.commonModes.rawValue)
-            return
-        }
         isRunning = true
+        if #available(macOS 15, *) {
+            SpaceOperationLog.write("Keyboard monitor starting with CoreHID")
+            coreHIDTask = Task { [weak self] in
+                await self?.monitorCoreHIDDevices()
+            }
+        } else {
+            startLegacyMonitor()
+        }
     }
 
     func stop() {
         guard isRunning else { return }
-        IOHIDManagerRegisterInputValueCallback(manager, nil, nil)
-        IOHIDManagerUnscheduleFromRunLoop(
-            manager,
-            CFRunLoopGetMain(),
-            CFRunLoopMode.commonModes.rawValue)
-        IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         isRunning = false
-        lock.withLock { latestSlash = nil }
+
+        coreHIDTask?.cancel()
+        coreHIDTask = nil
+        let tasks = lock.withLock {
+            let tasks = Array(coreHIDDeviceTasks.values)
+            coreHIDDeviceTasks.removeAll()
+            latestSlash = nil
+            return tasks
+        }
+        tasks.forEach { $0.cancel() }
+
+        if #unavailable(macOS 15) {
+            IOHIDManagerRegisterInputValueCallback(legacyManager, nil, nil)
+            IOHIDManagerUnscheduleFromRunLoop(
+                legacyManager,
+                CFRunLoopGetMain(),
+                CFRunLoopMode.commonModes.rawValue)
+            IOHIDManagerClose(legacyManager, IOOptionBits(kIOHIDOptionsTypeNone))
+        }
     }
 
     func recentSlashStyle(maxAge: TimeInterval = 0.25) -> MacKeyboardStyle? {
-        lock.withLock {
+        let detectedStyle: MacKeyboardStyle? = lock.withLock {
             guard let latestSlash,
                   ProcessInfo.processInfo.systemUptime - latestSlash.timestamp <= maxAge
             else { return nil }
             return latestSlash.style
         }
+        return detectedStyle ?? KarabinerKeyboardSource.currentStyle(maxAge: maxAge)
     }
 
-    fileprivate func recordSlash(from device: IOHIDDevice) {
-        guard let style = KeyboardHardwareDetector.style(for: device) else { return }
+    private func recordSlash(style: MacKeyboardStyle) {
         lock.withLock {
             latestSlash = (style, ProcessInfo.processInfo.systemUptime)
         }
-        NSLog("KeyboardInputDeviceMonitor: Slash detected from \(style.rawValue) keyboard")
         SpaceOperationLog.write("Keyboard monitor Slash style=\(style.rawValue)")
         onSlashStyle?(style)
     }
+
+    @available(macOS 15, *)
+    private func monitorCoreHIDDevices() async {
+        let manager = HIDDeviceManager()
+        let criteria = Self.extendedAppleKeyboardIDs.map { vendorID, productID in
+            HIDDeviceManager.DeviceMatchingCriteria(
+                primaryUsage: .genericDesktop(.keyboard),
+                vendorID: vendorID,
+                productID: productID)
+        }
+
+        do {
+            for try await notification in await manager.monitorNotifications(
+                matchingCriteria: criteria)
+            {
+                guard !Task.isCancelled else { return }
+                switch notification {
+                case .deviceMatched(let reference):
+                    let task = Task { [weak self] in
+                        guard let self else { return }
+                        await self.monitorCoreHIDDevice(reference)
+                    }
+                    lock.withLock {
+                        coreHIDDeviceTasks[reference.deviceID]?.cancel()
+                        coreHIDDeviceTasks[reference.deviceID] = task
+                    }
+                case .deviceRemoved(let reference):
+                    lock.withLock {
+                        coreHIDDeviceTasks.removeValue(forKey: reference.deviceID)?.cancel()
+                    }
+                @unknown default:
+                    break
+                }
+            }
+        } catch where error is CancellationError {
+            return
+        } catch {
+            SpaceOperationLog.write("CoreHID keyboard monitor failed: \(error)")
+        }
+    }
+
+    @available(macOS 15, *)
+    private func monitorCoreHIDDevice(
+        _ reference: HIDDeviceClient.DeviceReference
+    ) async {
+        guard let client = HIDDeviceClient(deviceReference: reference) else {
+            SpaceOperationLog.write("CoreHID could not open keyboard device \(reference.deviceID)")
+            return
+        }
+        let slashUsage = HIDUsage.keyboardOrKeypad(.keyboardForwardSlashAndQuestionMark)
+        let slashElements = await client.elements.filter { $0.usage == slashUsage }
+        SpaceOperationLog.write(
+            "CoreHID monitoring keyboard device=\(reference.deviceID) slashElements=\(slashElements.count)")
+
+        do {
+            for try await notification in await client.monitorNotifications(
+                reportIDsToMonitor: [HIDReportID.allReports],
+                elementsToMonitor: slashElements)
+            {
+                guard !Task.isCancelled else { return }
+                switch notification {
+                case .inputReport(_, let data, _):
+                    if data.contains(0x38) {
+                        recordSlash(style: .numericKeypad)
+                    }
+                case .elementUpdates(let values) where values.contains(where: {
+                    $0.integerValue(asTypeTruncatingIfNeeded: Int.self) != 0
+                }):
+                    recordSlash(style: .numericKeypad)
+                case .deviceSeized:
+                    SpaceOperationLog.write(
+                        "CoreHID keyboard device \(reference.deviceID) seized by another client")
+                case .deviceUnseized:
+                    SpaceOperationLog.write(
+                        "CoreHID keyboard device \(reference.deviceID) unseized")
+                case .deviceRemoved:
+                    return
+                default:
+                    break
+                }
+            }
+        } catch where error is CancellationError {
+            return
+        } catch {
+            SpaceOperationLog.write(
+                "CoreHID keyboard device \(reference.deviceID) failed: \(error)")
+        }
+    }
+
+    private func startLegacyMonitor() {
+        let matching = Self.extendedAppleKeyboardIDs.map { vendorID, productID in
+            [
+                kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
+                kIOHIDDeviceUsageKey: kHIDUsage_GD_Keyboard,
+                kIOHIDVendorIDKey: vendorID,
+                kIOHIDProductIDKey: productID
+            ] as [String: Any]
+        }
+        IOHIDManagerSetDeviceMatchingMultiple(legacyManager, matching as CFArray)
+        IOHIDManagerRegisterInputValueCallback(
+            legacyManager,
+            legacyKeyboardInputValueCallback,
+            Unmanaged.passUnretained(self).toOpaque())
+        IOHIDManagerScheduleWithRunLoop(
+            legacyManager,
+            CFRunLoopGetMain(),
+            CFRunLoopMode.commonModes.rawValue)
+        let result = IOHIDManagerOpen(
+            legacyManager,
+            IOOptionBits(kIOHIDOptionsTypeNone))
+        SpaceOperationLog.write("Legacy keyboard monitor openResult=\(result)")
+    }
+
+    fileprivate func recordLegacySlash(from device: IOHIDDevice) {
+        guard let style = KeyboardHardwareDetector.style(for: device) else { return }
+        recordSlash(style: style)
+    }
+
+    private static let extendedAppleKeyboardIDs: [(UInt32, UInt32)] = {
+        let vendors: [UInt32] = [0x004C, 0x05AC]
+        let products: [UInt32] = [0x026C, 0x026D, 0x026E]
+        return vendors.flatMap { vendor in products.map { (vendor, $0) } }
+    }()
 }
 
-private let keyboardInputValueCallback: IOHIDValueCallback = { context, result, _, value in
-    guard result == kIOReturnSuccess,
-          let context
-    else { return }
+enum KarabinerKeyboardSource {
+    // This path must exactly match the non-sandboxed Karabiner shell action.
+    // NSTemporaryDirectory() points into /var/folders for the app and would
+    // not read the marker Karabiner writes in /tmp.
+    static let sourceURL = URL(
+        fileURLWithPath: "/tmp/com.smunn.SpaceManager.keyboard-source")
+
+    static func currentStyle(
+        sourceURL: URL = sourceURL,
+        maxAge: TimeInterval = 0.25,
+        now: Date = Date()
+    ) -> MacKeyboardStyle? {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
+            guard let modificationDate = attributes[.modificationDate] as? Date,
+                  now.timeIntervalSince(modificationDate) <= maxAge
+            else { return nil }
+            let value = try String(contentsOf: sourceURL, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return MacKeyboardStyle(rawValue: value)
+        } catch CocoaError.fileReadNoSuchFile {
+            return nil
+        } catch {
+            SpaceOperationLog.write("Karabiner keyboard source read failed: \(error)")
+            return nil
+        }
+    }
+}
+
+private let legacyKeyboardInputValueCallback: IOHIDValueCallback = {
+    context,
+    result,
+    _,
+    value in
+    guard result == kIOReturnSuccess, let context else { return }
 
     let element = IOHIDValueGetElement(value)
     let usage = IOHIDElementGetUsage(element)
     let integerValue = IOHIDValueGetIntegerValue(value)
-    // Keyboard reports can expose keys either as individual button elements,
-    // where the element usage is Slash and the value is 1, or as an array,
-    // where the value itself is the pressed key's usage.
     let isSlashDown = IOHIDElementGetUsagePage(element) == kHIDPage_KeyboardOrKeypad
         && ((usage == 0x38 && integerValue != 0) || integerValue == 0x38)
     guard isSlashDown else { return }
-    let device = IOHIDElementGetDevice(element)
 
     Unmanaged<KeyboardInputDeviceMonitor>
         .fromOpaque(context)
         .takeUnretainedValue()
-        .recordSlash(from: device)
+        .recordLegacySlash(from: IOHIDElementGetDevice(element))
 }
 
 private extension NSLock {
