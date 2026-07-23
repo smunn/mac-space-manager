@@ -57,33 +57,42 @@ struct MacKeyboardView: View {
             GeometryReader { proxy in
                 let layout = KeyboardLayout.layout(for: keyboardStyle)
                 let gap: CGFloat = 4
+                let shellPadding: CGFloat = 8
+                let availableWidth = max(1, proxy.size.width - shellPadding * 2)
+                let availableHeight = max(1, proxy.size.height - shellPadding * 2)
                 let unit = min(
-                    (proxy.size.width - gap * layout.width) / layout.width,
-                    (proxy.size.height - gap * layout.height) / layout.height)
+                    (availableWidth + gap) / layout.width - gap,
+                    (availableHeight + gap) / layout.height - gap)
                 let keyboardWidth = layout.width * (unit + gap) - gap
                 let keyboardHeight = layout.height * (unit + gap) - gap
+                let shellWidth = keyboardWidth + shellPadding * 2
+                let shellHeight = keyboardHeight + shellPadding * 2
+                let originX = (proxy.size.width - keyboardWidth) / 2
+                let originY = (proxy.size.height - keyboardHeight) / 2
 
                 ZStack(alignment: .topLeading) {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.7))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+                        }
+                        .frame(width: shellWidth, height: shellHeight)
+                        .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+
                     ForEach(layout.keys) { item in
+                        let keyWidth = item.width * (unit + gap) - gap
+                        let keyHeight = item.height * (unit + gap) - gap
                         KeyboardKeyView(item: item, highlightColor: highlightColor(for: item))
-                            .frame(
-                                width: item.width * (unit + gap) - gap,
-                                height: item.height * (unit + gap) - gap)
-                            .offset(
-                                x: item.x * (unit + gap),
-                                y: item.y * (unit + gap))
+                            .frame(width: keyWidth, height: keyHeight)
+                            .position(
+                                x: originX + item.x * (unit + gap) + keyWidth / 2,
+                                y: originY + item.y * (unit + gap) + keyHeight / 2)
                     }
                 }
-                .frame(width: keyboardWidth, height: keyboardHeight)
-                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                .frame(width: proxy.size.width, height: proxy.size.height)
             }
             .frame(minHeight: 245, idealHeight: 270)
-        }
-        .padding(8)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.55))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
         }
         .debugLabel("MacKeyboardView")
     }
@@ -128,6 +137,14 @@ private struct KeyboardKeySpec: Identifiable {
     let height: CGFloat
     let modifier: MagnetShortcutModifier?
     let symbol: String?
+    let labelPlacement: KeyboardLabelPlacement
+}
+
+private enum KeyboardLabelPlacement {
+    case center
+    case bottomLeading
+    case bottomTrailing
+    case stackedModifier
 }
 
 private struct KeyboardKeyView: View {
@@ -141,30 +158,59 @@ private struct KeyboardKeyView: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(highlightColor ?? Color.secondary.opacity(0.35), lineWidth: highlightColor == nil ? 1 : 2)
 
-            VStack(spacing: 1) {
-                if let symbol = item.symbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: 10, weight: .medium))
-                }
-                Text(displayLabel)
-                    .font(.system(size: item.label.count > 5 ? 7 : 10, weight: highlightColor == nil ? .regular : .semibold, design: .rounded))
-                    .minimumScaleFactor(0.65)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(highlightColor ?? Color.primary)
-            .padding(.horizontal, 2)
+            keyLabel
+                .foregroundStyle(highlightColor ?? Color.primary)
         }
         .debugLabel("KeyboardKeyView")
     }
 
+    @ViewBuilder
+    private var keyLabel: some View {
+        if item.labelPlacement == .stackedModifier, let modifier = item.modifier {
+            VStack(spacing: 0) {
+                Text(modifier.glyph)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                Text(item.label.lowercased())
+                    .font(.system(size: 7, weight: .regular, design: .rounded))
+            }
+        } else {
+            labelContents
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+        }
+    }
+
+    private var labelContents: some View {
+        VStack(spacing: 1) {
+            if let symbol = item.symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: item.label == "touch id" ? 15 : 10, weight: .medium))
+            }
+            if item.label != "touch id" {
+                Text(displayLabel)
+                    .font(.system(size: item.label.count > 7 ? 7 : 10, weight: highlightColor == nil ? .regular : .semibold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var alignment: Alignment {
+        switch item.labelPlacement {
+        case .bottomLeading: return .bottomLeading
+        case .bottomTrailing: return .bottomTrailing
+        default: return .center
+        }
+    }
+
     private var displayLabel: String {
-        if let modifier = item.modifier {
-            return "\(modifier.glyph) \(item.label)"
-        }
         if item.label.lowercased().hasPrefix("kp") {
-            return String(item.label.dropFirst(2)).uppercased()
+            return String(item.label.dropFirst(2))
+                .trimmingCharacters(in: .whitespaces)
+                .lowercased()
         }
-        return item.label.uppercased()
+        return item.label.lowercased()
     }
 }
 
@@ -178,16 +224,30 @@ private struct KeyboardLayout {
     }
 
     private static var standard: KeyboardLayout {
-        KeyboardLayout(width: 15, height: 6, keys: mainKeys(includeStandardArrows: true))
+        var keys = mainKeys(
+            includeStandardArrows: true,
+            includeFunctionSymbols: true,
+            includeFunctionRow: false)
+        keys += [key("esc", 0, 0, width: 1.75, placement: .bottomLeading)]
+        keys += functionKeys(range: 1...12, startX: 1.75, includeSymbols: true)
+        keys += [key("touch id", 13.75, 0, width: 1.25, symbol: "touchid")]
+        return KeyboardLayout(width: 15, height: 6, keys: keys)
     }
 
     private static var extended: KeyboardLayout {
-        var keys = mainKeys(includeStandardArrows: false)
-        keys += functionKeys(range: 13...19, startX: 16)
+        var keys = mainKeys(
+            includeStandardArrows: false,
+            includeFunctionSymbols: false,
+            includeFunctionRow: true)
         keys += [
-            key("help", 16, 1), key("home", 17, 1), key("pg up", 18, 1),
-            key("forward delete", 16, 2), key("end", 17, 2), key("pg dn", 18, 2),
-            key("↑", 17, 4.5, height: 0.5),
+            key("f13", 16, 0), key("f14", 17, 0), key("f15", 18, 0),
+            key("f16", 19.5, 0), key("f17", 20.5, 0), key("f18", 21.5, 0),
+            key("f19", 22.5, 0)
+        ]
+        keys += [
+            key("fn", 16, 1, placement: .bottomLeading), key("home", 17, 1), key("page up", 18, 1),
+            key("delete", 16, 2, placement: .bottomLeading), key("end", 17, 2), key("page down", 18, 2),
+            key("↑", 17, 5, height: 0.5),
             key("←", 16, 5.5, height: 0.5), key("↓", 17, 5.5, height: 0.5),
             key("→", 18, 5.5, height: 0.5),
             key("Clear", 19.5, 1), key("KP=", 20.5, 1), key("KP/", 21.5, 1), key("KP*", 22.5, 1),
@@ -199,28 +259,35 @@ private struct KeyboardLayout {
         return KeyboardLayout(width: 23.5, height: 6, keys: keys)
     }
 
-    private static func mainKeys(includeStandardArrows: Bool) -> [KeyboardKeySpec] {
-        var keys = [key("esc", 0, 0, width: 1.25)]
-        keys += functionKeys(range: 1...12, startX: 2)
+    private static func mainKeys(
+        includeStandardArrows: Bool,
+        includeFunctionSymbols: Bool,
+        includeFunctionRow: Bool
+    ) -> [KeyboardKeySpec] {
+        var keys: [KeyboardKeySpec] = []
+        if includeFunctionRow {
+            keys = [key("esc", 0, 0, width: 1.25, placement: .bottomLeading)]
+            keys += functionKeys(range: 1...12, startX: 2, includeSymbols: includeFunctionSymbols)
+        }
         keys += row(["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="], y: 1)
-        keys.append(key("delete", 13, 1, width: 2))
+        keys.append(key("delete", 13, 1, width: 2, placement: .bottomTrailing))
         keys += row(Array("QWERTYUIOP").map(String.init) + ["[", "]"], y: 2, startX: 1.5)
-        keys.append(key("tab", 0, 2, width: 1.5))
+        keys.append(key("tab", 0, 2, width: 1.5, placement: .bottomLeading))
         keys.append(key("\\", 13.5, 2, width: 1.5))
         keys += row(Array("ASDFGHJKL").map(String.init) + [";", "'"], y: 3, startX: 1.75)
-        keys.append(key("caps lock", 0, 3, width: 1.75))
-        keys.append(key("return", 12.75, 3, width: 2.25))
+        keys.append(key("caps lock", 0, 3, width: 1.75, placement: .bottomLeading))
+        keys.append(key("return", 12.75, 3, width: 2.25, placement: .bottomTrailing))
         keys += row(Array("ZXCVBNM").map(String.init) + [",", ".", "/"], y: 4, startX: 2.25)
-        keys.append(key("shift", 0, 4, width: 2.25, modifier: .shift))
-        keys.append(key("shift", 12.25, 4, width: 2.75, modifier: .shift))
+        keys.append(key("⇧ shift", 0, 4, width: 2.25, modifier: .shift, placement: .bottomLeading))
+        keys.append(key("shift ⇧", 12.25, 4, width: 2.75, modifier: .shift, placement: .bottomTrailing))
         keys += [
-            key("fn", 0, 5),
-            key("control", 1, 5, modifier: .control),
-            key("option", 2, 5, width: 1.25, modifier: .option),
-            key("command", 3.25, 5, width: 1.5, modifier: .command),
+            key("fn", 0, 5, placement: .bottomLeading),
+            key("control", 1, 5, modifier: .control, placement: .stackedModifier),
+            key("option", 2, 5, width: 1.25, modifier: .option, placement: .stackedModifier),
+            key("command", 3.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
             key("space", 4.75, 5, width: includeStandardArrows ? 4.5 : 5.5),
-            key("command", includeStandardArrows ? 9.25 : 10.25, 5, width: 1.5, modifier: .command),
-            key("option", includeStandardArrows ? 10.75 : 11.75, 5, width: 1.25, modifier: .option)
+            key("command", includeStandardArrows ? 9.25 : 10.25, 5, width: 1.5, modifier: .command, placement: .stackedModifier),
+            key("option", includeStandardArrows ? 10.75 : 11.75, 5, width: 1.25, modifier: .option, placement: .stackedModifier)
         ]
         if includeStandardArrows {
             keys += [
@@ -231,9 +298,17 @@ private struct KeyboardLayout {
         return keys
     }
 
-    private static func functionKeys(range: ClosedRange<Int>, startX: CGFloat) -> [KeyboardKeySpec] {
+    private static func functionKeys(
+        range: ClosedRange<Int>,
+        startX: CGFloat,
+        includeSymbols: Bool
+    ) -> [KeyboardKeySpec] {
         range.enumerated().map { offset, number in
-            key("F\(number)", startX + CGFloat(offset), 0, symbol: functionSymbol(number))
+            key(
+                "f\(number)",
+                startX + CGFloat(offset),
+                0,
+                symbol: includeSymbols ? functionSymbol(number) : nil)
         }
     }
 
@@ -256,11 +331,13 @@ private struct KeyboardLayout {
         width: CGFloat = 1,
         height: CGFloat = 1,
         modifier: MagnetShortcutModifier? = nil,
-        symbol: String? = nil
+        symbol: String? = nil,
+        placement: KeyboardLabelPlacement = .center
     ) -> KeyboardKeySpec {
         KeyboardKeySpec(
             id: "\(label)-\(x)-\(y)", label: label, x: x, y: y,
-            width: width, height: height, modifier: modifier, symbol: symbol)
+            width: width, height: height, modifier: modifier, symbol: symbol,
+            labelPlacement: placement)
     }
 }
 
