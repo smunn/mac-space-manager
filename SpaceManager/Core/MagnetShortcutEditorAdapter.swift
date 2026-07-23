@@ -107,13 +107,13 @@ struct MagnetShortcutEditorAdapter {
 
     private static func group(for command: MagnetCommand, displayName: String) -> MagnetShortcutGroup {
         let lower = displayName.lowercased()
-        if lower.contains("two third") || lower.contains("maximize") || lower.contains("center") ||
+        if lower.contains("two third") || lower.contains("maximize") || lower == "center" ||
             lower.contains("restore") || lower.contains("display") {
             return .basics
         }
         if lower.contains("corner") || lower.contains("top left") || lower.contains("top right") ||
             lower.contains("bottom left") || lower.contains("bottom right") {
-            if !lower.contains("1/") { return .basics }
+            if !lower.contains("1/") { return .halves }
         }
 
         switch command.shortcut?.carbonModifiers {
@@ -139,15 +139,19 @@ struct MagnetShortcutEditorAdapter {
         let lower = displayName.lowercased()
         if lower.contains("two third") { return "Two Thirds" }
         if lower.contains("display") { return "Displays" }
-        if lower.contains("maximize") || lower.contains("center") || lower.contains("restore") { return "Window" }
+        if lower.contains("maximize") || lower == "center" || lower.contains("restore") { return "Window" }
         if lower.contains("corner") || lower.contains("top left") || lower.contains("top right") ||
             lower.contains("bottom left") || lower.contains("bottom right") {
             if !lower.contains("1/") { return "Corners" }
         }
         if group == .halves { return "Halves" }
-        if lower.contains("full width") { return "Full Width" }
-        if lower.contains("full height") || (command.category != "custom" && group != .basics) {
-            return command.orientation == .vertical ? "Full Width" : "Full Height"
+        if group != .basics, let frame = command.primaryTargetFrame {
+            if command.orientation == .vertical, frame.x == 0, frame.width == 12 {
+                return "Full Width"
+            }
+            if command.orientation == .horizontal, frame.y == 0, frame.height == 12 {
+                return "Full Height"
+            }
         }
         return "Grid"
     }

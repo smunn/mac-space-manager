@@ -558,7 +558,8 @@ extension MagnetShortcutCommand {
         y: Double,
         width: Double,
         height: Double,
-        position: Int? = nil
+        position: Int? = nil,
+        modifiers: Set<MagnetShortcutModifier>? = nil
     ) -> MagnetShortcutCommand {
         MagnetShortcutCommand(
             id: "\(orientation.rawValue)-\(group.rawValue)-\(position ?? Int(y * 1000))-\(Int(x * 1000))-\(section)",
@@ -567,37 +568,58 @@ extension MagnetShortcutCommand {
             group: group,
             section: section,
             destinationKey: key,
-            modifiers: group.modifiers,
+            modifiers: modifiers ?? group.modifiers,
             isEnabled: true,
             x: x, y: y, width: width, height: height
         )
     }
 
     private static func basicCommands(orientation: MagnetDisplayOrientation) -> [MagnetShortcutCommand] {
-        let regions: [(String, String, String, Double, Double, Double, Double)] = [
-            ("Halves", "First Half", orientation == .portrait ? "↑" : "←", 0, 0, orientation == .portrait ? 1 : 0.5, orientation == .portrait ? 0.5 : 1),
-            ("Halves", "Second Half", orientation == .portrait ? "↓" : "→", orientation == .portrait ? 0 : 0.5, orientation == .portrait ? 0.5 : 0, orientation == .portrait ? 1 : 0.5, orientation == .portrait ? 0.5 : 1),
-            ("Corners", "Top Left", "U", 0, 0, 0.5, 0.5),
-            ("Corners", "Top Right", "I", 0.5, 0, 0.5, 0.5),
-            ("Corners", "Bottom Left", "J", 0, 0.5, 0.5, 0.5),
-            ("Corners", "Bottom Right", "K", 0.5, 0.5, 0.5, 0.5),
-            ("Two Thirds", "First Two Thirds", "E", 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            ("Two Thirds", "Centered Two Thirds", "R", orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
-            ("Two Thirds", "Last Two Thirds", "T", orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1)
+        typealias Region = (
+            group: MagnetShortcutGroup, section: String, name: String, key: String,
+            modifiers: Set<MagnetShortcutModifier>?, x: Double, y: Double, width: Double, height: Double
+        )
+        let baseModifiers: Set<MagnetShortcutModifier> = [.control, .option]
+        let displayModifiers: Set<MagnetShortcutModifier> = [.control, .option, .command]
+        let cornerKeys = orientation == .portrait
+            ? ["Q", "A", "W", "S"]
+            : ["Q", "W", "A", "S"]
+        let twoThirdNames = orientation == .portrait
+            ? ["Top Two Thirds", "Center Two Thirds", "Bottom Two Thirds"]
+            : ["Left Two Thirds", "Center Two Thirds", "Right Two Thirds"]
+
+        let regions: [Region] = [
+            (.halves, "Halves", "Left Half", orientation == .portrait ? "←" : "1", baseModifiers, 0, 0, 0.5, 1),
+            (.halves, "Halves", "Right Half", orientation == .portrait ? "→" : "2", baseModifiers, 0.5, 0, 0.5, 1),
+            (.halves, "Halves", "Top Half", orientation == .portrait ? "1" : "↑", baseModifiers, 0, 0, 1, 0.5),
+            (.halves, "Halves", "Bottom Half", orientation == .portrait ? "2" : "↓", baseModifiers, 0, 0.5, 1, 0.5),
+            (.halves, "Corners", "Top Left Corner", cornerKeys[0], baseModifiers, 0, 0, 0.5, 0.5),
+            (.halves, "Corners", "Top Right Corner", cornerKeys[1], baseModifiers, 0.5, 0, 0.5, 0.5),
+            (.halves, "Corners", "Bottom Left Corner", cornerKeys[2], baseModifiers, 0, 0.5, 0.5, 0.5),
+            (.halves, "Corners", "Bottom Right Corner", cornerKeys[3], baseModifiers, 0.5, 0.5, 0.5, 0.5),
+            (.basics, "Two Thirds", twoThirdNames[0], "E", baseModifiers, 0, 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[1], "R", baseModifiers, orientation == .portrait ? 0 : 1.0 / 6.0, orientation == .portrait ? 1.0 / 6.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Two Thirds", twoThirdNames[2], "T", baseModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
+            (.basics, "Displays", "Next Display", "→", displayModifiers, 0, 0, 1, 1),
+            (.basics, "Displays", "Previous Display", "←", displayModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Maximize", "Return", baseModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Center", "C", baseModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Restore", "Delete", baseModifiers, 0, 0, 1, 1)
         ]
 
         return regions.enumerated().map { index, region in
             make(
                 orientation: orientation,
-                group: .basics,
-                section: region.0,
-                name: region.1,
-                key: region.2,
-                x: region.3,
-                y: region.4,
-                width: region.5,
-                height: region.6,
-                position: index
+                group: region.group,
+                section: region.section,
+                name: region.name,
+                key: region.key,
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height,
+                position: index,
+                modifiers: region.modifiers
             )
         }
     }
