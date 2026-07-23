@@ -5,6 +5,45 @@
 
 import SwiftUI
 
+enum SettingsTab: Hashable {
+    case general
+    case windowLayouts
+}
+
+@MainActor
+final class SettingsWindowModel: ObservableObject {
+    @Published var selection: SettingsTab
+
+    init(selection: SettingsTab) {
+        self.selection = selection
+    }
+}
+
+struct SpaceManagerSettingsView: View {
+    @ObservedObject var model: SettingsWindowModel
+    let commands: [MagnetShortcutCommand]
+    let onSave: ([MagnetShortcutCommand]) throws -> Void
+    let onApply: ([MagnetShortcutCommand]) async throws -> Void
+
+    var body: some View {
+        TabView(selection: $model.selection) {
+            SettingsView()
+                .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(SettingsTab.general)
+
+            MagnetShortcutConfigurationView(
+                commands: commands,
+                onSave: onSave,
+                onApply: onApply
+            )
+            .tabItem { Label("Window Layouts", systemImage: "keyboard") }
+            .tag(SettingsTab.windowLayouts)
+        }
+        .frame(minWidth: 920, idealWidth: 1080, minHeight: 640, idealHeight: 720)
+        .debugLabel("spaceManagerSettingsView")
+    }
+}
+
 struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginManager()
     @ObservedObject private var windowLayouts = WindowLayoutManager.shared

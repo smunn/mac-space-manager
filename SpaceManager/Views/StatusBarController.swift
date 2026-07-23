@@ -14,8 +14,8 @@ class StatusBarController: NSObject {
     private var statusMenu: NSMenu!
     private let spaceSwitcher = SpaceSwitcher()
     private var settingsWindow: NSWindow?
+    private var settingsWindowModel: SettingsWindowModel?
     private var workspaceEditorWindow: NSWindow?
-    private var windowLayoutShortcutWindow: NSWindow?
     private var windowLayoutShortcutCoordinator: MagnetShortcutEditorCoordinator?
 
     private var currentSpaces: [Space] = []
@@ -1466,69 +1466,58 @@ class StatusBarController: NSObject {
     }
 
     @objc func openWindowLayoutShortcutEditor() {
+        openSettingsWindow(selectedTab: .windowLayouts)
+    }
+
+    @objc private func openSettings() {
+        openSettingsWindow(selectedTab: .general)
+    }
+
+    private func openSettingsWindow(selectedTab: SettingsTab) {
         NSApp.activate(ignoringOtherApps: true)
 
-        if let existing = windowLayoutShortcutWindow, existing.isVisible {
+        if let existing = settingsWindow, existing.isVisible {
+            settingsWindowModel?.selection = selectedTab
             existing.makeKeyAndOrderFront(nil)
             return
         }
 
         do {
             let coordinator = try MagnetShortcutEditorCoordinator()
-            let content = MagnetShortcutConfigurationView(
+            let model = SettingsWindowModel(selection: selectedTab)
+            let content = SpaceManagerSettingsView(
+                model: model,
                 commands: coordinator.editorCommands,
                 onSave: { [weak coordinator] commands in
                     try coordinator?.save(commands)
                 },
                 onApply: { [weak coordinator] commands in
                     try await coordinator?.apply(commands)
-                }
-            )
-            .debugLabel("windowLayoutShortcutEditorView")
+                })
 
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false)
-            window.title = "Manage Window Layout Shortcuts"
+            window.title = "Space Manager Settings"
             window.contentView = NSHostingView(rootView: content)
             window.contentMinSize = NSSize(width: 920, height: 640)
-            window.setFrameAutosaveName("WindowLayoutShortcutEditor")
+            window.setFrameAutosaveName("SpaceManagerSettings")
             window.center()
             window.isReleasedWhenClosed = false
             window.makeKeyAndOrderFront(nil)
 
             windowLayoutShortcutCoordinator = coordinator
-            windowLayoutShortcutWindow = window
+            settingsWindowModel = model
+            settingsWindow = window
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Unable to Open Window Shortcuts"
+            alert.messageText = "Unable to Open Settings"
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .warning
             alert.runModal()
         }
-    }
-
-    @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-
-        if let existing = settingsWindow, existing.isVisible {
-            existing.makeKeyAndOrderFront(nil)
-            return
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 430, height: 390),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false)
-        window.title = "Space Manager Settings"
-        window.contentView = NSHostingView(rootView: SettingsView())
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
-        settingsWindow = window
     }
 
     private func refreshAfterClose() {
