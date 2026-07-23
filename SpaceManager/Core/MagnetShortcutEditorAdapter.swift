@@ -95,7 +95,7 @@ struct MagnetShortcutEditorAdapter {
             orientation: displayOrientation,
             group: group,
             section: Self.section(for: command, displayName: name, group: group),
-            destinationKey: shortcut.flatMap { Self.keyName(for: $0.carbonKeyCode) } ?? "",
+            destinationKey: Self.cornerKey(for: name) ?? shortcut.flatMap { Self.keyName(for: $0.carbonKeyCode) } ?? "",
             modifiers: shortcut.map { Self.modifiers(for: $0.carbonModifiers) } ?? [],
             isEnabled: command.isShortcutEnabled,
             x: frame.x,
@@ -170,7 +170,12 @@ struct MagnetShortcutEditorAdapter {
             canvasWidth = 12
             canvasHeight = 24
         case .horizontal:
-            canvasWidth = command.category == "custom" ? 12 : 24
+            // Magnet stores its built-in horizontal commands on a 24×12
+            // canvas, even though it labels them as `custom`. User-created
+            // horizontal grid commands use 12×12. Treating every `custom`
+            // command as 12 columns doubles built-in widths and can place a
+            // right-side target beyond the current display.
+            canvasWidth = command.name.hasPrefix("command:default.name.") ? 24 : 12
             canvasHeight = 12
         }
         return MagnetTargetFrame(
@@ -203,6 +208,16 @@ struct MagnetShortcutEditorAdapter {
             "restore": "Restore"
         ]
         return names[key] ?? rawName
+    }
+
+    private static func cornerKey(for displayName: String) -> String? {
+        switch displayName {
+        case "Top Left Corner": return "Q"
+        case "Top Right Corner": return "W"
+        case "Bottom Left Corner": return "A"
+        case "Bottom Right Corner": return "S"
+        default: return nil
+        }
     }
 
     private static func carbonModifiers(for modifiers: Set<MagnetShortcutModifier>) -> UInt32 {

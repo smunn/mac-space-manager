@@ -581,9 +581,7 @@ extension MagnetShortcutCommand {
         )
         let baseModifiers: Set<MagnetShortcutModifier> = [.control, .option]
         let displayModifiers: Set<MagnetShortcutModifier> = [.control, .option, .command]
-        let cornerKeys = orientation == .portrait
-            ? ["Q", "A", "W", "S"]
-            : ["Q", "W", "A", "S"]
+        let cornerKeys = ["Q", "W", "A", "S"]
         let twoThirdNames = orientation == .portrait
             ? ["Top Two Thirds", "Center Two Thirds", "Bottom Two Thirds"]
             : ["Left Two Thirds", "Center Two Thirds", "Right Two Thirds"]
