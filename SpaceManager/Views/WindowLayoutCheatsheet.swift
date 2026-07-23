@@ -14,21 +14,23 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
         commands: [MagnetShortcutCommand],
         orientation: MagnetDisplayOrientation,
         activeModifiers: Set<MagnetShortcutModifier>,
+        isPinned: Bool,
         screen: NSScreen
     ) {
         let orientedCommands = commands.filter {
             $0.orientation == orientation && $0.isEnabled
         }
         let visibleCommands = orientedCommands.filter { $0.modifiers == activeModifiers }
-        let modifierCount = Set(orientedCommands.map(\.modifiers)).count
+        let modifierRowCount = Set(orientedCommands.map(\.group)).count
         let metrics = WindowLayoutCheatsheetMetrics(
             commands: visibleCommands,
-            modifierCount: modifierCount,
+            modifierRowCount: modifierRowCount,
             availableSize: screen.visibleFrame.size)
         let content = WindowLayoutCheatsheetView(
             commands: commands,
             orientation: orientation,
             activeModifiers: activeModifiers,
+            isPinned: isPinned,
             commandColumnCount: metrics.commandColumnCount)
         if let window {
             window.contentViewController = NSHostingController(rootView: content)
@@ -67,16 +69,19 @@ struct WindowLayoutCheatsheetView: View {
     let commands: [MagnetShortcutCommand]
     let orientation: MagnetDisplayOrientation
     let activeModifiers: Set<MagnetShortcutModifier>
+    let isPinned: Bool
     let commandColumnCount: Int
 
-    private var modifierCombinations: [Set<MagnetShortcutModifier>] {
-        Array(Set(commands.lazy
-            .filter { $0.orientation == orientation && $0.isEnabled }
-            .map(\.modifiers)))
-            .sorted {
-                if $0.count != $1.count { return $0.count < $1.count }
-                return modifierText($0) < modifierText($1)
-            }
+    private var modifierRows: [ModifierGroupRow] {
+        MagnetShortcutGroup.allCases.compactMap { group in
+            let combinations = Array(Set(commands.lazy.filter {
+                $0.orientation == orientation && $0.group == group && $0.isEnabled
+            }.map(\.modifiers)))
+                .sorted { modifierText($0) < modifierText($1) }
+            return combinations.isEmpty
+                ? nil
+                : ModifierGroupRow(group: group, combinations: combinations)
+        }
     }
 
     private func modifierText(_ modifiers: Set<MagnetShortcutModifier>) -> String {
@@ -84,16 +89,6 @@ struct WindowLayoutCheatsheetView: View {
             .filter(modifiers.contains)
             .map(\.glyph)
             .joined()
-    }
-
-    private func groupText(for modifiers: Set<MagnetShortcutModifier>) -> String {
-        let groups = Set(commands.lazy.filter {
-            $0.orientation == orientation && $0.isEnabled && $0.modifiers == modifiers
-        }.map(\.group))
-        return MagnetShortcutGroup.allCases
-            .filter(groups.contains)
-            .map(\.title)
-            .joined(separator: ", ")
     }
 
     private var visibleCommands: [MagnetShortcutCommand] {
@@ -132,6 +127,14 @@ struct WindowLayoutCheatsheetView: View {
 
                 Text("\(modifierText(activeModifiers))/")
                     .font(.system(.body, design: .rounded, weight: .semibold))
+
+                if isPinned {
+                    Text("Pinned")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(.secondary.opacity(0.18), in: Capsule())
+                }
             }
             .padding(14)
 
@@ -144,20 +147,20 @@ struct WindowLayoutCheatsheetView: View {
                         .foregroundStyle(.secondary)
 
                     VStack(spacing: 4) {
-                        ForEach(modifierCombinations, id: \.self) { modifiers in
+                        ForEach(modifierRows) { row in
+                            let isActive = row.combinations.contains(activeModifiers)
                             HStack(spacing: 8) {
-                                Text("\(modifierText(modifiers))/")
+                                Text(row.group.title)
+                                    .frame(width: 72, alignment: .leading)
+                                Text(row.combinations.map { "\(modifierText($0))/" }.joined(separator: "   "))
                                     .font(.system(.body, design: .rounded, weight: .semibold))
-                                    .frame(width: 70, alignment: .leading)
-                                Text(groupText(for: modifiers))
-                                    .lineLimit(1)
                                 Spacer()
                             }
-                            .foregroundStyle(modifiers == activeModifiers ? .primary : .secondary)
+                            .foregroundStyle(isActive ? .primary : .secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .background(
-                                modifiers == activeModifiers
+                                isActive
                                     ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.55)
                                     : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 6))
@@ -222,12 +225,12 @@ private struct WindowLayoutCheatsheetMetrics {
 
     init(
         commands: [MagnetShortcutCommand],
-        modifierCount: Int,
+        modifierRowCount: Int,
         availableSize: NSSize
     ) {
         let sections = Dictionary(grouping: commands, by: \.section)
         let maximumHeight = max(500, availableSize.height - 32)
-        let fixedHeight = 145 + CGFloat(modifierCount) * 31
+        let fixedHeight = 145 + CGFloat(modifierRowCount) * 31
 
         var selectedColumns = 1
         var requiredHeight = maximumHeight
@@ -247,4 +250,11 @@ private struct WindowLayoutCheatsheetMetrics {
             width: min(desiredWidth, max(900, availableSize.width - 32)),
             height: min(max(520, requiredHeight), maximumHeight))
     }
+}
+
+private struct ModifierGroupRow: Identifiable {
+    let group: MagnetShortcutGroup
+    let combinations: [Set<MagnetShortcutModifier>]
+
+    var id: MagnetShortcutGroup { group }
 }

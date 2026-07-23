@@ -22,6 +22,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
     private static let cheatsheetHotKeyIDBase: UInt32 = 900
     private static let settingsHotKeyID: UInt32 = 990
+    private static let cheatsheetDoubleTapInterval: TimeInterval = 0.45
     static let settingsShortcutText = "⌃⌥⌘,"
     private static let settingsShortcut = MagnetShortcut(
         carbonKeyCode: 43,
@@ -39,6 +40,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var cheatsheetShortcutIsDown = false
     private var cheatsheetKeyMonitor: Timer?
     private var activeCheatsheetModifiers: Set<MagnetShortcutModifier>?
+    private var cheatsheetIsPinned = false
+    private var lastCheatsheetPress: (modifiers: Set<MagnetShortcutModifier>, timestamp: TimeInterval)?
     private var interactionMonitors: [Any] = []
     private var lastMouseInteraction: InteractionTarget?
     private var lastKeyboardInteraction: InteractionTarget?
@@ -102,7 +105,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         toggle.state = isEnabled ? .on : .off
         menu.addItem(toggle)
 
-        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold modifiers + /", action: nil, keyEquivalent: "")
+        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold; double-tap to pin", action: nil, keyEquivalent: "")
         cheatsheet.isEnabled = false
         menu.addItem(cheatsheet)
 
@@ -334,11 +337,34 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             if isPressed {
                 guard !cheatsheetShortcutIsDown else { return }
                 cheatsheetShortcutIsDown = true
+                let now = ProcessInfo.processInfo.systemUptime
+
+                if cheatsheetIsPinned {
+                    if activeCheatsheetModifiers == modifiers {
+                        lastCheatsheetPress = nil
+                        hideCheatsheet()
+                    } else {
+                        activeCheatsheetModifiers = modifiers
+                        showCheatsheet(modifiers: modifiers)
+                    }
+                    return
+                }
+
+                let isDoubleTap = lastCheatsheetPress.map {
+                    $0.modifiers == modifiers && now - $0.timestamp <= Self.cheatsheetDoubleTapInterval
+                } ?? false
+                lastCheatsheetPress = (modifiers, now)
                 activeCheatsheetModifiers = modifiers
+                if isDoubleTap {
+                    cheatsheetIsPinned = true
+                    cheatsheetKeyMonitor?.invalidate()
+                    cheatsheetKeyMonitor = nil
+                }
                 showCheatsheet(modifiers: modifiers)
-                startCheatsheetKeyMonitor()
+                if !cheatsheetIsPinned { startCheatsheetKeyMonitor() }
             } else {
-                hideCheatsheet()
+                cheatsheetShortcutIsDown = false
+                if !cheatsheetIsPinned { hideCheatsheet() }
             }
             return
         }
@@ -564,6 +590,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             commands: commands.filter(\.isEnabled),
             orientation: orientation,
             activeModifiers: modifiers,
+            isPinned: cheatsheetIsPinned,
             screen: targetScreen)
     }
 
@@ -593,6 +620,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func hideCheatsheet() {
         cheatsheetShortcutIsDown = false
+        cheatsheetIsPinned = false
         cheatsheetKeyMonitor?.invalidate()
         cheatsheetKeyMonitor = nil
         activeCheatsheetModifiers = nil
