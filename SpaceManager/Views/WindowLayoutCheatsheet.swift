@@ -10,8 +10,15 @@ import SwiftUI
 final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
     private var window: NSPanel?
 
-    func show(commands: [MagnetShortcutCommand], orientation: MagnetDisplayOrientation) {
-        let content = WindowLayoutCheatsheetView(commands: commands, orientation: orientation)
+    func show(
+        commands: [MagnetShortcutCommand],
+        orientation: MagnetDisplayOrientation,
+        activeModifiers: Set<MagnetShortcutModifier>
+    ) {
+        let content = WindowLayoutCheatsheetView(
+            commands: commands,
+            orientation: orientation,
+            activeModifiers: activeModifiers)
         if let window {
             window.contentViewController = NSHostingController(rootView: content)
         } else {
@@ -42,24 +49,45 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
 struct WindowLayoutCheatsheetView: View {
     let commands: [MagnetShortcutCommand]
     let orientation: MagnetDisplayOrientation
-    @State private var group: MagnetShortcutGroup = .halves
+    let activeModifiers: Set<MagnetShortcutModifier>
 
-    private var availableGroups: [MagnetShortcutGroup] {
-        MagnetShortcutGroup.allCases.filter { candidate in
-            commands.contains { $0.orientation == orientation && $0.group == candidate }
-        }
+    private var modifierCombinations: [Set<MagnetShortcutModifier>] {
+        Array(Set(commands.lazy
+            .filter { $0.orientation == orientation && $0.isEnabled }
+            .map(\.modifiers)))
+            .sorted {
+                if $0.count != $1.count { return $0.count < $1.count }
+                return modifierText($0) < modifierText($1)
+            }
+    }
+
+    private func modifierText(_ modifiers: Set<MagnetShortcutModifier>) -> String {
+        MagnetShortcutModifier.allCases
+            .filter(modifiers.contains)
+            .map(\.glyph)
+            .joined()
+    }
+
+    private func groupText(for modifiers: Set<MagnetShortcutModifier>) -> String {
+        let groups = Set(commands.lazy.filter {
+            $0.orientation == orientation && $0.isEnabled && $0.modifiers == modifiers
+        }.map(\.group))
+        return MagnetShortcutGroup.allCases
+            .filter(groups.contains)
+            .map(\.title)
+            .joined(separator: ", ")
     }
 
     private var visibleCommands: [MagnetShortcutCommand] {
-        commands.filter { $0.orientation == orientation && $0.group == group && $0.isEnabled }
+        commands.filter {
+            $0.orientation == orientation &&
+            $0.modifiers == activeModifiers &&
+            $0.isEnabled
+        }
     }
 
     private var sections: [String] {
         Array(Set(visibleCommands.map(\.section))).sorted()
-    }
-
-    private var modifiers: Set<MagnetShortcutModifier> {
-        visibleCommands.reduce(into: []) { $0.formUnion($1.modifiers) }
     }
 
     private var commandColors: [String: Color] {
@@ -72,58 +100,82 @@ struct WindowLayoutCheatsheetView: View {
                 Text("Window Layouts — \(orientation.rawValue)")
                     .font(.headline)
 
-                Picker("Layout", selection: $group) {
-                    ForEach(availableGroups) { item in
-                        Text(item.title).tag(item)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 150)
-
                 Spacer()
 
-                Text("⌃⌥/")
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                Text("Edit Shortcuts  \(WindowLayoutManager.settingsShortcutText)")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(.secondary)
+
+                Text("\(modifierText(activeModifiers))/")
+                    .font(.system(.body, design: .rounded, weight: .semibold))
             }
             .padding(14)
 
             Divider()
 
             HStack(alignment: .top, spacing: 18) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(sections, id: \.self) { section in
-                            VStack(alignment: .leading, spacing: 7) {
-                                Text(section)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Modifier Combinations")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                                ForEach(visibleCommands.filter { $0.section == section }) { command in
-                                    HStack(spacing: 8) {
-                                        WindowLayoutGlyph(
-                                            command: command,
-                                            color: commandColors[command.id] ?? .accentColor)
-                                            .frame(width: 28, height: 20)
-                                        Text(command.name)
-                                            .lineLimit(1)
-                                        Spacer(minLength: 12)
-                                        Text(command.shortcutText)
-                                            .font(.system(.caption, design: .rounded, weight: .semibold))
-                                            .foregroundStyle(commandColors[command.id] ?? .accentColor)
+                    VStack(spacing: 4) {
+                        ForEach(modifierCombinations, id: \.self) { modifiers in
+                            HStack(spacing: 8) {
+                                Text("\(modifierText(modifiers))/")
+                                    .font(.system(.body, design: .rounded, weight: .semibold))
+                                    .frame(width: 70, alignment: .leading)
+                                Text(groupText(for: modifiers))
+                                    .lineLimit(1)
+                                Spacer()
+                            }
+                            .foregroundStyle(modifiers == activeModifiers ? .primary : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                modifiers == activeModifiers
+                                    ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.55)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+
+                    Divider()
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            ForEach(sections, id: \.self) { section in
+                                VStack(alignment: .leading, spacing: 7) {
+                                    Text(section)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+
+                                    ForEach(visibleCommands.filter { $0.section == section }) { command in
+                                        HStack(spacing: 8) {
+                                            WindowLayoutGlyph(
+                                                command: command,
+                                                color: commandColors[command.id] ?? .accentColor)
+                                                .frame(width: 28, height: 20)
+                                            Text(command.name)
+                                                .lineLimit(1)
+                                            Spacer(minLength: 12)
+                                            Text(command.shortcutText)
+                                                .font(.system(.caption, design: .rounded, weight: .semibold))
+                                                .foregroundStyle(commandColors[command.id] ?? .accentColor)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    .padding(16)
                 }
-                .frame(width: 300)
+                .padding(16)
+                .frame(width: 340)
 
                 Divider()
 
                 MacKeyboardView(
-                    highlightedModifiers: modifiers,
+                    highlightedModifiers: activeModifiers,
                     highlightedKeys: WindowLayoutCommandColors.keyboardHighlights(for: visibleCommands)
                 )
                 .frame(maxWidth: .infinity)
@@ -132,11 +184,6 @@ struct WindowLayoutCheatsheetView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 500)
-        .onAppear {
-            if !availableGroups.contains(group) {
-                group = availableGroups.first ?? .halves
-            }
-        }
         .debugLabel("windowLayoutCheatsheetView")
     }
 }

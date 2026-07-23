@@ -115,6 +115,26 @@ final class WindowLayoutTests: XCTestCase {
         }
     }
 
+    func testShortcutStoreMirrorsPortableConfigurationIntoProject() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let home = root.appendingPathComponent("home", isDirectory: true)
+        let project = root.appendingPathComponent("project", isDirectory: true)
+        let store = WindowLayoutShortcutStore(homeDirectory: home, projectRoot: project)
+        let commands = Array(MagnetShortcutCommand.standardSet.prefix(3))
+
+        try store.save(commands)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.applicationSupportURL.path))
+        let projectURL = try XCTUnwrap(store.projectURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: projectURL.path))
+        XCTAssertEqual(
+            try Data(contentsOf: store.applicationSupportURL),
+            try Data(contentsOf: projectURL))
+        XCTAssertEqual(try store.load(), commands)
+    }
+
     @MainActor
     func testOnlyExactWindowActionNamesReceiveSpecialRouting() {
         XCTAssertEqual(WindowLayoutManager.operation(for: "Center"), .center)

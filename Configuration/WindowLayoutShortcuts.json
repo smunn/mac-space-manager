@@ -1,0 +1,2082 @@
+[
+  {
+    "destinationKey" : "1",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "3EF4DDDC-9D6B-458F-9306-6F8218717166",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Full Width 1\/6 Row 1",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "A7DF449C-7C3B-4769-92CE-7779B93C0080",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Full Width 1\/6 Row 2",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.16666666666666666
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "B1F7A70B-F296-40A8-8C45-BBF6F0291CF2",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Full Width 1\/6 Row 3",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "4",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "641A4F59-F708-489D-ADD1-14F3DD4CC122",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift"
+    ],
+    "name" : "Full Width 1\/6 Row 4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "5",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "2EA723CD-F243-453C-B8DE-0CEAA4C4109D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Full Width 1\/6 Row 5",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "6",
+    "group" : 6,
+    "height" : 0.16666666666666663,
+    "id" : "97A94ED3-808B-43FC-9C0C-4A422B42C019",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "command"
+    ],
+    "name" : "Full Width 1\/6 Row 6",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.8333333333333334
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "F34A9C3F-14FA-432F-A1EB-56B9DE824785",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command",
+      "option"
+    ],
+    "name" : "Full Width 1\/8 Row 1",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "F031D838-B806-4235-A4D2-A15E651F5523",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "option",
+      "shift",
+      "control"
+    ],
+    "name" : "Full Width 1\/8 Row 2",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.125
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "0451C3A3-90AD-417B-84AA-E6363F50BAE7",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "command",
+      "shift"
+    ],
+    "name" : "Full Width 1\/8 Row 3",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "4",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E7DAF01D-8204-452B-898F-28E77C30267F",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift",
+      "option"
+    ],
+    "name" : "Full Width 1\/8 Row 4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.375
+  },
+  {
+    "destinationKey" : "5",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "AC7A3100-503E-4820-A268-8F00FDF19168",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "shift",
+      "option",
+      "control"
+    ],
+    "name" : "Full Width 1\/8 Row 5",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "6",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "6432ECE1-7468-404F-9265-89F5CAAF9A82",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "option",
+      "control",
+      "command"
+    ],
+    "name" : "Full Width 1\/8 Row 6",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.625
+  },
+  {
+    "destinationKey" : "7",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "0ADA7F7A-50A1-4B45-A683-AE5FFF700B0C",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Full Width 1\/8 Row 7",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "8",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E8B5A845-F7B5-4438-A421-3D15065E8850",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Full Width 1\/8 Row 8",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.875
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "2A07EB19-026E-4B95-951B-BBCF63DA7244",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "command",
+      "option"
+    ],
+    "name" : "Top 1\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "9DA55B46-4B6F-4181-9393-BA561A01CB0E",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "option",
+      "shift"
+    ],
+    "name" : "Top 1\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E6071670-0A4E-4792-BD05-5FB0D164F5FE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "option",
+      "control"
+    ],
+    "name" : "Top 2\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.125
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "630AB174-7D04-4221-B50E-7F345768DB8A",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Top 2\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.125
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "C401EB2F-E739-457D-B70B-D75BF2ADA9E3",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control",
+      "option"
+    ],
+    "name" : "Top 3\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "0386F311-6C4F-4C46-83E6-D3638B88A51B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control",
+      "option"
+    ],
+    "name" : "Top 3\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "D7409085-701C-490B-BA30-B63C0F18D002",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "shift",
+      "command"
+    ],
+    "name" : "Top 4\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.375
+  },
+  {
+    "destinationKey" : "F",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "55EC748E-B919-4584-94E0-C357B5FA9063",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "control",
+      "command"
+    ],
+    "name" : "Top 4\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.375
+  },
+  {
+    "destinationKey" : "T",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "2BE7185F-DEC0-44BC-A196-F273951EB1AE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift",
+      "option"
+    ],
+    "name" : "Top 5\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "G",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "1D36AFE7-19AE-43B5-857C-D2C9B6D750F8",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "shift",
+      "command"
+    ],
+    "name" : "Top 5\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "Y",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E94A2712-CE25-40BF-B3AF-68B9A4C57E64",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "option",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom 6\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.625
+  },
+  {
+    "destinationKey" : "H",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "CBA3B7B5-32AB-4D1B-BE04-17574FE39099",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "option",
+      "command",
+      "control"
+    ],
+    "name" : "Bottom 6\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.625
+  },
+  {
+    "destinationKey" : "U",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "7ED82EE7-4320-4C23-A417-167B0EC1265F",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift",
+      "option"
+    ],
+    "name" : "Bottom 7\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "J",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E71CA8C6-08F3-4811-A3BD-73A04B9AA8A1",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift",
+      "option"
+    ],
+    "name" : "Bottom 7\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "I",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E826D95E-AF38-4945-9943-18A1501CB599",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Bottom 8\/8 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.875
+  },
+  {
+    "destinationKey" : "K",
+    "group" : 8,
+    "height" : 0.125,
+    "id" : "E131F053-D3A1-4A94-9F69-30FD5F5ECAB4",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "option",
+      "control",
+      "command"
+    ],
+    "name" : "Bottom 8\/8 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.875
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "9C89A33B-D44C-4819-B061-7BBA64E252B1",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Top 1\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "08E4A0AC-08DF-4959-A4C5-96B85173B7A1",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Top 1\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "B2504AC9-DCF7-45C0-9E2F-E14B38BD4BDC",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "shift",
+      "control"
+    ],
+    "name" : "Top 2\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.16666666666666666
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "95D1177F-F357-4F3C-8FD1-1ECC80E2A9AC",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Top 2\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.16666666666666666
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "E10CF8D1-1731-4B2E-8C3A-E574FE1DE2D5",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "command"
+    ],
+    "name" : "Top 3\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "0E762142-686B-464D-83AC-A906E7C9101A",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Top 3\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "0A0206DB-4AC5-43F1-BB09-E87B6C5B1ED4",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Bottom 4\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "F",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "7146AEE7-DBCF-4050-AC75-4EA24BB74B63",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "shift",
+      "control"
+    ],
+    "name" : "Bottom 4\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "T",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "8EABCDC1-1D9B-4AF3-9D74-D713E6EE9D23",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Bottom 5\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "G",
+    "group" : 6,
+    "height" : 0.16666666666666666,
+    "id" : "ACEB6679-99E4-421D-9165-A7B9F0655A3B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom 5\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "Y",
+    "group" : 6,
+    "height" : 0.16666666666666663,
+    "id" : "22AE822A-E311-4797-90BE-0A16A1AC8E0C",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "command"
+    ],
+    "name" : "Bottom 6\/6 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.8333333333333334
+  },
+  {
+    "destinationKey" : "H",
+    "group" : 6,
+    "height" : 0.16666666666666663,
+    "id" : "F3F653C5-353C-41CB-8FF6-4D1BED6B8328",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift"
+    ],
+    "name" : "Bottom 6\/6 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.8333333333333334
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "7BEADF79-C20C-4B37-9785-3E8AD06DBED9",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "shift"
+    ],
+    "name" : "Top 1\/4 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "FDCB7436-385E-41DE-9237-DFBBD4B627A0",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "option"
+    ],
+    "name" : "Top 1\/4 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "82114C7C-B30E-4A2C-8FB1-19F7A2E841D4",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "option"
+    ],
+    "name" : "Top 2\/4 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "97B16D7E-0947-440C-B96E-0989CB61A85B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "shift"
+    ],
+    "name" : "Top 2\/4 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "72A1C68E-2298-4463-82D5-FE9CD3F216A9",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "control"
+    ],
+    "name" : "Bottom 3\/4 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "591A0255-5FD1-4CD6-BAE6-4D6773F39ED8",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "option"
+    ],
+    "name" : "Bottom 3\/4 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "CE1F6887-883E-4E03-8B6C-76D3692D786B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom 4\/4 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "F",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "1C499AC6-16FE-4784-9A66-7222C6E855D0",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "option"
+    ],
+    "name" : "Bottom 4\/4 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "0F539FDF-6EBE-41BD-AA09-E6B0424FB546",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Top 1\/3 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "4E44B2F6-79CF-49E0-B574-AB8C26EA1455",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Top 1\/3 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "4EA2FCA8-626B-4B48-9913-CF1A22928B3D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control"
+    ],
+    "name" : "Mid 2\/3 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "9B2C6D73-3F75-44CF-B814-9808202E6564",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Mid 2\/3 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "A0971C4B-91DA-4D63-8A4F-FF5FBEFDCD09",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control"
+    ],
+    "name" : "Bottom 3\/3 Left",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "85AEDB37-9392-43BE-90D1-67B5BC8F99A5",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control"
+    ],
+    "name" : "Bottom 3\/3 Right",
+    "orientation" : "Portrait",
+    "section" : "Grid",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "7D3569AE-34B3-436F-905F-457E7AAF5F16",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "option"
+    ],
+    "name" : "Top 1\/4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "EC03F5DE-1848-4155-8A99-9A5F40A4667D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "control"
+    ],
+    "name" : "Mid Top 1\/4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.25
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "FC4AA109-5DB1-4B16-88C9-9CEE6A4EDBB6",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "control",
+      "option"
+    ],
+    "name" : "Mid Bottom 1\/4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "4",
+    "group" : 4,
+    "height" : 0.25,
+    "id" : "39CA2FE8-B7A4-4C08-9BA2-9B6C4E689329",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "option",
+      "control"
+    ],
+    "name" : "Bottom 1\/4",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.75
+  },
+  {
+    "destinationKey" : "←",
+    "group" : 2,
+    "height" : 1,
+    "id" : "AC3CD641-34E6-4170-9FCB-81B83E99AC05",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Left Half",
+    "orientation" : "Portrait",
+    "section" : "Halves",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "→",
+    "group" : 2,
+    "height" : 1,
+    "id" : "00027EBE-65E3-4F09-B864-F060EE6E3FCC",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Right Half",
+    "orientation" : "Portrait",
+    "section" : "Halves",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "F3A70196-4F06-40EC-91EB-DA9A85396064",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Top Half",
+    "orientation" : "Portrait",
+    "section" : "Halves",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "DB21454A-7A82-4CC8-96B3-27696C19838D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Bottom Half",
+    "orientation" : "Portrait",
+    "section" : "Halves",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "D2B01586-3EE6-4AC3-BC12-E03C8FFAE246",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Top Left Corner",
+    "orientation" : "Portrait",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "16667619-ACF5-4E46-B2E8-C1BBF842AE93",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Top Right Corner",
+    "orientation" : "Portrait",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "90751A70-D0FE-4825-AF67-AA888105F4EE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Bottom Left Corner",
+    "orientation" : "Portrait",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "5BC3A66A-E902-42A4-85B4-C95F00E7A471",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Bottom Right Corner",
+    "orientation" : "Portrait",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "7DB761BD-2DAB-434A-B728-53538085FA8D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Top Third",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "9516C20A-5E74-48AB-81DC-503351F05130",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Center Third",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 3,
+    "height" : 0.3333333333333333,
+    "id" : "B593C418-D2E2-4D3B-B809-4FA58A02FFAE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Bottom Third",
+    "orientation" : "Portrait",
+    "section" : "Full Width",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.6666666666666666
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 0,
+    "height" : 0.6666666666666666,
+    "id" : "93E1F823-4FC1-45F6-8D14-F17387F6AC95",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Top Two Thirds",
+    "orientation" : "Portrait",
+    "section" : "Two Thirds",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 0,
+    "height" : 0.6666666666666666,
+    "id" : "FBACF53C-E676-4ABA-870C-E1F224079410",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Center Two Thirds",
+    "orientation" : "Portrait",
+    "section" : "Two Thirds",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.16666666666666666
+  },
+  {
+    "destinationKey" : "T",
+    "group" : 0,
+    "height" : 0.6666666666666666,
+    "id" : "DC274349-5C73-46F5-AD2C-F91A7073D760",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Bottom Two Thirds",
+    "orientation" : "Portrait",
+    "section" : "Two Thirds",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.3333333333333333
+  },
+  {
+    "destinationKey" : "→",
+    "group" : 0,
+    "height" : 1,
+    "id" : "D8FA7D49-F988-4AED-AF13-46B592093143",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "command",
+      "control"
+    ],
+    "name" : "Next Display",
+    "orientation" : "Portrait",
+    "section" : "Displays",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "←",
+    "group" : 0,
+    "height" : 1,
+    "id" : "A3759D39-D98E-4F13-9426-8112FD68110D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "command",
+      "control"
+    ],
+    "name" : "Previous Display",
+    "orientation" : "Portrait",
+    "section" : "Displays",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "Return",
+    "group" : 0,
+    "height" : 1,
+    "id" : "21F97F6D-77CC-4E5E-9637-6C6917CBBA76",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Maximize",
+    "orientation" : "Portrait",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "C",
+    "group" : 0,
+    "height" : 1,
+    "id" : "999B5F8D-74CA-478C-A713-1969E900F5E3",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Center",
+    "orientation" : "Portrait",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "Delete",
+    "group" : 0,
+    "height" : 1,
+    "id" : "54C5531D-09BA-4F2F-BAB8-5E8562D92759",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Restore",
+    "orientation" : "Portrait",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "1B97DC31-B799-4DB6-8027-6170C42881EF",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "option",
+      "shift"
+    ],
+    "name" : "Top Left 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "A8546036-40D9-4138-BF6F-D3B7DB160BA3",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "shift",
+      "option",
+      "command"
+    ],
+    "name" : "Top Mid Left 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.25,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "DE416910-5DC2-4DE8-BE74-7FF6E64834E6",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift",
+      "option"
+    ],
+    "name" : "Top Mid Right 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "37425986-29CE-4E1E-AB94-A28B15E2E126",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "command",
+      "shift"
+    ],
+    "name" : "Top Right 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.75,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "D0B67DE2-4E1A-465F-8840-9168F8FD1CDD",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom Left 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "66A61E22-E499-43FE-B8C2-6E2E0C7553A5",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "shift",
+      "option",
+      "control"
+    ],
+    "name" : "Bottom Mid Left 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.25,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "DE12A178-2312-4A2B-BA3A-AEEA03627F22",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "command",
+      "shift"
+    ],
+    "name" : "Bottom Mid Right 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "F",
+    "group" : 8,
+    "height" : 0.5,
+    "id" : "1408B6F4-16BE-483B-A2E8-48BEF88A1BFC",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Bottom Right 1\/8",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.25,
+    "x" : 0.75,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "48172076-96B3-458A-A1DD-BE689681F753",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "shift",
+      "control"
+    ],
+    "name" : "Top Left 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "1BAA3043-FB30-415B-AE27-31C794AE1E3A",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command",
+      "shift"
+    ],
+    "name" : "Top Middle 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0.3333333333333333,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "A486E94A-BD77-4CE1-8CB2-5CD23FBE89BE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "command",
+      "control"
+    ],
+    "name" : "Top Right 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0.6666666666666666,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "55269C99-6B49-4C4A-9C5C-BA70612E58BB",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom Left 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "3D3124E9-47A9-494B-91DB-AE001ADF4AC9",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom Middle 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0.3333333333333333,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "D",
+    "group" : 6,
+    "height" : 0.5,
+    "id" : "FDF28E37-92E4-4E63-8BA9-E05CC8491646",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control",
+      "shift"
+    ],
+    "name" : "Bottom Right 1\/3",
+    "orientation" : "Horizontal",
+    "section" : "Grid",
+    "width" : 0.3333333333333333,
+    "x" : 0.6666666666666666,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 4,
+    "height" : 1,
+    "id" : "371F7707-9467-4098-ABB9-783DEFD0DFF6",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "shift"
+    ],
+    "name" : "Left 1\/4",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.25,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 4,
+    "height" : 1,
+    "id" : "631C9429-ED46-4D14-8FAE-6F1DAE0C56C6",
+    "isEnabled" : true,
+    "modifiers" : [
+      "shift",
+      "option",
+      "control"
+    ],
+    "name" : "Center Left 1\/4",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.25,
+    "x" : 0.25,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 4,
+    "height" : 1,
+    "id" : "6D96E864-B082-48BC-93EE-349FB97AC3D4",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control",
+      "shift"
+    ],
+    "name" : "Center Right 1\/4",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.25,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "4",
+    "group" : 4,
+    "height" : 1,
+    "id" : "D86B735A-CA85-4ECE-AC6D-B33D793B58BE",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "shift",
+      "control"
+    ],
+    "name" : "Right 1\/4",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.25,
+    "x" : 0.75,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "←",
+    "group" : 2,
+    "height" : 1,
+    "id" : "869DBDF4-34D4-4EAC-8452-144DD41EC7C1",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Left Half",
+    "orientation" : "Horizontal",
+    "section" : "Halves",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "→",
+    "group" : 2,
+    "height" : 1,
+    "id" : "5F8D16F9-4538-422D-9062-779261E9C365",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Right Half",
+    "orientation" : "Horizontal",
+    "section" : "Halves",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "↑",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "733CC74C-FC53-41DD-939A-F9DBEF08F949",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Top Half",
+    "orientation" : "Horizontal",
+    "section" : "Halves",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "↓",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "FD3C8478-2D05-40CF-9B0B-C860331C636B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Bottom Half",
+    "orientation" : "Horizontal",
+    "section" : "Halves",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "Q",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "8E44E251-B2AF-4215-8353-40D0FA0B51B2",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Top Left Corner",
+    "orientation" : "Horizontal",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "W",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "A4CD8000-4400-4E4B-9241-FB6ACC355E88",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Top Right Corner",
+    "orientation" : "Horizontal",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "A",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "8D07932C-A9CB-45F1-A53B-F7CF868A545B",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Bottom Left Corner",
+    "orientation" : "Horizontal",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "S",
+    "group" : 2,
+    "height" : 0.5,
+    "id" : "927F2119-40C5-4E2B-94A8-3DA0C924E5B0",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Bottom Right Corner",
+    "orientation" : "Horizontal",
+    "section" : "Corners",
+    "width" : 0.5,
+    "x" : 0.5,
+    "y" : 0.5
+  },
+  {
+    "destinationKey" : "1",
+    "group" : 3,
+    "height" : 1,
+    "id" : "54F4708E-F4FC-4E2C-80FF-B39F753B65CC",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Left Third",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.3333333333333333,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "2",
+    "group" : 3,
+    "height" : 1,
+    "id" : "1526E598-5BFD-417C-8B56-78D34D88484D",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "control"
+    ],
+    "name" : "Center Third",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.3333333333333333,
+    "x" : 0.3333333333333333,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "3",
+    "group" : 3,
+    "height" : 1,
+    "id" : "340061EF-E107-4F91-AD3F-BF181D7A258A",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "command"
+    ],
+    "name" : "Right Third",
+    "orientation" : "Horizontal",
+    "section" : "Full Height",
+    "width" : 0.3333333333333333,
+    "x" : 0.6666666666666666,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "E",
+    "group" : 0,
+    "height" : 1,
+    "id" : "531E4C43-0B53-4C7F-AED8-0654F38CAFE0",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Left Two Thirds",
+    "orientation" : "Horizontal",
+    "section" : "Two Thirds",
+    "width" : 0.6666666666666666,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "R",
+    "group" : 0,
+    "height" : 1,
+    "id" : "8050D2F9-2CE0-43AD-884E-40B0CD8D55C8",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Center Two Thirds",
+    "orientation" : "Horizontal",
+    "section" : "Two Thirds",
+    "width" : 0.6666666666666666,
+    "x" : 0.16666666666666666,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "T",
+    "group" : 0,
+    "height" : 1,
+    "id" : "A0F3D8E9-416F-487C-9919-D6E6E2977459",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Right Two Thirds",
+    "orientation" : "Horizontal",
+    "section" : "Two Thirds",
+    "width" : 0.6666666666666666,
+    "x" : 0.3333333333333333,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "→",
+    "group" : 0,
+    "height" : 1,
+    "id" : "40C36D54-6BCE-4216-B75F-83BCC582AC41",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option",
+      "command"
+    ],
+    "name" : "Next Display",
+    "orientation" : "Horizontal",
+    "section" : "Displays",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "←",
+    "group" : 0,
+    "height" : 1,
+    "id" : "6015A134-0019-4CFB-819B-215D74F0F97F",
+    "isEnabled" : true,
+    "modifiers" : [
+      "command",
+      "option",
+      "control"
+    ],
+    "name" : "Previous Display",
+    "orientation" : "Horizontal",
+    "section" : "Displays",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "Return",
+    "group" : 0,
+    "height" : 1,
+    "id" : "9551C12F-3DE4-4E85-AF2F-0B9579EB11E3",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Maximize",
+    "orientation" : "Horizontal",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "C",
+    "group" : 0,
+    "height" : 1,
+    "id" : "D77D4D10-E411-49B1-9146-3B706B163BDB",
+    "isEnabled" : true,
+    "modifiers" : [
+      "option",
+      "control"
+    ],
+    "name" : "Center",
+    "orientation" : "Horizontal",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "destinationKey" : "Delete",
+    "group" : 0,
+    "height" : 1,
+    "id" : "3D1FF37C-012E-48E6-A3FA-4D01E02C74C8",
+    "isEnabled" : true,
+    "modifiers" : [
+      "control",
+      "option"
+    ],
+    "name" : "Restore",
+    "orientation" : "Horizontal",
+    "section" : "Window",
+    "width" : 1,
+    "x" : 0,
+    "y" : 0
+  }
+]

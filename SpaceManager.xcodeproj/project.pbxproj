@@ -47,6 +47,7 @@
 		ABE439E098D8935AC52C38F2 /* WindowDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCD10B9F25963D2BECC467D /* WindowDetector.swift */; };
 		B6389B5374D0DC9DD7D5D685 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0F9A7165BF4C3B5090A6F3 /* Extensions.swift */; };
 		BAB71C62BD296928E7E6AF80 /* MacKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BCB9E1598F6942EDC06D82 /* MacKeyboardView.swift */; };
+		BE5E36336289AAB36FC874CC /* WindowLayoutShortcutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */; };
 		C2FF8DF14C94F31C2DFAFA57 /* MagnetShortcutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */; };
 		C9F1AAFCEDA975E3CC921748 /* WindowLayoutCheatsheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */; };
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
@@ -127,6 +128,7 @@
 		E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceAutomation.swift; sourceTree = "<group>"; };
 		E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutEditorAdapter.swift; sourceTree = "<group>"; };
 		E4FF5B5E97D65212F53962BB /* View+DebugLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+DebugLabel.swift"; sourceTree = "<group>"; };
+		F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutShortcutStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -172,6 +174,7 @@
 				5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */,
 				5FCD10B9F25963D2BECC467D /* WindowDetector.swift */,
 				65DFB028FD2205DF91A3A6ED /* WindowLayoutManager.swift */,
+				F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */,
 				E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */,
 				5E24B9AD41807749EE20B419 /* WorkspaceConfig.swift */,
 				47932FA0B64A4E108FC71631 /* WorkspaceLauncher.swift */,
@@ -407,6 +410,7 @@
 				ABE439E098D8935AC52C38F2 /* WindowDetector.swift in Sources */,
 				C9F1AAFCEDA975E3CC921748 /* WindowLayoutCheatsheet.swift in Sources */,
 				60A9D8AE5AB70F3D365068C8 /* WindowLayoutManager.swift in Sources */,
+				BE5E36336289AAB36FC874CC /* WindowLayoutShortcutStore.swift in Sources */,
 				924902E76D958E3E141E46E2 /* WindowMoveController.swift in Sources */,
 				EBAA87AA89A1D4720B95BE9A /* WindowMoveLog.swift in Sources */,
 				62DAC63236FEB617879B8ACB /* WorkspaceAutomation.swift in Sources */,

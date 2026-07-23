@@ -20,12 +20,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
 
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
-    private static let cheatsheetHotKeyID: UInt32 = 900
-    private static let cheatsheetShortcut = MagnetShortcut(
-        carbonKeyCode: 44,
-        carbonModifiers: UInt32(controlKey | optionKey))
+    private static let cheatsheetHotKeyIDBase: UInt32 = 900
+    private static let settingsHotKeyID: UInt32 = 990
+    static let settingsShortcutText = "⌃⌥⌘,"
+    private static let settingsShortcut = MagnetShortcut(
+        carbonKeyCode: 43,
+        carbonModifiers: UInt32(controlKey | optionKey | cmdKey))
     private var commands: [MagnetShortcutCommand] = []
     private var commandsByHotKeyID: [UInt32: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
+    private var cheatsheetModifiersByHotKeyID: [UInt32: Set<MagnetShortcutModifier>] = [:]
     private var hotKeys: [EventHotKeyRef] = []
     private var eventHandler: EventHandlerRef?
     private var observers: [NSObjectProtocol] = []
@@ -35,6 +38,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var cheatsheetController: WindowLayoutCheatsheetController?
     private var cheatsheetShortcutIsDown = false
     private var cheatsheetKeyMonitor: Timer?
+    private var activeCheatsheetModifiers: Set<MagnetShortcutModifier>?
 
     private override init() {
         let requested = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
@@ -94,9 +98,13 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         toggle.state = isEnabled ? .on : .off
         menu.addItem(toggle)
 
-        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold ⌃⌥/", action: nil, keyEquivalent: "")
+        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold modifiers + /", action: nil, keyEquivalent: "")
         cheatsheet.isEnabled = false
         menu.addItem(cheatsheet)
+
+        let settings = NSMenuItem(title: "Edit Shortcuts — \(Self.settingsShortcutText)", action: nil, keyEquivalent: "")
+        settings.isEnabled = false
+        menu.addItem(settings)
 
         let orientation: MagnetDisplayOrientation = focusedWindow().map {
             self.orientation(for: screen(containing: $0.frame))
@@ -175,14 +183,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func loadCommands() throws -> [MagnetShortcutCommand] {
+        if let commands = try WindowLayoutShortcutStore.shared.load() {
+            return commands
+        }
         if let configuration = try MagnetShortcutManager.shared.loadDraft() {
-            return MagnetShortcutEditorAdapter().editorCommands(from: configuration)
+            let commands = MagnetShortcutEditorAdapter().editorCommands(from: configuration)
+            try WindowLayoutShortcutStore.shared.save(commands)
+            return commands
         }
         if let configuration = try? MagnetShortcutManager.shared.loadMagnetConfiguration() {
             _ = try? MagnetShortcutManager.shared.saveDraft(configuration)
-            return MagnetShortcutEditorAdapter().editorCommands(from: configuration)
+            let commands = MagnetShortcutEditorAdapter().editorCommands(from: configuration)
+            try WindowLayoutShortcutStore.shared.save(commands)
+            return commands
         }
-        return MagnetShortcutCommand.standardSet
+        let commands = MagnetShortcutCommand.standardSet
+        try WindowLayoutShortcutStore.shared.save(commands)
+        return commands
     }
 
     private func registerHotKeys() throws {
@@ -190,8 +207,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         var routes: [MagnetShortcut: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
         for command in commands where command.isEnabled {
             for shortcut in shortcuts(for: command) {
-                if shortcut == Self.cheatsheetShortcut {
-                    throw WindowLayoutError.cheatsheetShortcutConflict
+                if shortcut.carbonKeyCode == 44 {
+                    throw WindowLayoutError.reservedShortcutConflict("modifier + /")
+                }
+                if shortcut == Self.settingsShortcut {
+                    throw WindowLayoutError.reservedShortcutConflict(Self.settingsShortcutText)
                 }
                 if routes[shortcut]?[command.orientation] != nil {
                     throw WindowLayoutError.duplicateShortcut(command.shortcutText)
@@ -235,19 +255,40 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
         guard status == noErr else { throw WindowLayoutError.hotKeyRegistration(status) }
 
-        var cheatsheetReference: EventHotKeyRef?
-        let cheatsheetRegistration = RegisterEventHotKey(
-            Self.cheatsheetShortcut.carbonKeyCode,
-            Self.cheatsheetShortcut.carbonModifiers,
-            EventHotKeyID(signature: Self.hotKeySignature, id: Self.cheatsheetHotKeyID),
+        let modifierSets = Set(commands.lazy.filter(\.isEnabled).map(\.modifiers))
+            .filter { $0.count >= 2 }
+            .sorted { Self.carbonModifiers(for: $0) < Self.carbonModifiers(for: $1) }
+        for (index, modifiers) in modifierSets.enumerated() {
+            let id = Self.cheatsheetHotKeyIDBase + UInt32(index)
+            var reference: EventHotKeyRef?
+            let registration = RegisterEventHotKey(
+                44,
+                Self.carbonModifiers(for: modifiers),
+                EventHotKeyID(signature: Self.hotKeySignature, id: id),
+                GetApplicationEventTarget(),
+                0,
+                &reference)
+            guard registration == noErr, let reference else {
+                unregisterHotKeys()
+                throw WindowLayoutError.hotKeyRegistration(registration)
+            }
+            hotKeys.append(reference)
+            cheatsheetModifiersByHotKeyID[id] = modifiers
+        }
+
+        var settingsReference: EventHotKeyRef?
+        let settingsRegistration = RegisterEventHotKey(
+            Self.settingsShortcut.carbonKeyCode,
+            Self.settingsShortcut.carbonModifiers,
+            EventHotKeyID(signature: Self.hotKeySignature, id: Self.settingsHotKeyID),
             GetApplicationEventTarget(),
             0,
-            &cheatsheetReference)
-        guard cheatsheetRegistration == noErr, let cheatsheetReference else {
+            &settingsReference)
+        guard settingsRegistration == noErr, let settingsReference else {
             unregisterHotKeys()
-            throw WindowLayoutError.hotKeyRegistration(cheatsheetRegistration)
+            throw WindowLayoutError.hotKeyRegistration(settingsRegistration)
         }
-        hotKeys.append(cheatsheetReference)
+        hotKeys.append(settingsReference)
 
         for (index, entry) in routes.sorted(by: { lhs, rhs in
             lhs.key.carbonModifiers == rhs.key.carbonModifiers
@@ -277,6 +318,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         hotKeys.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()
         commandsByHotKeyID.removeAll()
+        cheatsheetModifiersByHotKeyID.removeAll()
         if let eventHandler {
             RemoveEventHandler(eventHandler)
             self.eventHandler = nil
@@ -284,14 +326,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func handleHotKey(_ id: UInt32, isPressed: Bool) {
-        if id == Self.cheatsheetHotKeyID {
+        if let modifiers = cheatsheetModifiersByHotKeyID[id] {
             if isPressed {
                 guard !cheatsheetShortcutIsDown else { return }
                 cheatsheetShortcutIsDown = true
-                showCheatsheet()
+                activeCheatsheetModifiers = modifiers
+                showCheatsheet(modifiers: modifiers)
                 startCheatsheetKeyMonitor()
             } else {
                 hideCheatsheet()
+            }
+            return
+        }
+        if id == Self.settingsHotKeyID {
+            guard isPressed else { return }
+            hideCheatsheet()
+            if let url = URL(string: "spacemanager://window-layout-shortcuts") {
+                NSWorkspace.shared.open(url)
             }
             return
         }
@@ -482,7 +533,14 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func shortcuts(for command: MagnetShortcutCommand) -> [MagnetShortcut] {
         guard command.modifiers.count >= 2 else { return [] }
-        let modifiers = command.modifiers.reduce(UInt32(0)) { result, modifier in
+        let modifiers = Self.carbonModifiers(for: command.modifiers)
+        return MagnetKeyCodes.codes(for: command.destinationKey).map {
+            MagnetShortcut(carbonKeyCode: $0, carbonModifiers: modifiers)
+        }
+    }
+
+    private static func carbonModifiers(for modifiers: Set<MagnetShortcutModifier>) -> UInt32 {
+        modifiers.reduce(UInt32(0)) { result, modifier in
             switch modifier {
             case .control: return result | UInt32(controlKey)
             case .option: return result | UInt32(optionKey)
@@ -490,12 +548,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             case .command: return result | UInt32(cmdKey)
             }
         }
-        return MagnetKeyCodes.codes(for: command.destinationKey).map {
-            MagnetShortcut(carbonKeyCode: $0, carbonModifiers: modifiers)
-        }
     }
 
-    private func showCheatsheet() {
+    private func showCheatsheet(modifiers: Set<MagnetShortcutModifier>) {
         let orientation = focusedWindow().map {
             self.orientation(for: screen(containing: $0.frame))
         } ?? .horizontal
@@ -504,7 +559,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
         cheatsheetController?.show(
             commands: commands.filter(\.isEnabled),
-            orientation: orientation)
+            orientation: orientation,
+            activeModifiers: modifiers)
     }
 
     private func startCheatsheetKeyMonitor() {
@@ -514,8 +570,18 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 guard let self else { return }
                 let flags = CGEventSource.flagsState(.combinedSessionState)
                 let slashIsDown = CGEventSource.keyState(.combinedSessionState, key: 44)
-                if !slashIsDown || !flags.contains(.maskControl) || !flags.contains(.maskAlternate) {
+                guard slashIsDown else {
                     self.hideCheatsheet()
+                    return
+                }
+                let modifiers = Self.modifiers(from: flags)
+                guard self.cheatsheetModifiersByHotKeyID.values.contains(modifiers) else {
+                    self.hideCheatsheet()
+                    return
+                }
+                if modifiers != self.activeCheatsheetModifiers {
+                    self.activeCheatsheetModifiers = modifiers
+                    self.showCheatsheet(modifiers: modifiers)
                 }
             }
         }
@@ -525,7 +591,17 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         cheatsheetShortcutIsDown = false
         cheatsheetKeyMonitor?.invalidate()
         cheatsheetKeyMonitor = nil
+        activeCheatsheetModifiers = nil
         cheatsheetController?.hide()
+    }
+
+    private static func modifiers(from flags: CGEventFlags) -> Set<MagnetShortcutModifier> {
+        var modifiers: Set<MagnetShortcutModifier> = []
+        if flags.contains(.maskControl) { modifiers.insert(.control) }
+        if flags.contains(.maskAlternate) { modifiers.insert(.option) }
+        if flags.contains(.maskShift) { modifiers.insert(.shift) }
+        if flags.contains(.maskCommand) { modifiers.insert(.command) }
+        return modifiers
     }
 
     private func rememberExternalApplication(_ application: NSRunningApplication?) {
@@ -654,7 +730,7 @@ private enum WindowLayoutError: LocalizedError {
     case magnetDidNotQuit
     case noCommands
     case duplicateShortcut(String)
-    case cheatsheetShortcutConflict
+    case reservedShortcutConflict(String)
     case hotKeyRegistration(OSStatus)
 
     var errorDescription: String? {
@@ -663,7 +739,7 @@ private enum WindowLayoutError: LocalizedError {
         case .magnetDidNotQuit: return "Magnet did not quit."
         case .noCommands: return "No window layout shortcuts are configured."
         case .duplicateShortcut(let shortcut): return "The shortcut \(shortcut) is assigned more than once for the same display orientation."
-        case .cheatsheetShortcutConflict: return "The shortcut ⌃⌥/ is reserved for the Window Layouts cheatsheet."
+        case .reservedShortcutConflict(let shortcut): return "The shortcut \(shortcut) is reserved by Window Layouts."
         case .hotKeyRegistration(let status): return "A window layout shortcut could not be registered (\(status))."
         }
     }

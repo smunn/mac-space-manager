@@ -109,7 +109,7 @@ struct MagnetShortcutEditorAdapter {
                         carbonKeyCode: keyCode,
                         carbonModifiers: Self.carbonModifiers(for: edit.modifiers)
                     )
-                    if Self.spaceManagerReservedShortcuts.contains(shortcut) {
+                    if shortcut.carbonKeyCode == 44 || Self.spaceManagerReservedShortcuts.contains(shortcut) {
                         throw MagnetShortcutEditorError.spaceManagerConflict(edit.shortcutText)
                     }
                     commands[index].shortcut = shortcut
@@ -300,7 +300,7 @@ struct MagnetShortcutEditorAdapter {
     private static let spaceManagerReservedShortcuts: Set<MagnetShortcut> = [
         MagnetShortcut(carbonKeyCode: 37, carbonModifiers: control | option | command), // L
         MagnetShortcut(carbonKeyCode: 46, carbonModifiers: control | option | command), // M
-        MagnetShortcut(carbonKeyCode: 44, carbonModifiers: control | option) // / (cheatsheet)
+        MagnetShortcut(carbonKeyCode: 43, carbonModifiers: control | option | command) // , (settings)
     ]
 
 }
