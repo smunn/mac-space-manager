@@ -7,8 +7,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "shift",
-      "command"
+      "command",
+      "shift"
     ],
     "name" : "Full Width 1\/6 Row 1",
     "orientation" : "Portrait",
@@ -25,8 +25,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "shift",
-      "command"
+      "command",
+      "shift"
     ],
     "name" : "Full Width 1\/6 Row 2",
     "orientation" : "Portrait",
@@ -60,9 +60,9 @@
     "id" : "641A4F59-F708-489D-ADD1-14F3DD4CC122",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
       "command",
-      "shift"
+      "shift",
+      "control"
     ],
     "name" : "Full Width 1\/6 Row 4",
     "orientation" : "Portrait",
@@ -78,8 +78,8 @@
     "id" : "2EA723CD-F243-453C-B8DE-0CEAA4C4109D",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "command",
+      "shift",
       "control"
     ],
     "name" : "Full Width 1\/6 Row 5",
@@ -97,8 +97,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "shift",
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Full Width 1\/6 Row 6",
     "orientation" : "Portrait",
@@ -114,10 +114,10 @@
     "id" : "F34A9C3F-14FA-432F-A1EB-56B9DE824785",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "shift",
       "command",
-      "option"
+      "option",
+      "control",
+      "shift"
     ],
     "name" : "Full Width 1\/8 Row 1",
     "orientation" : "Portrait",
@@ -135,8 +135,8 @@
     "modifiers" : [
       "command",
       "option",
-      "shift",
-      "control"
+      "control",
+      "shift"
     ],
     "name" : "Full Width 1\/8 Row 2",
     "orientation" : "Portrait",
@@ -171,10 +171,10 @@
     "id" : "E7DAF01D-8204-452B-898F-28E77C30267F",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
       "command",
+      "option",
       "shift",
-      "option"
+      "control"
     ],
     "name" : "Full Width 1\/8 Row 4",
     "orientation" : "Portrait",
@@ -190,10 +190,10 @@
     "id" : "AC7A3100-503E-4820-A268-8F00FDF19168",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "shift",
+      "control",
       "option",
-      "control"
+      "command"
     ],
     "name" : "Full Width 1\/8 Row 5",
     "orientation" : "Portrait",
@@ -209,10 +209,10 @@
     "id" : "6432ECE1-7468-404F-9265-89F5CAAF9A82",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
+      "command",
       "option",
       "control",
-      "command"
+      "shift"
     ],
     "name" : "Full Width 1\/8 Row 6",
     "orientation" : "Portrait",
@@ -248,9 +248,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
+      "command",
       "control",
-      "shift",
-      "command"
+      "shift"
     ],
     "name" : "Full Width 1\/8 Row 8",
     "orientation" : "Portrait",
@@ -268,8 +268,8 @@
     "modifiers" : [
       "shift",
       "control",
-      "command",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Top 1\/8 Left",
     "orientation" : "Portrait",
@@ -285,10 +285,10 @@
     "id" : "9DA55B46-4B6F-4181-9393-BA561A01CB0E",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "control",
       "option",
-      "shift"
+      "command",
+      "shift",
+      "control"
     ],
     "name" : "Top 1\/8 Right",
     "orientation" : "Portrait",
@@ -304,10 +304,10 @@
     "id" : "E6071670-0A4E-4792-BD05-5FB0D164F5FE",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
-      "command",
       "option",
-      "control"
+      "control",
+      "command",
+      "shift"
     ],
     "name" : "Top 2\/8 Left",
     "orientation" : "Portrait",
@@ -325,8 +325,8 @@
     "modifiers" : [
       "option",
       "command",
-      "control",
-      "shift"
+      "shift",
+      "control"
     ],
     "name" : "Top 2\/8 Right",
     "orientation" : "Portrait",
@@ -342,10 +342,10 @@
     "id" : "C401EB2F-E739-457D-B70B-D75BF2ADA9E3",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
-      "command",
       "control",
-      "option"
+      "option",
+      "command",
+      "shift"
     ],
     "name" : "Top 3\/8 Left",
     "orientation" : "Portrait",
@@ -361,10 +361,10 @@
     "id" : "0386F311-6C4F-4C46-83E6-D3638B88A51B",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "command",
       "control",
-      "option"
+      "option",
+      "shift"
     ],
     "name" : "Top 3\/8 Right",
     "orientation" : "Portrait",
@@ -381,9 +381,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "option",
       "shift",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Top 4\/8 Left",
     "orientation" : "Portrait",
@@ -400,9 +400,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "shift",
+      "command",
       "control",
-      "command"
+      "shift"
     ],
     "name" : "Top 4\/8 Right",
     "orientation" : "Portrait",
@@ -418,10 +418,10 @@
     "id" : "2BE7185F-DEC0-44BC-A196-F273951EB1AE",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "control",
       "shift",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Top 5\/8 Left",
     "orientation" : "Portrait",
@@ -438,9 +438,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
+      "command",
       "option",
-      "shift",
-      "command"
+      "shift"
     ],
     "name" : "Top 5\/8 Right",
     "orientation" : "Portrait",
@@ -456,10 +456,10 @@
     "id" : "E94A2712-CE25-40BF-B3AF-68B9A4C57E64",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "option",
+      "shift",
       "control",
-      "shift"
+      "option",
+      "command"
     ],
     "name" : "Bottom 6\/8 Left",
     "orientation" : "Portrait",
@@ -475,10 +475,10 @@
     "id" : "CBA3B7B5-32AB-4D1B-BE04-17574FE39099",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
-      "option",
       "command",
-      "control"
+      "control",
+      "shift",
+      "option"
     ],
     "name" : "Bottom 6\/8 Right",
     "orientation" : "Portrait",
@@ -495,9 +495,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "command",
       "shift",
-      "option"
+      "option",
+      "command"
     ],
     "name" : "Bottom 7\/8 Left",
     "orientation" : "Portrait",
@@ -513,8 +513,8 @@
     "id" : "E71CA8C6-08F3-4811-A3BD-73A04B9AA8A1",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
       "command",
+      "control",
       "shift",
       "option"
     ],
@@ -533,8 +533,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "shift",
       "command",
+      "shift",
       "control"
     ],
     "name" : "Bottom 8\/8 Left",
@@ -551,10 +551,10 @@
     "id" : "E131F053-D3A1-4A94-9F69-30FD5F5ECAB4",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "option",
-      "control",
-      "command"
+      "command",
+      "shift",
+      "control"
     ],
     "name" : "Bottom 8\/8 Right",
     "orientation" : "Portrait",
@@ -570,9 +570,9 @@
     "id" : "9C89A33B-D44C-4819-B061-7BBA64E252B1",
     "isEnabled" : true,
     "modifiers" : [
+      "command",
       "control",
-      "shift",
-      "command"
+      "shift"
     ],
     "name" : "Top 1\/6 Left",
     "orientation" : "Portrait",
@@ -588,9 +588,9 @@
     "id" : "08E4A0AC-08DF-4959-A4C5-96B85173B7A1",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
+      "control",
       "command",
-      "control"
+      "shift"
     ],
     "name" : "Top 1\/6 Right",
     "orientation" : "Portrait",
@@ -606,9 +606,9 @@
     "id" : "B2504AC9-DCF7-45C0-9E2F-E14B38BD4BDC",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
+      "control",
       "shift",
-      "control"
+      "command"
     ],
     "name" : "Top 2\/6 Left",
     "orientation" : "Portrait",
@@ -642,9 +642,9 @@
     "id" : "E10CF8D1-1731-4B2E-8C3A-E574FE1DE2D5",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "control",
-      "command"
+      "command",
+      "shift"
     ],
     "name" : "Top 3\/6 Left",
     "orientation" : "Portrait",
@@ -678,9 +678,9 @@
     "id" : "0A0206DB-4AC5-43F1-BB09-E87B6C5B1ED4",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
+      "control",
       "command",
-      "control"
+      "shift"
     ],
     "name" : "Bottom 4\/6 Left",
     "orientation" : "Portrait",
@@ -697,8 +697,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "command",
-      "shift",
-      "control"
+      "control",
+      "shift"
     ],
     "name" : "Bottom 4\/6 Right",
     "orientation" : "Portrait",
@@ -715,8 +715,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "shift",
-      "command"
+      "command",
+      "shift"
     ],
     "name" : "Bottom 5\/6 Left",
     "orientation" : "Portrait",
@@ -732,9 +732,9 @@
     "id" : "ACEB6679-99E4-421D-9165-A7B9F0655A3B",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "control",
-      "shift"
+      "shift",
+      "command"
     ],
     "name" : "Bottom 5\/6 Right",
     "orientation" : "Portrait",
@@ -750,9 +750,9 @@
     "id" : "22AE822A-E311-4797-90BE-0A16A1AC8E0C",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
       "shift",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Bottom 6\/6 Left",
     "orientation" : "Portrait",
@@ -768,9 +768,9 @@
     "id" : "F3F653C5-353C-41CB-8FF6-4D1BED6B8328",
     "isEnabled" : true,
     "modifiers" : [
+      "shift",
       "control",
-      "command",
-      "shift"
+      "command"
     ],
     "name" : "Bottom 6\/6 Right",
     "orientation" : "Portrait",
@@ -786,9 +786,9 @@
     "id" : "7BEADF79-C20C-4B37-9785-3E8AD06DBED9",
     "isEnabled" : true,
     "modifiers" : [
+      "shift",
       "option",
-      "control",
-      "shift"
+      "control"
     ],
     "name" : "Top 1\/4 Left",
     "orientation" : "Portrait",
@@ -804,9 +804,9 @@
     "id" : "FDCB7436-385E-41DE-9237-DFBBD4B627A0",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
+      "option",
       "control",
-      "option"
+      "shift"
     ],
     "name" : "Top 1\/4 Right",
     "orientation" : "Portrait",
@@ -859,8 +859,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "shift",
-      "control"
+      "control",
+      "shift"
     ],
     "name" : "Bottom 3\/4 Left",
     "orientation" : "Portrait",
@@ -876,9 +876,9 @@
     "id" : "591A0255-5FD1-4CD6-BAE6-4D6773F39ED8",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "control",
-      "option"
+      "option",
+      "shift"
     ],
     "name" : "Bottom 3\/4 Right",
     "orientation" : "Portrait",
@@ -912,8 +912,8 @@
     "id" : "1C499AC6-16FE-4784-9A66-7222C6E855D0",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "control",
+      "shift",
       "option"
     ],
     "name" : "Bottom 4\/4 Right",
@@ -930,8 +930,8 @@
     "id" : "0F539FDF-6EBE-41BD-AA09-E6B0424FB546",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Top 1\/3 Left",
     "orientation" : "Portrait",
@@ -947,8 +947,8 @@
     "id" : "4E44B2F6-79CF-49E0-B574-AB8C26EA1455",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Top 1\/3 Right",
     "orientation" : "Portrait",
@@ -964,8 +964,8 @@
     "id" : "4EA2FCA8-626B-4B48-9913-CF1A22928B3D",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Mid 2\/3 Left",
     "orientation" : "Portrait",
@@ -998,8 +998,8 @@
     "id" : "A0971C4B-91DA-4D63-8A4F-FF5FBEFDCD09",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Bottom 3\/3 Left",
     "orientation" : "Portrait",
@@ -1015,8 +1015,8 @@
     "id" : "85AEDB37-9392-43BE-90D1-67B5BC8F99A5",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Bottom 3\/3 Right",
     "orientation" : "Portrait",
@@ -1051,8 +1051,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "shift",
-      "control"
+      "control",
+      "shift"
     ],
     "name" : "Mid Top 1\/4",
     "orientation" : "Portrait",
@@ -1069,8 +1069,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "shift",
-      "control",
-      "option"
+      "option",
+      "control"
     ],
     "name" : "Mid Bottom 1\/4",
     "orientation" : "Portrait",
@@ -1104,8 +1104,8 @@
     "id" : "AC3CD641-34E6-4170-9FCB-81B83E99AC05",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "control"
+      "control",
+      "option"
     ],
     "name" : "Left Half",
     "orientation" : "Portrait",
@@ -1121,8 +1121,8 @@
     "id" : "00027EBE-65E3-4F09-B864-F060EE6E3FCC",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "control"
     ],
     "name" : "Right Half",
     "orientation" : "Portrait",
@@ -1132,14 +1132,14 @@
     "y" : 0
   },
   {
-    "destinationKey" : "1",
+    "destinationKey" : "↑",
     "group" : 2,
     "height" : 0.5,
     "id" : "F3A70196-4F06-40EC-91EB-DA9A85396064",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "control"
     ],
     "name" : "Top Half",
     "orientation" : "Portrait",
@@ -1149,14 +1149,14 @@
     "y" : 0
   },
   {
-    "destinationKey" : "2",
+    "destinationKey" : "↓",
     "group" : 2,
     "height" : 0.5,
     "id" : "DB21454A-7A82-4CC8-96B3-27696C19838D",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "control"
     ],
     "name" : "Bottom Half",
     "orientation" : "Portrait",
@@ -1257,8 +1257,8 @@
     "id" : "9516C20A-5E74-48AB-81DC-503351F05130",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Center Third",
     "orientation" : "Portrait",
@@ -1325,8 +1325,8 @@
     "id" : "DC274349-5C73-46F5-AD2C-F91A7073D760",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Bottom Two Thirds",
     "orientation" : "Portrait",
@@ -1343,8 +1343,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "command",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Next Display",
     "orientation" : "Portrait",
@@ -1378,8 +1378,8 @@
     "id" : "21F97F6D-77CC-4E5E-9637-6C6917CBBA76",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Maximize",
     "orientation" : "Portrait",
@@ -1395,8 +1395,8 @@
     "id" : "999B5F8D-74CA-478C-A713-1969E900F5E3",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Center",
     "orientation" : "Portrait",
@@ -1412,8 +1412,8 @@
     "id" : "54C5531D-09BA-4F2F-BAB8-5E8562D92759",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Restore",
     "orientation" : "Portrait",
@@ -1430,9 +1430,9 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "command",
       "option",
-      "shift"
+      "shift",
+      "command"
     ],
     "name" : "Top Left 1\/8",
     "orientation" : "Horizontal",
@@ -1449,8 +1449,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "control",
-      "shift",
       "option",
+      "shift",
       "command"
     ],
     "name" : "Top Mid Left 1\/8",
@@ -1467,10 +1467,10 @@
     "id" : "DE416910-5DC2-4DE8-BE74-7FF6E64834E6",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
-      "control",
+      "option",
       "shift",
-      "option"
+      "control",
+      "command"
     ],
     "name" : "Top Mid Right 1\/8",
     "orientation" : "Horizontal",
@@ -1486,10 +1486,10 @@
     "id" : "37425986-29CE-4E1E-AB94-A28B15E2E126",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
+      "shift",
       "control",
       "command",
-      "shift"
+      "option"
     ],
     "name" : "Top Right 1\/8",
     "orientation" : "Horizontal",
@@ -1506,8 +1506,8 @@
     "isEnabled" : true,
     "modifiers" : [
       "option",
-      "command",
       "control",
+      "command",
       "shift"
     ],
     "name" : "Bottom Left 1\/8",
@@ -1524,10 +1524,10 @@
     "id" : "66A61E22-E499-43FE-B8C2-6E2E0C7553A5",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "shift",
-      "option",
-      "control"
+      "command",
+      "control",
+      "option"
     ],
     "name" : "Bottom Mid Left 1\/8",
     "orientation" : "Horizontal",
@@ -1543,9 +1543,9 @@
     "id" : "DE12A178-2312-4A2B-BA3A-AEEA03627F22",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option",
       "command",
+      "option",
+      "control",
       "shift"
     ],
     "name" : "Bottom Mid Right 1\/8",
@@ -1562,10 +1562,10 @@
     "id" : "1408B6F4-16BE-483B-A2E8-48BEF88A1BFC",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
       "shift",
       "command",
-      "control"
+      "control",
+      "option"
     ],
     "name" : "Bottom Right 1\/8",
     "orientation" : "Horizontal",
@@ -1581,9 +1581,9 @@
     "id" : "48172076-96B3-458A-A1DD-BE689681F753",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "shift",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Top Left 1\/3",
     "orientation" : "Horizontal",
@@ -1599,9 +1599,9 @@
     "id" : "1BAA3043-FB30-415B-AE27-31C794AE1E3A",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
+      "shift",
       "command",
-      "shift"
+      "control"
     ],
     "name" : "Top Middle 1\/3",
     "orientation" : "Horizontal",
@@ -1617,9 +1617,9 @@
     "id" : "A486E94A-BD77-4CE1-8CB2-5CD23FBE89BE",
     "isEnabled" : true,
     "modifiers" : [
-      "shift",
       "command",
-      "control"
+      "control",
+      "shift"
     ],
     "name" : "Top Right 1\/3",
     "orientation" : "Horizontal",
@@ -1653,9 +1653,9 @@
     "id" : "3D3124E9-47A9-494B-91DB-AE001ADF4AC9",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
+      "shift",
       "control",
-      "shift"
+      "command"
     ],
     "name" : "Bottom Middle 1\/3",
     "orientation" : "Horizontal",
@@ -1671,9 +1671,9 @@
     "id" : "FDF28E37-92E4-4E63-8BA9-E05CC8491646",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "control",
-      "shift"
+      "shift",
+      "command"
     ],
     "name" : "Bottom Right 1\/3",
     "orientation" : "Horizontal",
@@ -1689,8 +1689,8 @@
     "id" : "371F7707-9467-4098-ABB9-783DEFD0DFF6",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
       "control",
+      "option",
       "shift"
     ],
     "name" : "Left 1\/4",
@@ -1743,9 +1743,9 @@
     "id" : "D86B735A-CA85-4ECE-AC6D-B33D793B58BE",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
+      "control",
       "shift",
-      "control"
+      "option"
     ],
     "name" : "Right 1\/4",
     "orientation" : "Horizontal",
@@ -1795,8 +1795,8 @@
     "id" : "733CC74C-FC53-41DD-939A-F9DBEF08F949",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "control"
+      "control",
+      "option"
     ],
     "name" : "Top Half",
     "orientation" : "Horizontal",
@@ -1829,8 +1829,8 @@
     "id" : "8E44E251-B2AF-4215-8353-40D0FA0B51B2",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "control"
+      "control",
+      "option"
     ],
     "name" : "Top Left Corner",
     "orientation" : "Horizontal",
@@ -1880,8 +1880,8 @@
     "id" : "927F2119-40C5-4E2B-94A8-3DA0C924E5B0",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "option"
+      "option",
+      "control"
     ],
     "name" : "Bottom Right Corner",
     "orientation" : "Horizontal",
@@ -1897,8 +1897,8 @@
     "id" : "54F4708E-F4FC-4E2C-80FF-B39F753B65CC",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Left Third",
     "orientation" : "Horizontal",
@@ -1931,8 +1931,8 @@
     "id" : "340061EF-E107-4F91-AD3F-BF181D7A258A",
     "isEnabled" : true,
     "modifiers" : [
-      "control",
-      "command"
+      "command",
+      "control"
     ],
     "name" : "Right Third",
     "orientation" : "Horizontal",
@@ -1965,8 +1965,8 @@
     "id" : "8050D2F9-2CE0-43AD-884E-40B0CD8D55C8",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Center Two Thirds",
     "orientation" : "Horizontal",
@@ -1982,8 +1982,8 @@
     "id" : "A0F3D8E9-416F-487C-9919-D6E6E2977459",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "command",
+      "option"
     ],
     "name" : "Right Two Thirds",
     "orientation" : "Horizontal",
@@ -1999,9 +1999,9 @@
     "id" : "40C36D54-6BCE-4216-B75F-83BCC582AC41",
     "isEnabled" : true,
     "modifiers" : [
+      "command",
       "control",
-      "option",
-      "command"
+      "option"
     ],
     "name" : "Next Display",
     "orientation" : "Horizontal",
@@ -2017,9 +2017,9 @@
     "id" : "6015A134-0019-4CFB-819B-215D74F0F97F",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
       "option",
-      "control"
+      "control",
+      "command"
     ],
     "name" : "Previous Display",
     "orientation" : "Horizontal",

@@ -592,6 +592,15 @@ class StatusBarController: NSObject {
             windowsBySpaceID: Dictionary(uniqueKeysWithValues: spaces.map { ($0.spaceID, $0.windows) }))
         let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
 
+        let closeAllItem = NSMenuItem(
+            title: "Close All Spaces",
+            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
+            keyEquivalent: "")
+        closeAllItem.target = self
+        submenu.addItem(closeAllItem)
+
+        submenu.addItem(NSMenuItem.separator())
+
         let closeCurrentTitle: String
         if let currentDesktop {
             closeCurrentTitle = "Close Current Space (\(currentDesktop.spaceByDesktopID))"
@@ -631,13 +640,6 @@ class StatusBarController: NSObject {
             keyEquivalent: "")
         emptyItem.target = self
         submenu.addItem(emptyItem)
-
-        let closeAllItem = NSMenuItem(
-            title: "Close All Spaces",
-            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
-            keyEquivalent: "")
-        closeAllItem.target = self
-        submenu.addItem(closeAllItem)
 
         return submenu
     }
@@ -1371,14 +1373,6 @@ class StatusBarController: NSObject {
 
         let targets = targetSpaces.compactMap { closeTarget(for: $0) }
         guard !targets.isEmpty else { return }
-
-        let alert = NSAlert()
-        alert.messageText = "Close All Spaces?"
-        alert.informativeText = "This will close \(targets.count) space\(targets.count == 1 ? "" : "s"), keeping one desktop per display."
-        alert.addButton(withTitle: "Close All")
-        alert.addButton(withTitle: "Cancel")
-        alert.alertStyle = .warning
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         let current = currentDesktopSpace()
         let focusTarget = current.flatMap { current in

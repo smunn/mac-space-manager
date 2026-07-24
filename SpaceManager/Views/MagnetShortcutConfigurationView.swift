@@ -631,8 +631,8 @@ extension MagnetShortcutCommand {
         let regions: [Region] = [
             (.halves, "Halves", "Left Half", "←", halfModifiers, 0, 0, 0.5, 1),
             (.halves, "Halves", "Right Half", "→", halfModifiers, 0.5, 0, 0.5, 1),
-            (.halves, "Halves", "Top Half", orientation == .portrait ? "1" : "↑", halfModifiers, 0, 0, 1, 0.5),
-            (.halves, "Halves", "Bottom Half", orientation == .portrait ? "2" : "↓", halfModifiers, 0, 0.5, 1, 0.5),
+            (.halves, "Halves", "Top Half", "↑", halfModifiers, 0, 0, 1, 0.5),
+            (.halves, "Halves", "Bottom Half", "↓", halfModifiers, 0, 0.5, 1, 0.5),
             (.halves, "Corners", "Top Left Corner", cornerKeys[0], halfModifiers, 0, 0, 0.5, 0.5),
             (.halves, "Corners", "Top Right Corner", cornerKeys[1], halfModifiers, 0.5, 0, 0.5, 0.5),
             (.halves, "Corners", "Bottom Left Corner", cornerKeys[2], halfModifiers, 0, 0.5, 0.5, 0.5),
