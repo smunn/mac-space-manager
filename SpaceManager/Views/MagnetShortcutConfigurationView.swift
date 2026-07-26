@@ -642,7 +642,7 @@ extension MagnetShortcutCommand {
             (.basics, "Two Thirds", twoThirdNames[2], twoThirdKeys[2], basicModifiers, orientation == .portrait ? 0 : 1.0 / 3.0, orientation == .portrait ? 1.0 / 3.0 : 0, orientation == .portrait ? 1 : 2.0 / 3.0, orientation == .portrait ? 2.0 / 3.0 : 1),
             (.basics, "Displays", "Next Display", "→", displayModifiers, 0, 0, 1, 1),
             (.basics, "Displays", "Previous Display", "←", displayModifiers, 0, 0, 1, 1),
-            (.basics, "Window", "Maximize", "Return", basicModifiers, 0, 0, 1, 1),
+            (.basics, "Window", "Maximize", "Return", halfModifiers, 0, 0, 1, 1),
             (.basics, "Window", "Center", "J", basicModifiers, 0, 0, 1, 1),
             (.basics, "Window", "Restore", "Delete", basicModifiers, 0, 0, 1, 1)
         ]

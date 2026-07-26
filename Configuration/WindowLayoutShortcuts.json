@@ -1378,7 +1378,7 @@
     "id" : "21F97F6D-77CC-4E5E-9637-6C6917CBBA76",
     "isEnabled" : true,
     "modifiers" : [
-      "command",
+      "control",
       "option"
     ],
     "name" : "Maximize",
@@ -2035,8 +2035,8 @@
     "id" : "9551C12F-3DE4-4E85-AF2F-0B9579EB11E3",
     "isEnabled" : true,
     "modifiers" : [
-      "option",
-      "command"
+      "control",
+      "option"
     ],
     "name" : "Maximize",
     "orientation" : "Horizontal",

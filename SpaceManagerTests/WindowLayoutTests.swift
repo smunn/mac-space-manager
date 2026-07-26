@@ -291,14 +291,20 @@ final class WindowLayoutTests: XCTestCase {
         }
     }
 
-    func testBasicsAndHalvesUseDistinctCheatsheetModifiers() {
+    func testBuiltInShortcutModifierAssignments() {
         let commands = MagnetShortcutCommand.standardSet.filter { $0.orientation == .portrait }
         let halves = commands.filter { $0.group == .halves }
-        let basics = commands.filter { $0.group == .basics && $0.section != "Displays" }
+        let basics = commands.filter {
+            $0.group == .basics && $0.section != "Displays" && $0.name != "Maximize"
+        }
+        let maximize = commands.filter { $0.name == "Maximize" }
         let displays = commands.filter { $0.group == .basics && $0.section == "Displays" }
 
         XCTAssertTrue(halves.allSatisfy { $0.modifiers == [.control, .option] })
         XCTAssertTrue(basics.allSatisfy { $0.modifiers == [.option, .command] })
+        XCTAssertTrue(maximize.allSatisfy {
+            $0.destinationKey == "Return" && $0.modifiers == [.control, .option]
+        })
         XCTAssertTrue(displays.allSatisfy { $0.modifiers == [.control, .option, .command] })
     }
 
