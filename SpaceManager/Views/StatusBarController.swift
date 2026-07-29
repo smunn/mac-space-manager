@@ -22,8 +22,6 @@ class StatusBarController: NSObject {
     private var physicalDisplayOrder: [String] = []
     private var missionControlDisplayOrder: [String] = []
     private var menuContextDisplayID: String?
-    private var titleDisplayID: String?
-    private var currentSpaceIDsByDisplay: [String: String] = [:]
 
     private let issueFetcher = GitHubIssueFetcher.shared
     private var issuesMenu: NSMenu?
@@ -62,44 +60,21 @@ class StatusBarController: NSObject {
         physicalDisplayOrder = ids
         missionControlDisplayOrder = mcOrder.isEmpty ? ids : mcOrder
 
-        updateTitleDisplay(from: spaces)
         spaceSwitcher.reloadShortcuts()
         updateMenuBarTitle(spaces)
         rebuildMenu(spaces)
     }
 
-    private func updateTitleDisplay(from spaces: [Space]) {
-        let newCurrentSpaceIDs = Dictionary(
-            uniqueKeysWithValues: spaces
-                .filter(\.isCurrentSpace)
-                .map { ($0.displayID, $0.spaceID) })
-
-        let changedDisplayIDs = newCurrentSpaceIDs.keys.filter { displayID in
-            guard let previousSpaceID = currentSpaceIDsByDisplay[displayID] else { return false }
-            return previousSpaceID != newCurrentSpaceIDs[displayID]
-        }
-
-        if changedDisplayIDs.count == 1 {
-            titleDisplayID = changedDisplayIDs[0]
-        } else if titleDisplayID.flatMap({ newCurrentSpaceIDs[$0] }) == nil {
-            titleDisplayID = displayIDAtPointer(from: Array(newCurrentSpaceIDs.keys))
-                ?? DisplayGeometryUtilities.activeDisplayUUID(from: Array(newCurrentSpaceIDs.keys))
-                ?? newCurrentSpaceIDs.keys.first
-        }
-
-        currentSpaceIDsByDisplay = newCurrentSpaceIDs
-    }
-
     private func updateMenuBarTitle(_ spaces: [Space]) {
-        let preferredDisplayID = menuContextDisplayID ?? titleDisplayID
-        let current = preferredDisplayID.flatMap { displayID in
-            spaces.first { $0.displayID == displayID && $0.isCurrentSpace }
-        } ?? spaces.first(where: \.isCurrentSpace)
-        guard let current else { return }
-
         if let button = statusItem.button {
-            let desktopCount = spaces.filter { !$0.isFullScreen }.count
-            let number = current.isFullScreen ? "F" : "\(current.spaceByDesktopID)/\(desktopCount)"
+            let number: String
+            if physicalDisplayOrder.count > 1 {
+                number = "\(physicalDisplayOrder.count)"
+            } else {
+                guard let current = spaces.first(where: \.isCurrentSpace) else { return }
+                let desktopCount = spaces.filter { !$0.isFullScreen }.count
+                number = current.isFullScreen ? "F" : "\(current.spaceByDesktopID)/\(desktopCount)"
+            }
             button.title = " \(number)"
             button.imagePosition = .imageLeading
         }
@@ -1424,7 +1399,11 @@ class StatusBarController: NSObject {
         withFreshSpaces { [weak self] in
             guard let self, let displayID = self.activeDisplayID() else { return }
             let groupIndex = self.activeDisplayGroupIndex()
-            SpaceCloser.addSpace(displayID: displayID, displayGroupIndex: groupIndex) { [weak self] _ in
+            SpaceCloser.addSpaceAndSwitch(
+                toDesktopNumber: self.nextDesktopNumberOnActiveDisplay(),
+                displayID: displayID,
+                displayGroupIndex: groupIndex
+            ) { [weak self] _ in
                 self?.refreshAfterClose()
             }
         }
@@ -1586,10 +1565,6 @@ extension StatusBarController: NSMenuDelegate {
             menuContextDisplayID = DisplayGeometryUtilities.displayUUID(
                 containing: NSEvent.mouseLocation,
                 candidates: physicalDisplayOrder)
-            if let menuContextDisplayID {
-                titleDisplayID = menuContextDisplayID
-                updateMenuBarTitle(currentSpaces)
-            }
             issueFetcher.refreshIfNeeded()
             requestSpaceRefresh? { _ in }
         }
