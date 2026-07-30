@@ -7,11 +7,11 @@ import Foundation
 
 enum WorkspaceLauncher {
     private static let scriptPath = NSString(
-        string: "~/Sites/sm-mac-configuration-scripts/bin/launch-work.js"
+        string: "~/Sites/mac-configuration-scripts/bin/launch-work.js"
     ).expandingTildeInPath
 
     private static let projectSpacesPath = NSString(
-        string: "~/Sites/sm-mac-configuration-scripts/lib/project-spaces.js"
+        string: "~/Sites/mac-configuration-scripts/lib/project-spaces.js"
     ).expandingTildeInPath
 
     static func launch(_ workspaceKey: String) {

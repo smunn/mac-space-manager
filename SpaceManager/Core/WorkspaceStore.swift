@@ -128,7 +128,7 @@ final class WorkspaceStore: ObservableObject {
     @Published var availableLayouts: [String] = []
 
     static let configPath = NSString(
-        string: "~/Sites/sm-mac-configuration-scripts/config/workspaces.json"
+        string: "~/Sites/mac-configuration-scripts/config/workspaces.json"
     ).expandingTildeInPath
 
     private var fullJSON: [String: Any] = [:]
@@ -296,7 +296,7 @@ final class WorkspaceStore: ObservableObject {
     }
 
     private static let repoPath = NSString(
-        string: "~/Sites/sm-mac-configuration-scripts"
+        string: "~/Sites/mac-configuration-scripts"
     ).expandingTildeInPath
 
     private func save() {

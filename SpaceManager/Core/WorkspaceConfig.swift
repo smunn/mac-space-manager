@@ -17,7 +17,7 @@ struct SiteFolderEntry {
 
 enum WorkspaceConfig {
     private static let configPath = NSString(
-        string: "~/Sites/sm-mac-configuration-scripts/config/workspaces.json"
+        string: "~/Sites/mac-configuration-scripts/config/workspaces.json"
     ).expandingTildeInPath
 
     private static let sitesPath = NSString(string: "~/Sites").expandingTildeInPath
