@@ -143,7 +143,7 @@ struct WindowLayoutCheatsheetView: View {
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(.secondary)
 
-                Text("Hold \(modifierText(activeModifiers))/ to show; press twice to pin; press any combination again to dismiss.")
+                Text("Hold \(modifierText(activeModifiers)) for 0.7 seconds; press / to show immediately or twice to pin.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

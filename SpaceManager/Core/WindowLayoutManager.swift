@@ -22,6 +22,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
     private static let settingsHotKeyID: UInt32 = 990
     private static let cheatsheetDoubleTapInterval: TimeInterval = 0.45
+    private static let cheatsheetModifierHoldInterval: TimeInterval = 0.7
     static let settingsShortcutText = "⌃⌥⌘,"
     private static let settingsShortcut = MagnetShortcut(
         carbonKeyCode: 43,
@@ -45,6 +46,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var activeCheatsheetModifiers: Set<MagnetShortcutModifier>?
     private var cheatsheetIsPinned = false
     private var lastCheatsheetPress: (modifiers: Set<MagnetShortcutModifier>, timestamp: TimeInterval)?
+    private var currentCheatsheetModifiers: Set<MagnetShortcutModifier> = []
+    private var pendingCheatsheetHoldModifiers: Set<MagnetShortcutModifier>?
+    private var activeCheatsheetHoldModifiers: Set<MagnetShortcutModifier>?
+    private var cheatsheetHoldIsBlocked = false
+    private var cheatsheetHoldTask: Task<Void, Never>?
     private var interactionMonitors: [Any] = []
     private var lastMouseInteraction: InteractionTarget?
     private var lastKeyboardInteraction: InteractionTarget?
@@ -113,7 +119,10 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         toggle.state = isEnabled ? .on : .off
         menu.addItem(toggle)
 
-        let cheatsheet = NSMenuItem(title: "Cheatsheet — Hold; double-tap to pin", action: nil, keyEquivalent: "")
+        let cheatsheet = NSMenuItem(
+            title: "Cheatsheet — Hold modifiers; double-tap / to pin",
+            action: nil,
+            keyEquivalent: "")
         cheatsheet.isEnabled = false
         menu.addItem(cheatsheet)
 
@@ -351,6 +360,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         if isPressed {
             guard !cheatsheetShortcutIsDown else { return }
             cheatsheetShortcutIsDown = true
+            cancelPendingCheatsheetHold(blockCurrentHold: true)
             let now = ProcessInfo.processInfo.systemUptime
 
             if cheatsheetIsPinned {
@@ -366,11 +376,79 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             activeCheatsheetModifiers = modifiers
             if isDoubleTap {
                 cheatsheetIsPinned = true
+                activeCheatsheetHoldModifiers = nil
             }
             showCheatsheet(modifiers: modifiers)
         } else {
             cheatsheetShortcutIsDown = false
-            if !cheatsheetIsPinned { hideCheatsheet() }
+            if !cheatsheetIsPinned && activeCheatsheetHoldModifiers == nil {
+                dismissCheatsheetWindow()
+            }
+        }
+    }
+
+    fileprivate func handleCheatsheetModifiersChanged(
+        _ modifiers: Set<MagnetShortcutModifier>
+    ) {
+        guard modifiers != currentCheatsheetModifiers else { return }
+        currentCheatsheetModifiers = modifiers
+        cheatsheetHoldIsBlocked = false
+        cancelPendingCheatsheetHold()
+
+        if activeCheatsheetHoldModifiers != nil {
+            activeCheatsheetHoldModifiers = nil
+            if !cheatsheetShortcutIsDown && !cheatsheetIsPinned {
+                dismissCheatsheetWindow()
+            }
+        }
+
+        guard isEnabled,
+              !cheatsheetIsPinned,
+              !cheatsheetShortcutIsDown,
+              cheatsheetModifierSets.contains(modifiers)
+        else { return }
+        scheduleCheatsheetHold(for: modifiers)
+    }
+
+    fileprivate func handleCheatsheetNonModifierKeyDown() {
+        guard activeCheatsheetHoldModifiers == nil else { return }
+        cancelPendingCheatsheetHold(blockCurrentHold: true)
+    }
+
+    private func scheduleCheatsheetHold(
+        for modifiers: Set<MagnetShortcutModifier>
+    ) {
+        guard !cheatsheetHoldIsBlocked else { return }
+        pendingCheatsheetHoldModifiers = modifiers
+        cheatsheetHoldTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(
+                    nanoseconds: UInt64(Self.cheatsheetModifierHoldInterval * 1_000_000_000))
+            } catch {
+                return
+            }
+            guard let self,
+                  self.isEnabled,
+                  !self.cheatsheetHoldIsBlocked,
+                  !self.cheatsheetIsPinned,
+                  !self.cheatsheetShortcutIsDown,
+                  self.currentCheatsheetModifiers == modifiers,
+                  self.pendingCheatsheetHoldModifiers == modifiers
+            else { return }
+            self.pendingCheatsheetHoldModifiers = nil
+            self.cheatsheetHoldTask = nil
+            self.activeCheatsheetHoldModifiers = modifiers
+            self.activeCheatsheetModifiers = modifiers
+            self.showCheatsheet(modifiers: modifiers)
+        }
+    }
+
+    private func cancelPendingCheatsheetHold(blockCurrentHold: Bool = false) {
+        cheatsheetHoldTask?.cancel()
+        cheatsheetHoldTask = nil
+        pendingCheatsheetHoldModifiers = nil
+        if blockCurrentHold {
+            cheatsheetHoldIsBlocked = true
         }
     }
 
@@ -382,7 +460,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
         let context = CheatsheetEventTapContext(modifierSets: modifierSets)
         let eventMask = (CGEventMask(1) << CGEventType.keyDown.rawValue) |
-            (CGEventMask(1) << CGEventType.keyUp.rawValue)
+            (CGEventMask(1) << CGEventType.keyUp.rawValue) |
+            (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
@@ -660,7 +739,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func updateCheatsheetKeyboardStyle(_ style: MacKeyboardStyle) {
-        guard cheatsheetShortcutIsDown || cheatsheetIsPinned,
+        guard cheatsheetShortcutIsDown || cheatsheetIsPinned || activeCheatsheetHoldModifiers != nil,
               activeCheatsheetKeyboardStyle != style,
               let modifiers = activeCheatsheetModifiers
         else { return }
@@ -677,8 +756,14 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func hideCheatsheet() {
+        cancelPendingCheatsheetHold(blockCurrentHold: true)
         cheatsheetShortcutIsDown = false
         cheatsheetIsPinned = false
+        activeCheatsheetHoldModifiers = nil
+        dismissCheatsheetWindow()
+    }
+
+    private func dismissCheatsheetWindow() {
         activeCheatsheetKeyboardStyle = nil
         activeCheatsheetModifiers = nil
         cheatsheetController?.hide()
@@ -925,12 +1010,20 @@ private let cheatsheetEventTapCallback: CGEventTapCallBack = { _, type, event, u
         return Unmanaged.passUnretained(event)
     }
 
-    guard (type == .keyDown || type == .keyUp), let userInfo else {
+    guard (type == .keyDown || type == .keyUp || type == .flagsChanged), let userInfo else {
         return Unmanaged.passUnretained(event)
     }
     let context = Unmanaged<CheatsheetEventTapContext>
         .fromOpaque(userInfo)
         .takeUnretainedValue()
+    if type == .flagsChanged {
+        let modifiers = CheatsheetSlashEventRouting.modifiers(from: event.flags)
+        Task { @MainActor in
+            WindowLayoutManager.shared.handleCheatsheetModifiersChanged(modifiers)
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
     let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
     let modifiers: Set<MagnetShortcutModifier>?
     if type == .keyDown {
@@ -939,6 +1032,11 @@ private let cheatsheetEventTapCallback: CGEventTapCallBack = { _, type, event, u
             flags: event.flags,
             registered: context.modifierSets)
         if let modifiers { context.activeModifiers = modifiers }
+        else {
+            Task { @MainActor in
+                WindowLayoutManager.shared.handleCheatsheetNonModifierKeyDown()
+            }
+        }
     } else if keyCode == CheatsheetSlashEventRouting.slashKeyCode {
         // A user can release a modifier before releasing Slash. The key-up
         // event then no longer carries the same modifier flags, so retain the
