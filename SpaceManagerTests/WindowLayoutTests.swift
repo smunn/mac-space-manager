@@ -264,7 +264,7 @@ final class WindowLayoutTests: XCTestCase {
         let commands = MagnetShortcutCommand.standardSet
         let expected: [MagnetDisplayOrientation: [MagnetShortcutGroup: Int]] = [
             .portrait: [.basics: 8, .halves: 8, .thirds: 9, .quarters: 12, .sixths: 18, .eighths: 24],
-            .horizontal: [.basics: 8, .halves: 8, .thirds: 3, .quarters: 4, .sixths: 6, .eighths: 8]
+            .horizontal: [.basics: 8, .halves: 8, .thirds: 9, .quarters: 12, .sixths: 18, .eighths: 24]
         ]
 
         for orientation in MagnetDisplayOrientation.allCases {
@@ -288,6 +288,28 @@ final class WindowLayoutTests: XCTestCase {
                 XCTAssertLessThanOrEqual(command.x + command.width, 1.000_001, command.name)
                 XCTAssertLessThanOrEqual(command.y + command.height, 1.000_001, command.name)
             }
+        }
+    }
+
+    func testHorizontalFractionalLayoutsIncludeFullAndHalfHeightSpans() {
+        for group in MagnetShortcutGroup.allCases where group.rawValue >= 3 {
+            let count = group.rawValue
+            let commands = MagnetShortcutCommand.standardSet.filter {
+                $0.orientation == .horizontal && $0.group == group
+            }
+            let fullHeight = commands.filter { $0.section == "Full Height" }
+            let split = commands.filter { $0.section == "Split" }
+
+            XCTAssertEqual(fullHeight.count, count, group.title)
+            XCTAssertEqual(split.count, count * 2, group.title)
+            XCTAssertTrue(fullHeight.allSatisfy {
+                abs($0.width - 1 / Double(count)) < 0.000_001 &&
+                $0.y == 0 && $0.height == 1
+            }, group.title)
+            XCTAssertTrue(split.allSatisfy {
+                abs($0.width - 1 / Double(count)) < 0.000_001 &&
+                ($0.y == 0 || $0.y == 0.5) && $0.height == 0.5
+            }, group.title)
         }
     }
 

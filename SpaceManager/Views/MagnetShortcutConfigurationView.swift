@@ -560,31 +560,37 @@ extension MagnetShortcutCommand {
 
     private static var horizontalCommands: [MagnetShortcutCommand] {
         MagnetShortcutGroup.allCases.filter { $0.rawValue >= 3 }.flatMap { group -> [MagnetShortcutCommand] in
-            let columns = group.rawValue > 4 ? group.rawValue / 2 : group.rawValue
-            let rows = group.rawValue > 4 ? 2 : 1
-            let topKeys = rows == 1
-                ? (1...columns).map(String.init)
-                : Array("UIOP").prefix(columns).map(String.init)
-            let bottomKeys = Array("JKL;").prefix(columns).map(String.init)
-
-            return (0..<rows).flatMap { row in
-                (0..<columns).map { column in
-                    let position = row * columns + column
-                    let key = row == 0 ? topKeys[column] : bottomKeys[column]
-                    return make(
-                        orientation: .horizontal, group: group,
-                        section: rows == 1 ? "Full Height" : "Grid",
-                        name: rows == 1
-                            ? "Column \(column + 1) — Full Height"
-                            : "\(row == 0 ? "Top" : "Bottom") \(columnName(column, count: columns))",
-                        key: key,
-                        x: Double(column) / Double(columns),
-                        y: Double(row) / Double(rows),
-                        width: 1 / Double(columns), height: 1 / Double(rows),
-                        position: position
-                    )
-                }
+            let count = group.rawValue
+            let full = (0..<count).map { column in
+                make(
+                    orientation: .horizontal, group: group, section: "Full Height",
+                    name: "Column \(column + 1) — Full Height", key: String(column + 1),
+                    x: Double(column) / Double(count), y: 0,
+                    width: 1 / Double(count), height: 1
+                )
             }
+
+            // Horizontal split grids mirror portrait split grids: every long-axis
+            // division supports both a full span and either half of the short axis.
+            let topKeys = Array(Array("ERTYUIOP").suffix(count)).map(String.init)
+            let bottomKeys = Array(Array("DFGHJKL;").suffix(count)).map(String.init)
+            let top = (0..<count).map { column in
+                make(
+                    orientation: .horizontal, group: group, section: "Split",
+                    name: "Column \(column + 1) — Top Half", key: topKeys[column],
+                    x: Double(column) / Double(count), y: 0,
+                    width: 1 / Double(count), height: 0.5
+                )
+            }
+            let bottom = (0..<count).map { column in
+                make(
+                    orientation: .horizontal, group: group, section: "Split",
+                    name: "Column \(column + 1) — Bottom Half", key: bottomKeys[column],
+                    x: Double(column) / Double(count), y: 0.5,
+                    width: 1 / Double(count), height: 0.5
+                )
+            }
+            return full + top + bottom
         }
     }
 
@@ -662,11 +668,5 @@ extension MagnetShortcutCommand {
                 modifiers: region.modifiers
             )
         }
-    }
-
-    private static func columnName(_ index: Int, count: Int) -> String {
-        if count == 2 { return index == 0 ? "Left" : "Right" }
-        if count == 3 { return ["Left", "Middle", "Right"][index] }
-        return ["Left", "Center Left", "Center Right", "Right"][index]
     }
 }
