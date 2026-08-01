@@ -33,6 +33,11 @@ enum ChromeProfileManager {
             .appendingPathComponent("Sites/mac-configuration-scripts/config/chrome-profiles.json")
     }
 
+    static var sharedProfileCacheURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/state/chrome-profiles.json")
+    }
+
     /// These keep the menu useful when macOS privacy protection prevents direct
     /// access to Chrome's Local State file. Live Chrome data and the shared profile
     /// configuration are merged over them whenever either source is available.
@@ -59,7 +64,7 @@ enum ChromeProfileManager {
                 over: profilesByDirectory[profile.directory])
         }
 
-        for profile in profilesFromLocalState(at: localStateURL) {
+        for profile in (try? profilesFromLocalState(at: localStateURL)) ?? [] {
             profilesByDirectory[profile.directory] = merging(
                 profile,
                 over: profilesByDirectory[profile.directory])
@@ -68,6 +73,44 @@ enum ChromeProfileManager {
         return profilesByDirectory.values.sorted { lhs, rhs in
             profileSortKey(lhs.directory) < profileSortKey(rhs.directory)
         }
+    }
+
+    /// Space Manager is the narrow, signed process that receives Full Disk
+    /// Access. It exports only Chrome profile metadata to an unprotected cache
+    /// so terminal commands never need broad disk access themselves.
+    @discardableResult
+    static func syncSharedProfileCache(
+        localStateURL: URL = defaultLocalStateURL,
+        cacheURL: URL = sharedProfileCacheURL
+    ) throws -> Int {
+        let profiles = try profilesFromLocalState(at: localStateURL)
+        let payload: [String: Any] = [
+            "version": 1,
+            "profiles": profiles.map { profile in
+                [
+                    "directory": profile.directory,
+                    "name": profile.name,
+                    "email": profile.email,
+                    "aliases": []
+                ] as [String: Any]
+            }
+        ]
+        let data = try JSONSerialization.data(
+            withJSONObject: payload,
+            options: [.prettyPrinted, .sortedKeys]) + Data("\n".utf8)
+
+        try FileManager.default.createDirectory(
+            at: cacheURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true)
+
+        if (try? Data(contentsOf: cacheURL)) == data {
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date()],
+                ofItemAtPath: cacheURL.path)
+        } else {
+            try data.write(to: cacheURL, options: .atomic)
+        }
+        return profiles.count
     }
 
     static func openNewWindow(profileDirectory: String) {
@@ -97,12 +140,14 @@ enum ChromeProfileManager {
         }
     }
 
-    private static func profilesFromLocalState(at url: URL) -> [ChromeProfile] {
-        guard let data = try? Data(contentsOf: url),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    private static func profilesFromLocalState(at url: URL) throws -> [ChromeProfile] {
+        let data = try Data(contentsOf: url)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profile = root["profile"] as? [String: Any],
               let infoCache = profile["info_cache"] as? [String: Any]
-        else { return [] }
+        else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
 
         return infoCache.compactMap { directory, rawInfo in
             guard let info = rawInfo as? [String: Any] else { return nil }

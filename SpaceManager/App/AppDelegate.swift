@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var refreshRequestedWhileInFlight = false
     private var pendingRefreshCompletions: [(Bool) -> Void] = []
     private var spaceUpdateGeneration = 0
+    private var chromeProfileSyncTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: ["autoUpdateWorkspaceNames": true])
@@ -42,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.requestSpaceRefresh(completion: completion)
         }
         requestSpaceRefresh()
+        startChromeProfileSync()
 
         NotificationCenter.default.addObserver(
             self,
@@ -66,6 +68,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
             forEventClass: AEEventClass(kInternetEventClass),
             andEventID: AEEventID(kAEGetURL))
+    }
+
+    private func startChromeProfileSync() {
+        syncChromeProfiles()
+        chromeProfileSyncTimer = Timer.scheduledTimer(
+            withTimeInterval: 24 * 60 * 60,
+            repeats: true
+        ) { _ in
+            Self.syncChromeProfiles()
+        }
+    }
+
+    private func syncChromeProfiles() {
+        Self.syncChromeProfiles()
+    }
+
+    nonisolated private static func syncChromeProfiles() {
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let count = try ChromeProfileManager.syncSharedProfileCache()
+                NSLog("ChromeProfileManager: cached %d Chrome profiles", count)
+            } catch {
+                NSLog("ChromeProfileManager: profile cache sync unavailable: %@", error.localizedDescription)
+            }
+        }
     }
 
     @objc private func handleRefreshRequest() {

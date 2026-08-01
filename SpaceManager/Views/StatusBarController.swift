@@ -1544,14 +1544,10 @@ class StatusBarController: NSObject {
             return
         }
 
-        let duplicateNames = Dictionary(grouping: profiles, by: \ChromeProfile.displayName)
-            .filter { $0.value.count > 1 }
-            .keys
-
         for profile in profiles {
-            let title = duplicateNames.contains(profile.displayName)
-                ? "\(profile.displayName) (\(profile.directory))"
-                : profile.displayName
+            let title = profile.name.isEmpty || profile.email.isEmpty
+                ? profile.displayName
+                : "\(profile.displayName) (\(profile.email))"
             let item = NSMenuItem(
                 title: title,
                 action: #selector(openChromeProfile(_:)),
