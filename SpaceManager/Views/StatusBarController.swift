@@ -25,6 +25,11 @@ class StatusBarController: NSObject {
 
     private let issueFetcher = GitHubIssueFetcher.shared
     private var issuesMenu: NSMenu?
+    private var chromeProfilesMenu: NSMenu?
+    private let performanceMonitor = SystemPerformanceMonitor()
+    private var performanceTimer: Timer?
+    private var performanceSnapshot: SystemPerformanceSnapshot?
+    private let performanceViewModel = PerformanceMenuViewModel()
 
     override init() {
         super.init()
@@ -85,6 +90,9 @@ class StatusBarController: NSObject {
     private func rebuildMenu(_ spaces: [Space]) {
         statusMenu.removeAllItems()
 
+        addPerformanceSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
+
         let orderedDisplayIDs = orderedDisplayIDs(from: spaces)
         let multipleDisplays = orderedDisplayIDs.count > 1
         let activeDisplayUUID = multipleDisplays ? interactionDisplayID(from: orderedDisplayIDs) : nil
@@ -99,40 +107,14 @@ class StatusBarController: NSObject {
             sortedSpaces = spaces
         }
 
-        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
-        newItem.submenu = buildNewSubmenu()
-        statusMenu.addItem(newItem)
-
-        let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
-        currentSpaceItem.submenu = buildCurrentSpaceSubmenu(
-            spaces,
-            orderedDisplayIDs: orderedDisplayIDs)
-        statusMenu.addItem(currentSpaceItem)
-
-        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
-        closeItem.submenu = buildCloseSubmenu(spaces)
-        statusMenu.addItem(closeItem)
-
-        let moveWindowItem = NSMenuItem(
-            title: "Move Frontmost Window...",
-            action: #selector(showWindowMoveMenu),
-            keyEquivalent: "m")
-        moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
-        moveWindowItem.target = self
-        statusMenu.addItem(moveWindowItem)
-
-        let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
-        windowLayoutsItem.submenu = WindowLayoutManager.shared.makeMenu()
-        statusMenu.addItem(windowLayoutsItem)
-
-        let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
-        let issMenu = NSMenu()
-        issMenu.delegate = self
-        issuesItem.submenu = issMenu
-        issuesMenu = issMenu
-        statusMenu.addItem(issuesItem)
-
-        statusMenu.addItem(NSMenuItem.separator())
+        let desktopSpaces = spaces.filter { !$0.isFullScreen }
+        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
+        let closeAllItem = NSMenuItem(
+            title: "Close All Spaces",
+            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
+            keyEquivalent: "")
+        closeAllItem.target = self
+        statusMenu.addItem(closeAllItem)
 
         var currentDisplayID: String?
 
@@ -164,6 +146,48 @@ class StatusBarController: NSObject {
 
         statusMenu.addItem(NSMenuItem.separator())
 
+        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
+        newItem.submenu = buildNewSubmenu()
+        statusMenu.addItem(newItem)
+
+        let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
+        currentSpaceItem.submenu = buildCurrentSpaceSubmenu(
+            spaces,
+            orderedDisplayIDs: orderedDisplayIDs)
+        statusMenu.addItem(currentSpaceItem)
+
+        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
+        closeItem.submenu = buildCloseSubmenu(spaces)
+        statusMenu.addItem(closeItem)
+
+        let moveWindowItem = NSMenuItem(
+            title: "Move Frontmost Window...",
+            action: #selector(showWindowMoveMenu),
+            keyEquivalent: "m")
+        moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
+        moveWindowItem.target = self
+        statusMenu.addItem(moveWindowItem)
+
+        let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
+        windowLayoutsItem.submenu = WindowLayoutManager.shared.makeMenu()
+        statusMenu.addItem(windowLayoutsItem)
+
+        let openChromeItem = NSMenuItem(title: "Open Chrome…", action: nil, keyEquivalent: "")
+        let chromeMenu = NSMenu()
+        chromeMenu.delegate = self
+        openChromeItem.submenu = chromeMenu
+        chromeProfilesMenu = chromeMenu
+        statusMenu.addItem(openChromeItem)
+
+        let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
+        let issMenu = NSMenu()
+        issMenu.delegate = self
+        issuesItem.submenu = issMenu
+        issuesMenu = issMenu
+        statusMenu.addItem(issuesItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
         let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
         missionControlItem.target = self
         statusMenu.addItem(missionControlItem)
@@ -179,6 +203,68 @@ class StatusBarController: NSObject {
         let quitItem = NSMenuItem(title: "Quit Space Manager", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         statusMenu.addItem(quitItem)
+    }
+
+    // MARK: - Performance
+
+    private func addPerformanceSection(to menu: NSMenu) {
+        performanceViewModel.snapshot = performanceSnapshot
+        let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
+        let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
+        view.frame = NSRect(x: 0, y: 0, width: 376, height: 148)
+        item.view = view
+        menu.addItem(item)
+    }
+
+    private func startPerformanceMonitoring() {
+        performanceTimer?.invalidate()
+        performanceSnapshot = nil
+        performanceViewModel.snapshot = nil
+
+        // The first collection establishes delta counters while immediately
+        // publishing memory, battery, and thermal values. Take a short follow-up
+        // sample so CPU/network/disk appear without waiting for the regular cycle.
+        performanceMonitor.start { [weak self] snapshot in
+            DispatchQueue.main.async {
+                guard let self, self.performanceTimer != nil else { return }
+                self.performanceSnapshot = snapshot
+                self.performanceViewModel.snapshot = snapshot
+            }
+        }
+
+        let warmupTimer = Timer(timeInterval: 0.2, repeats: false) { [weak self] _ in
+            self?.performanceMonitor.sample { [weak self] snapshot in
+                DispatchQueue.main.async {
+                    guard let self, self.performanceTimer != nil else { return }
+                    self.performanceSnapshot = snapshot
+                    self.performanceViewModel.snapshot = snapshot
+                    self.startRegularPerformanceTimer()
+                }
+            }
+        }
+        performanceTimer = warmupTimer
+        RunLoop.main.add(warmupTimer, forMode: .common)
+    }
+
+    private func startRegularPerformanceTimer() {
+        performanceTimer?.invalidate()
+        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            self?.performanceMonitor.sample { [weak self] snapshot in
+                DispatchQueue.main.async {
+                    guard let self, self.performanceTimer != nil else { return }
+                    self.performanceSnapshot = snapshot
+                    self.performanceViewModel.snapshot = snapshot
+                }
+            }
+        }
+        performanceTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopPerformanceMonitoring() {
+        performanceTimer?.invalidate()
+        performanceTimer = nil
+        performanceMonitor.stop()
     }
 
     // MARK: - Current Space Submenu
@@ -1442,6 +1528,40 @@ class StatusBarController: NSObject {
         }
     }
 
+    @objc private func openChromeProfile(_ sender: NSMenuItem) {
+        guard let profileDirectory = sender.representedObject as? String else { return }
+        ChromeProfileManager.openNewWindow(profileDirectory: profileDirectory)
+    }
+
+    private func updateChromeProfilesMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+
+        let profiles = ChromeProfileManager.profiles()
+        guard !profiles.isEmpty else {
+            let item = NSMenuItem(title: "No Chrome profiles found", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            return
+        }
+
+        let duplicateNames = Dictionary(grouping: profiles, by: \ChromeProfile.displayName)
+            .filter { $0.value.count > 1 }
+            .keys
+
+        for profile in profiles {
+            let title = duplicateNames.contains(profile.displayName)
+                ? "\(profile.displayName) (\(profile.directory))"
+                : profile.displayName
+            let item = NSMenuItem(
+                title: title,
+                action: #selector(openChromeProfile(_:)),
+                keyEquivalent: "")
+            item.target = self
+            item.representedObject = profile.directory
+            menu.addItem(item)
+        }
+    }
+
     @objc private func showMissionControl() {
         MissionControlAccessibility.open()
     }
@@ -1566,17 +1686,24 @@ extension StatusBarController: NSMenuDelegate {
                 containing: NSEvent.mouseLocation,
                 candidates: physicalDisplayOrder)
             issueFetcher.refreshIfNeeded()
+            startPerformanceMonitoring()
             requestSpaceRefresh? { _ in }
         }
     }
 
     func menuDidClose(_ menu: NSMenu) {
         if menu === statusMenu {
+            stopPerformanceMonitoring()
             menuContextDisplayID = nil
         }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === chromeProfilesMenu {
+            updateChromeProfilesMenu(menu)
+            return
+        }
+
         if menu === issuesMenu {
             populateIssuesMenu(menu)
         }

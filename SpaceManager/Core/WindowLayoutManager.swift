@@ -40,6 +40,8 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private weak var lastExternalApplication: NSRunningApplication?
     private var restoreSequences: [WindowIdentity: WindowLayoutRestoreSequence] = [:]
     private var cheatsheetController: WindowLayoutCheatsheetController?
+    private var manualCheatsheetController: WindowLayoutCheatsheetController?
+    private var manualCheatsheetModifiers: Set<MagnetShortcutModifier>?
     private let keyboardInputDeviceMonitor = KeyboardInputDeviceMonitor()
     private var activeCheatsheetKeyboardStyle: MacKeyboardStyle?
     private var cheatsheetShortcutIsDown = false
@@ -120,10 +122,10 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         menu.addItem(toggle)
 
         let cheatsheet = NSMenuItem(
-            title: "Cheatsheet — Hold modifiers; double-tap / to pin",
-            action: nil,
+            title: "Open Cheatsheet…",
+            action: #selector(openCheatsheetFromMenu),
             keyEquivalent: "")
-        cheatsheet.isEnabled = false
+        cheatsheet.target = self
         menu.addItem(cheatsheet)
 
         let settings = NSMenuItem(title: "Edit Shortcuts — \(Self.settingsShortcutText)", action: nil, keyEquivalent: "")
@@ -177,6 +179,43 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             alert.alertStyle = .warning
             alert.runModal()
         }
+    }
+
+    @objc private func openCheatsheetFromMenu() {
+        let targetScreen = cheatsheetTargetScreen()
+        let orientation = self.orientation(for: targetScreen)
+        let availableCommands = commands.filter {
+            $0.orientation == orientation && $0.isEnabled
+        }
+        let availableModifiers = Set(availableCommands.map(\.modifiers))
+        guard !availableModifiers.isEmpty else { return }
+
+        let modifiers: Set<MagnetShortcutModifier>
+        if let manualCheatsheetModifiers,
+           availableModifiers.contains(manualCheatsheetModifiers) {
+            modifiers = manualCheatsheetModifiers
+        } else if availableModifiers.contains(MagnetShortcutGroup.halves.modifiers) {
+            modifiers = MagnetShortcutGroup.halves.modifiers
+        } else {
+            modifiers = availableModifiers.sorted {
+                Self.carbonModifiers(for: $0) < Self.carbonModifiers(for: $1)
+            }[0]
+        }
+
+        manualCheatsheetModifiers = modifiers
+        if manualCheatsheetController == nil {
+            manualCheatsheetController = WindowLayoutCheatsheetController(presentation: .window)
+        }
+        manualCheatsheetController?.show(
+            commands: commands,
+            orientation: orientation,
+            activeModifiers: modifiers,
+            isPinned: false,
+            screen: targetScreen,
+            keyboardStyle: nil,
+            onSelectModifiers: { [weak self] selectedModifiers in
+                self?.manualCheatsheetModifiers = selectedModifiers
+            })
     }
 
     @objc private func applyMenuCommand(_ sender: NSMenuItem) {
@@ -752,7 +791,6 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     ) {
         guard cheatsheetIsPinned, cheatsheetModifierSets.contains(modifiers) else { return }
         activeCheatsheetModifiers = modifiers
-        showCheatsheet(modifiers: modifiers)
     }
 
     private func hideCheatsheet() {
