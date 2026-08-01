@@ -48,6 +48,8 @@ struct SettingsView: View {
     @StateObject private var launchAtLogin = LaunchAtLoginManager()
     @ObservedObject private var windowLayouts = WindowLayoutManager.shared
     @AppStorage("autoUpdateWorkspaceNames") private var autoUpdateWorkspaceNames = true
+    @AppStorage(MissionControlNameOverlayController.enabledDefaultsKey)
+    private var showNamesInMissionControl = true
     @AppStorage(WallpaperResetter.folderDefaultsKey) private var defaultWallpaperFolder = WallpaperResetter.defaultFolderPath
     @State private var permissionStates: [AppPermission: Bool] = [:]
 
@@ -94,6 +96,11 @@ struct SettingsView: View {
                     Toggle(
                         "Auto-update workspace names",
                         isOn: $autoUpdateWorkspaceNames
+                    )
+
+                    Toggle(
+                        "Show names in Mission Control",
+                        isOn: $showNamesInMissionControl
                     )
 
                     Divider()

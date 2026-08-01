@@ -14,6 +14,7 @@
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
 		1E09A7077C6B3A5D22386CA7 /* SpaceNameInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */; };
 		24A9D30786C44A008BDA5342 /* GitHubIssueFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */; };
+		2715EE7F7EE57BA4B4030FD8 /* MissionControlNameOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3B22D2ECE5D5ECA1835E22 /* MissionControlNameOverlayController.swift */; };
 		28511B773923A14C363DD47B /* ShortcutHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C83502A28F0A648D41E7688 /* ShortcutHelper.swift */; };
 		2DCD2F14A3077165A7E72BC9 /* SpaceNameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAFBD5367F897BA06D1AE068 /* SpaceNameStore.swift */; };
 		346A301C50DF4ED20AE9E786 /* DisplayGeometryUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */; };
@@ -135,6 +136,7 @@
 		C6ABB87719B3A5F78D62A062 /* SpaceOperationLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceOperationLog.swift; sourceTree = "<group>"; };
 		CB7E606BD09EE855032540E6 /* SpaceManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpaceManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC1761DA8F106DAD6C9F477D /* SpaceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceObserver.swift; sourceTree = "<group>"; };
+		CD3B22D2ECE5D5ECA1835E22 /* MissionControlNameOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionControlNameOverlayController.swift; sourceTree = "<group>"; };
 		CDB5ABC3FBCE1E8E6B1A8576 /* SpaceWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceWindow.swift; sourceTree = "<group>"; };
 		D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutVisualGuide.swift; sourceTree = "<group>"; };
 		DAFBD5367F897BA06D1AE068 /* SpaceNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceNameStore.swift; sourceTree = "<group>"; };
@@ -261,6 +263,7 @@
 				58BCB9E1598F6942EDC06D82 /* MacKeyboardView.swift */,
 				367E188D03117764FA04A9EF /* MagnetShortcutConfigurationView.swift */,
 				D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */,
+				CD3B22D2ECE5D5ECA1835E22 /* MissionControlNameOverlayController.swift */,
 				29E2F871717B8685AF8DEC74 /* PerformanceMenuView.swift */,
 				85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */,
 				2F3938CF4E3895AE556C6F75 /* SpaceLabelController.swift */,
@@ -415,6 +418,7 @@
 				9A3AFAD43553A0D11CC0D0C6 /* MagnetShortcutModels.swift in Sources */,
 				01F247F34B89EA9F1382185B /* MagnetShortcutVisualGuide.swift in Sources */,
 				4F637416B7091FFFD42D867A /* MissionControlAccessibility.swift in Sources */,
+				2715EE7F7EE57BA4B4030FD8 /* MissionControlNameOverlayController.swift in Sources */,
 				97867B69A59BF7EC5DA641FC /* ModernSpaceWindowMover.m in Sources */,
 				613E466B2653618BEEC78364 /* PerformanceMenuView.swift in Sources */,
 				0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */,

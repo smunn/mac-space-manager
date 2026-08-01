@@ -58,8 +58,12 @@ enum MissionControlAccessibility {
         return nil
     }
 
-    static func currentDisplaySnapshots() -> [DisplaySnapshot] {
-        for bundleIdentifier in accessibilityOwnerBundleIdentifiers {
+    static func currentDisplaySnapshots(includeLegacyFallback: Bool = true) -> [DisplaySnapshot] {
+        let bundleIdentifiers = includeLegacyFallback
+            ? accessibilityOwnerBundleIdentifiers
+            : Array(accessibilityOwnerBundleIdentifiers.prefix(1))
+
+        for bundleIdentifier in bundleIdentifiers {
             guard let app = NSWorkspace.shared.runningApplications.first(where: {
                 $0.bundleIdentifier == bundleIdentifier
             }) else { continue }
@@ -131,6 +135,63 @@ enum MissionControlAccessibility {
 
     static func performRemoveDesktop(on element: AXUIElement) -> Bool {
         AXUIElementPerformAction(element, removeDesktopAction) == .success
+    }
+
+    /// Returns the global Accessibility frame for a Mission Control element.
+    /// AX uses a top-left global coordinate space; callers displaying AppKit
+    /// windows must convert it to AppKit's bottom-left coordinate space.
+    static func frame(of element: AXUIElement) -> CGRect? {
+        var frameValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(
+            element,
+            "AXFrame" as CFString,
+            &frameValue) == .success,
+            let frameValue,
+            CFGetTypeID(frameValue) == AXValueGetTypeID()
+        {
+            var frame = CGRect.zero
+            if AXValueGetValue(frameValue as! AXValue, .cgRect, &frame) {
+                // macOS 27's WindowManager publishes the Mission Control layer's
+                // center in AXFrame.origin instead of a conventional top-left
+                // origin. Normalize it before converting to AppKit coordinates.
+                if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27 {
+                    frame.origin.x -= frame.width / 2
+                    frame.origin.y -= frame.height / 2
+                }
+                return frame
+            }
+        }
+
+        var positionValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXPositionAttribute as CFString,
+            &positionValue) == .success,
+            AXUIElementCopyAttributeValue(
+                element,
+                kAXSizeAttribute as CFString,
+                &sizeValue) == .success,
+            let positionValue,
+            let sizeValue,
+            CFGetTypeID(positionValue) == AXValueGetTypeID(),
+            CFGetTypeID(sizeValue) == AXValueGetTypeID()
+        else { return nil }
+
+        var position = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(positionValue as! AXValue, .cgPoint, &position),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+        else { return nil }
+
+        // WindowManager's macOS 27 Mission Control elements are backed by layers.
+        // Their AXPosition is the layer center rather than the usual top-left
+        // origin, while AXSize remains the full preview size.
+        return CGRect(
+            x: position.x - size.width / 2,
+            y: position.y - size.height / 2,
+            width: size.width,
+            height: size.height)
     }
 
     static func dismiss() {

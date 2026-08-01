@@ -21,4 +21,19 @@ enum RepositoryColor {
         let blue = CGFloat(bits & 0x0000FF) / 255
         return NSColor(srgbRed: red, green: green, blue: blue, alpha: 1)
     }
+
+    static func contrastingTextColor(for backgroundColor: NSColor) -> NSColor {
+        guard let color = backgroundColor.usingColorSpace(.sRGB) else { return .white }
+
+        func linearized(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+
+        let luminance = 0.2126 * linearized(color.redComponent)
+            + 0.7152 * linearized(color.greenComponent)
+            + 0.0722 * linearized(color.blueComponent)
+        return luminance > 0.179 ? .black : .white
+    }
 }

@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowDetector: WindowDetector!
     private var spaceNamer: SpaceNamer!
     private var spaceLabelController: SpaceLabelController!
+    private var missionControlNameOverlayController: MissionControlNameOverlayController!
     private var windowMoveController: WindowMoveController!
     private var statusBarController: StatusBarController!
 
@@ -28,11 +29,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var chromeProfileSyncTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        UserDefaults.standard.register(defaults: ["autoUpdateWorkspaceNames": true])
+        UserDefaults.standard.register(defaults: [
+            "autoUpdateWorkspaceNames": true,
+            MissionControlNameOverlayController.enabledDefaultsKey: true
+        ])
 
         windowDetector = WindowDetector()
         spaceNamer = SpaceNamer()
         spaceLabelController = SpaceLabelController()
+        missionControlNameOverlayController = MissionControlNameOverlayController()
         windowMoveController = WindowMoveController()
         statusBarController = StatusBarController()
         _ = WindowLayoutManager.shared
@@ -317,6 +322,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         currentSpaces = enriched
         spaceLabelController.updateSpaces(enriched)
+        missionControlNameOverlayController.updateSpaces(
+            enriched,
+            missionControlDisplayOrder: spaceObserver.missionControlDisplayOrder)
         windowMoveController.updateSpaces(enriched)
         statusBarController.updateSpaces(enriched, missionControlDisplayOrder: spaceObserver.missionControlDisplayOrder)
         processPendingCommandURLs()
