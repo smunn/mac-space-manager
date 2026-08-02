@@ -8,6 +8,7 @@ A macOS menu bar app that auto-detects Spaces, names them by their window conten
 - Shows current space number in the menu bar
 - Dropdown lists every space with auto-generated names and app lists
 - Click a space to switch to it (uses arrow-key chaining — no "Switch to Desktop N" shortcuts required)
+- Hold F3 and press 1–9 to select that Desktop on the display under the pointer (0 selects Desktop 10)
 - Rename spaces manually; names persist across rearranges and reboots
 - Rename the current space from scripts via `spacemanager://rename-current?name=Project`
 - Toggle "Open at login" from Settings
@@ -48,6 +49,7 @@ SpaceManager/
 ├── Core/
 │   ├── SpaceObserver.swift            # Space detection (CGSCopyManagedDisplaySpaces)
 │   ├── SpaceSwitcher.swift            # Space switching (AppleScript + arrow chaining)
+│   ├── F3SpaceShortcutController.swift # Hold-F3 Desktop number shortcuts
 │   ├── ShortcutHelper.swift           # Reads keyboard shortcuts from macOS prefs
 │   ├── WindowDetector.swift           # Maps windows to spaces via CGWindowListCopyWindowInfo
 │   ├── SpaceNamer.swift               # Auto-naming from window titles + process CWDs

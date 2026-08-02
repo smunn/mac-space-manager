@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var missionControlNameOverlayController: MissionControlNameOverlayController!
     private var windowMoveController: WindowMoveController!
     private var statusBarController: StatusBarController!
+    private var f3SpaceShortcutController: F3SpaceShortcutController!
 
     private var currentSpaces: [Space] = []
     private var pendingCommandURLs: [URL] = []
@@ -40,6 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         missionControlNameOverlayController = MissionControlNameOverlayController()
         windowMoveController = WindowMoveController()
         statusBarController = StatusBarController()
+        f3SpaceShortcutController = F3SpaceShortcutController { [weak self] desktopNumber in
+            self?.selectF3Desktop(number: desktopNumber)
+        }
         _ = WindowLayoutManager.shared
 
         spaceObserver = SpaceObserver()
@@ -115,6 +119,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         refreshInFlight = true
         spaceObserver.updateSpaceInformation()
+    }
+
+    private func selectF3Desktop(number: Int) {
+        // Apple no longer publishes the Mission Control F3 media-key event to
+        // either Quartz event taps or NSEvent global monitors on every keyboard.
+        // The visible AX hierarchy is the reliable signal that the number press
+        // occurred while Mission Control was open.
+        let snapshots = MissionControlAccessibility.currentDisplaySnapshots(
+            includeLegacyFallback: false)
+        guard !snapshots.isEmpty else { return }
+
+        let displayIDs = Array(Set(currentSpaces.map(\.displayID)))
+        guard let displayID = DisplayGeometryUtilities.displayUUID(
+            containing: NSEvent.mouseLocation,
+            candidates: displayIDs)
+            ?? DisplayGeometryUtilities.activeDisplayUUID(from: displayIDs)
+            ?? currentSpaces.first(where: \.isCurrentSpace)?.displayID
+        else { return }
+
+        let displayGroupIndex = (spaceObserver.missionControlDisplayOrder.firstIndex(of: displayID) ?? 0) + 1
+        guard let snapshot = MissionControlAccessibility.snapshot(
+            in: snapshots,
+            displayID: displayID,
+            fallbackDisplayGroupIndex: displayGroupIndex),
+            snapshot.desktopButtons.indices.contains(number - 1)
+        else {
+            SpaceOperationLog.write(
+                "F3 shortcut ignored: display=\(displayID) desktop=\(number) unavailable")
+            return
+        }
+
+        SpaceOperationLog.write("F3 shortcut selected display=\(displayID) desktop=\(number)")
+        if !MissionControlAccessibility.performPress(on: snapshot.desktopButtons[number - 1]) {
+            SpaceOperationLog.write(
+                "F3 shortcut AXPress failed: display=\(displayID) desktop=\(number)")
+        }
     }
 
     @objc private func handleRenameSpace(_ notification: Notification) {

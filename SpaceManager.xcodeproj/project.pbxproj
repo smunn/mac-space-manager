@@ -8,8 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		01F247F34B89EA9F1382185B /* MagnetShortcutVisualGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */; };
+		05903D279991987484A098E0 /* F3SpaceShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */; };
 		070D55FA33D9602F263A9519 /* MacKeyboardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */; };
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
+		0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
 		1E09A7077C6B3A5D22386CA7 /* SpaceNameInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */; };
@@ -117,6 +119,7 @@
 		703E83622E4EE8A035214A5A /* Space.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Space.swift; sourceTree = "<group>"; };
 		733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHelper.swift; sourceTree = "<group>"; };
 		7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionControlAccessibility.swift; sourceTree = "<group>"; };
+		7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F3SpaceShortcutRoutingTests.swift; sourceTree = "<group>"; };
 		82362D22A0A79C23B8BCABF9 /* WindowMoveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveController.swift; sourceTree = "<group>"; };
 		836855BE97116D239959D8B6 /* SpaceLabelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceLabelStore.swift; sourceTree = "<group>"; };
 		85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -127,6 +130,7 @@
 		97E618C1148A91CB03E3A7C8 /* WorkspaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceEditorView.swift; sourceTree = "<group>"; };
 		993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcher.swift; sourceTree = "<group>"; };
 		A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceNameInfo.swift; sourceTree = "<group>"; };
+		A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F3SpaceShortcutController.swift; sourceTree = "<group>"; };
 		B554C5F7DF1B6C58AF4301F4 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B8BEBF77D87DFC507D17A3E3 /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		BA0F9A7165BF4C3B5090A6F3 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
@@ -179,6 +183,7 @@
 			children = (
 				C4957D5960B9FC4F05232E3B /* ChromeProfileManager.swift */,
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
+				A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */,
 				4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */,
 				FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */,
 				E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */,
@@ -250,6 +255,7 @@
 			isa = PBXGroup;
 			children = (
 				5B14A0676EE76DAB99477270 /* ChromeProfileManagerTests.swift */,
+				7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */,
 				336A097979FB3DC851BBA76E /* PerformanceMetricToneTests.swift */,
 				DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */,
 			);
@@ -389,6 +395,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8FBF610A2B89654F9447263A /* ChromeProfileManagerTests.swift in Sources */,
+				0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */,
 				B6DEF6A8B173564D66437131 /* PerformanceMetricToneTests.swift in Sources */,
 				FCFFC68046E4FB4B6E757EBE /* WindowLayoutTests.swift in Sources */,
 			);
@@ -404,6 +411,7 @@
 				1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */,
 				346A301C50DF4ED20AE9E786 /* DisplayGeometryUtilities.swift in Sources */,
 				B6389B5374D0DC9DD7D5D685 /* Extensions.swift in Sources */,
+				05903D279991987484A098E0 /* F3SpaceShortcutController.swift in Sources */,
 				8F9A388C81D2E5728AB512AF /* GitHubIssue.swift in Sources */,
 				24A9D30786C44A008BDA5342 /* GitHubIssueFetcher.swift in Sources */,
 				3861A00F36F20075D5670561 /* KeyboardInputDeviceMonitor.swift in Sources */,
