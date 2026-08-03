@@ -221,6 +221,30 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertEqual(WindowLayoutManager.operation(for: "Previous Display"), .previousDisplay)
     }
 
+    @MainActor
+    func testBottomAlignedLayoutsStageResizeAtTopOfVisibleFrame() throws {
+        let visible = CGRect(x: 0, y: 33, width: 1512, height: 897)
+        let bottomLeft = CGRect(x: 0, y: 481, width: 756, height: 449)
+
+        let stagingOrigin = try XCTUnwrap(
+            WindowLayoutManager.bottomAlignedResizeStagingOrigin(
+                targetFrame: bottomLeft,
+                visibleFrame: visible))
+
+        XCTAssertEqual(stagingOrigin, CGPoint(x: 0, y: 33))
+    }
+
+    @MainActor
+    func testTopAlignedLayoutsDoNotNeedResizeStaging() {
+        let visible = CGRect(x: 0, y: 33, width: 1512, height: 897)
+        let topLeft = CGRect(x: 0, y: 33, width: 756, height: 449)
+
+        XCTAssertNil(
+            WindowLayoutManager.bottomAlignedResizeStagingOrigin(
+                targetFrame: topLeft,
+                visibleFrame: visible))
+    }
+
     func testPortraitCenterThirdIsVisibleInFullWidthThirds() throws {
         let configuration = makeConfiguration(vertical: [
             makeCommand(

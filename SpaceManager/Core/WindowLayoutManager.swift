@@ -597,8 +597,33 @@ final class WindowLayoutManager: NSObject, ObservableObject {
               let sizeValue = AXValueCreate(.cgSize, &size)
         else { return false }
 
-        let positionStatus = AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, positionValue)
-        let sizeStatus = AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, sizeValue)
+        let visibleFrame = accessibilityVisibleFrame(for: screen(containing: frame))
+        if var stagingPosition = Self.bottomAlignedResizeStagingOrigin(
+            targetFrame: frame,
+            visibleFrame: visibleFrame
+        ), let stagingValue = AXValueCreate(.cgPoint, &stagingPosition) {
+            // AX position and size updates are not atomic. Resizing a window while
+            // it is already against the Dock can make some apps preserve the old
+            // bottom edge and extend the new frame underneath the Dock. Stage the
+            // window at the top of the work area before sizing, which is equivalent
+            // to the reliable top-corner-then-bottom-corner manual workaround.
+            _ = AXUIElementSetAttributeValue(
+                element,
+                kAXPositionAttribute as CFString,
+                stagingValue)
+        }
+
+        let sizeStatus = AXUIElementSetAttributeValue(
+            element,
+            kAXSizeAttribute as CFString,
+            sizeValue)
+        let positionStatus = AXUIElementSetAttributeValue(
+            element,
+            kAXPositionAttribute as CFString,
+            positionValue)
+        // Some apps adjust their window constraints during either setter. Repeat
+        // both values so the final operation always restores the requested edge.
+        _ = AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, sizeValue)
         _ = AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, positionValue)
         guard positionStatus == .success, sizeStatus == .success else {
             NSLog("WindowLayoutManager: AX frame update failed position=%d size=%d", positionStatus.rawValue, sizeStatus.rawValue)
@@ -612,6 +637,17 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             self.set(frame: frame, for: element, attemptsRemaining: attemptsRemaining - 1)
         }
         return true
+    }
+
+    static func bottomAlignedResizeStagingOrigin(
+        targetFrame: CGRect,
+        visibleFrame: CGRect,
+        tolerance: CGFloat = 2
+    ) -> CGPoint? {
+        guard targetFrame.minY > visibleFrame.minY + tolerance,
+              abs(targetFrame.maxY - visibleFrame.maxY) <= tolerance
+        else { return nil }
+        return CGPoint(x: targetFrame.minX, y: visibleFrame.minY)
     }
 
     private func focusedWindow() -> FocusedWindow? {
