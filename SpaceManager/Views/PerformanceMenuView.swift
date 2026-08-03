@@ -8,6 +8,13 @@ import SwiftUI
 @MainActor
 final class PerformanceMenuViewModel: ObservableObject {
     @Published var snapshot: SystemPerformanceSnapshot?
+    @Published var processHealthSnapshot: ProcessHealthSnapshot = .empty
+    @Published var isRefreshingProcessHealth = false
+
+    var reviewSimulator: ((SimulatorHealthItem) -> Void)?
+    var shutDownSimulator: ((SimulatorHealthItem) -> Void)?
+    var reviewAISession: ((AISessionHealthItem) -> Void)?
+    var cleanUpAISession: ((AISessionHealthItem) -> Void)?
 }
 
 struct PerformanceMenuView: View {
@@ -65,9 +72,13 @@ struct PerformanceMenuView: View {
                 leadingValue: rateText(model.snapshot?.diskReadRate),
                 trailingLabel: "W",
                 trailingValue: rateText(model.snapshot?.diskWriteRate))
+
+            Divider()
+
+            processHealth
         }
         .padding(10)
-        .frame(width: 360, height: 140)
+        .frame(width: 360, height: 280)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
@@ -79,6 +90,50 @@ struct PerformanceMenuView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .debugLabel("PerformanceMenuView")
+    }
+
+    private var processHealth: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Process Health")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                if model.isRefreshingProcessHealth {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            if processHealthItemsAreEmpty {
+                Text(model.isRefreshingProcessHealth ? "Scanning" : "No issues")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(model.processHealthSnapshot.simulators) { simulator in
+                            SimulatorHealthRow(
+                                item: simulator,
+                                review: { model.reviewSimulator?(simulator) },
+                                shutDown: { model.shutDownSimulator?(simulator) })
+                        }
+                        ForEach(model.processHealthSnapshot.aiSessions) { session in
+                            AISessionHealthRow(
+                                item: session,
+                                review: { model.reviewAISession?(session) },
+                                cleanUp: { model.cleanUpAISession?(session) })
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .debugLabel("processHealth")
+    }
+
+    private var processHealthItemsAreEmpty: Bool {
+        model.processHealthSnapshot.simulators.isEmpty && model.processHealthSnapshot.aiSessions.isEmpty
     }
 
     private var header: some View {
@@ -182,6 +237,81 @@ struct PerformanceMenuView: View {
         formatter.isAdaptive = true
         return formatter
     }()
+}
+
+private struct SimulatorHealthRow: View {
+    let item: SimulatorHealthItem
+    let review: () -> Void
+    let shutDown: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(item.deviceName) · \(item.isActivelyUsed ? "Active" : Self.elapsed(item.bootDuration))")
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                Text("\(item.runtimeName) · \(item.deviceUUID.uuidString)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            Button("Review", action: review)
+                .controlSize(.mini)
+            Button("Shut Down", action: shutDown)
+                .controlSize(.mini)
+                .disabled(!item.canCleanUp)
+        }
+        .debugLabel("SimulatorHealthRow")
+    }
+
+    private static func elapsed(_ interval: TimeInterval) -> String {
+        compactElapsed(interval)
+    }
+}
+
+private struct AISessionHealthRow: View {
+    let item: AISessionHealthItem
+    let review: () -> Void
+    let cleanUp: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(item.service.rawValue) · \(compactElapsed(item.elapsedTime))")
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                Text(item.detail ?? "Session \(item.processID)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if let summary = item.taskSummary ?? item.completionSummary {
+                    Text(summary)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 4)
+            Button("Review", action: review)
+                .controlSize(.mini)
+            if item.canCleanUp {
+                Button("Clean Up", action: cleanUp)
+                    .controlSize(.mini)
+            }
+        }
+        .debugLabel("AISessionHealthRow")
+    }
+}
+
+private func compactElapsed(_ interval: TimeInterval) -> String {
+    let minutes = max(0, Int(interval / 60))
+    if minutes < 60 { return "\(minutes)m" }
+    let hours = minutes / 60
+    let remainingMinutes = minutes % 60
+    if hours < 24 { return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m" }
+    let days = hours / 24
+    return "\(days)d \(hours % 24)h"
 }
 
 enum PerformanceMetricTone: Equatable {

@@ -27,12 +27,15 @@ class StatusBarController: NSObject {
     private var issuesMenu: NSMenu?
     private var chromeProfilesMenu: NSMenu?
     private let performanceMonitor = SystemPerformanceMonitor()
+    private let processHealthMonitor = ProcessHealthMonitor()
     private var performanceTimer: Timer?
     private var performanceSnapshot: SystemPerformanceSnapshot?
     private let performanceViewModel = PerformanceMenuViewModel()
 
     override init() {
         super.init()
+
+        configureProcessHealthActions()
 
         NotificationCenter.default.addObserver(
             self,
@@ -211,9 +214,39 @@ class StatusBarController: NSObject {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 376, height: 148)
+        view.frame = NSRect(x: 0, y: 0, width: 376, height: 288)
         item.view = view
         menu.addItem(item)
+    }
+
+    private func configureProcessHealthActions() {
+        performanceViewModel.reviewSimulator = { [weak self] item in
+            self?.processHealthMonitor.review(item)
+        }
+        performanceViewModel.shutDownSimulator = { [weak self] item in
+            self?.processHealthMonitor.shutDown(item) { [weak self] _ in
+                Task { @MainActor in self?.refreshProcessHealth(force: true) }
+            }
+        }
+        performanceViewModel.reviewAISession = { [weak self] item in
+            self?.processHealthMonitor.review(item)
+        }
+        performanceViewModel.cleanUpAISession = { [weak self] item in
+            self?.processHealthMonitor.cleanUp(item) { [weak self] _ in
+                Task { @MainActor in self?.refreshProcessHealth(force: true) }
+            }
+        }
+    }
+
+    private func refreshProcessHealth(force: Bool = false) {
+        performanceViewModel.isRefreshingProcessHealth = true
+        processHealthMonitor.refreshIfNeeded(force: force) { [weak self] snapshot in
+            Task { @MainActor in
+                guard let self else { return }
+                self.performanceViewModel.processHealthSnapshot = snapshot
+                self.performanceViewModel.isRefreshingProcessHealth = false
+            }
+        }
     }
 
     private func startPerformanceMonitoring() {
@@ -1683,6 +1716,7 @@ extension StatusBarController: NSMenuDelegate {
                 candidates: physicalDisplayOrder)
             issueFetcher.refreshIfNeeded()
             startPerformanceMonitoring()
+            refreshProcessHealth()
             requestSpaceRefresh? { _ in }
         }
     }

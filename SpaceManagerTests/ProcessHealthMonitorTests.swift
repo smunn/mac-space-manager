@@ -1,0 +1,289 @@
+import XCTest
+@testable import Space_Manager
+
+final class ProcessHealthMonitorTests: XCTestCase {
+    private let scanDate = Date(timeIntervalSince1970: 2_000_000)
+
+    func testCompletedDetachedSessionIsCleanableOnlyWithEveryStrongSignal() {
+        let safe = makeSession()
+        XCTAssertTrue(safe.canCleanUp)
+        XCTAssertFalse(makeSession(status: .active).canCleanUp)
+        XCTAssertFalse(makeSession(isDetached: false).canCleanUp)
+        XCTAssertFalse(makeSession(hasUnavailableStandardIO: false).canCleanUp)
+        XCTAssertFalse(makeSession(logPath: nil).canCleanUp)
+    }
+
+    func testClaudeEndTurnSessionRemainsReviewOnly() {
+        let session = makeSession(service: .claude, status: .completed)
+
+        XCTAssertTrue(session.isDetached)
+        XCTAssertTrue(session.hasUnavailableStandardIO)
+        XCTAssertEqual(session.completionStatus, .completed)
+        XCTAssertFalse(session.canCleanUp)
+    }
+
+    func testCodexParserRequiresExplicitCompletionAfterLastActivity() throws {
+        let completed = try jsonLines([
+            ["payload": ["type": "session_meta", "cwd": "/tmp/project", "session_id": "abc"]],
+            ["payload": ["type": "user_message", "message": "Fix the issue"]],
+            ["payload": ["type": "agent_message", "message": "Fixed it"]],
+            ["payload": ["type": "task_complete"]]
+        ])
+        let context = ProcessHealthSystemProvider.sessionContext(logData: completed, service: .codex)
+        XCTAssertEqual(context.status, .completed)
+        XCTAssertEqual(context.projectPath, "/tmp/project")
+        XCTAssertEqual(context.sessionID, "abc")
+        XCTAssertEqual(context.taskSummary, "Fix the issue")
+        XCTAssertEqual(context.completionSummary, "Fixed it")
+
+        let resumed = completed + (try jsonLines([
+            ["payload": ["type": "user_message", "message": "One more thing"]]
+        ]))
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.sessionContext(logData: resumed, service: .codex).status,
+            .active)
+    }
+
+    func testClaudeParserRequiresAssistantEndTurnAndRejectsToolActivity() throws {
+        let completed = try jsonLines([
+            ["type": "user", "message": ["role": "user", "content": "Review this"]],
+            ["type": "assistant", "message": [
+                "role": "assistant",
+                "content": [["type": "text", "text": "Review complete"]],
+                "stop_reason": "end_turn"
+            ]]
+        ])
+        let context = ProcessHealthSystemProvider.sessionContext(logData: completed, service: .claude)
+        XCTAssertEqual(context.status, .completed)
+        XCTAssertEqual(context.taskSummary, "Review this")
+        XCTAssertEqual(context.completionSummary, "Review complete")
+
+        let toolUse = try jsonLines([
+            ["type": "assistant", "message": [
+                "role": "assistant",
+                "content": [["type": "tool_use", "name": "Read"]],
+                "stop_reason": "tool_use"
+            ]]
+        ])
+        XCTAssertNotEqual(
+            ProcessHealthSystemProvider.sessionContext(logData: toolUse, service: .claude).status,
+            .completed)
+
+        let resumedWithTool = completed + toolUse
+        XCTAssertNotEqual(
+            ProcessHealthSystemProvider.sessionContext(logData: resumedWithTool, service: .claude).status,
+            .completed)
+    }
+
+    func testRefreshUsesSixtySecondCacheUnlessForced() {
+        let system = FakeProcessHealthSystem()
+        let clock = TestClock(date: scanDate)
+        let callbackQueue = DispatchQueue(label: "ProcessHealthMonitorTests.callback")
+        let monitor = ProcessHealthMonitor(
+            cacheInterval: 60,
+            callbackQueue: callbackQueue,
+            now: { clock.date },
+            system: system)
+
+        waitForRefresh(monitor)
+        clock.date = scanDate.addingTimeInterval(59)
+        waitForRefresh(monitor)
+        XCTAssertEqual(system.scanCount, 1)
+        XCTAssertFalse(system.scanWasOnMainThread)
+
+        waitForRefresh(monitor, force: true)
+        XCTAssertEqual(system.scanCount, 2)
+
+        clock.date = scanDate.addingTimeInterval(120)
+        waitForRefresh(monitor)
+        XCTAssertEqual(system.scanCount, 3)
+    }
+
+    func testSimulatorWarningsAreSuppressedDuringBuildTestAndPreviewWork() {
+        XCTAssertTrue(ProcessHealthSystemProvider.shouldSuppressSimulatorWarnings(
+            processCommands: ["/usr/bin/xcodebuild test -scheme App"]))
+        XCTAssertTrue(ProcessHealthSystemProvider.shouldSuppressSimulatorWarnings(
+            processCommands: ["/Applications/Xcode.app/Contents/Developer/usr/bin/xctest AppTests"]))
+        XCTAssertTrue(ProcessHealthSystemProvider.shouldSuppressSimulatorWarnings(
+            processCommands: ["/Applications/Xcode.app/Contents/Developer/PreviewsAgent"] ))
+        XCTAssertFalse(ProcessHealthSystemProvider.shouldSuppressSimulatorWarnings(
+            processCommands: ["/Applications/Simulator.app/Contents/MacOS/Simulator"] ))
+    }
+
+    func testSimulatorThresholdUsesPositiveUserDefaultOrSafeDefault() {
+        let suiteName = "ProcessHealthMonitorTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.configuredSimulatorWarningThreshold(userDefaults: defaults),
+            60 * 60)
+        defaults.set(30, forKey: ProcessHealthSystemProvider.simulatorThresholdDefaultsKey)
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.configuredSimulatorWarningThreshold(userDefaults: defaults),
+            30 * 60)
+        defaults.set(-1, forKey: ProcessHealthSystemProvider.simulatorThresholdDefaultsKey)
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.configuredSimulatorWarningThreshold(userDefaults: defaults),
+            60 * 60)
+    }
+
+    func testDeveloperDirectoryPrefersEnvironmentThenValidSelectedXcodeThenApplications() {
+        let valid = Set(["/environment", "/selected", "/fallback"])
+        let hasSimctl: (String) -> Bool = { valid.contains($0) }
+
+        XCTAssertEqual(ProcessHealthSystemProvider.developerDirectory(
+            environment: ["DEVELOPER_DIR": "/environment"],
+            selectedDirectory: "/selected",
+            applicationDirectories: ["/fallback"],
+            hasSimctl: hasSimctl), "/environment")
+        XCTAssertEqual(ProcessHealthSystemProvider.developerDirectory(
+            environment: ["DEVELOPER_DIR": "/command-line-tools"],
+            selectedDirectory: "/selected",
+            applicationDirectories: ["/fallback"],
+            hasSimctl: hasSimctl), "/selected")
+        XCTAssertEqual(ProcessHealthSystemProvider.developerDirectory(
+            environment: [:],
+            selectedDirectory: "/command-line-tools",
+            applicationDirectories: ["/fallback"],
+            hasSimctl: hasSimctl), "/fallback")
+    }
+
+    func testCleanupRevalidatesBeforeTerminating() {
+        let system = FakeProcessHealthSystem()
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+        let session = makeSession()
+
+        system.aiSessionSafe = false
+        XCTAssertFalse(waitForAction { monitor.cleanUp(session, completion: $0) })
+        XCTAssertEqual(system.terminatedPIDs, [])
+
+        system.aiSessionSafe = true
+        XCTAssertTrue(waitForAction { monitor.cleanUp(session, completion: $0) })
+        XCTAssertEqual(system.terminatedPIDs, [session.processID])
+    }
+
+    func testAmbiguousSessionNeverRevalidatesOrTerminates() {
+        let system = FakeProcessHealthSystem()
+        system.aiSessionSafe = true
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+
+        XCTAssertFalse(waitForAction {
+            monitor.cleanUp(self.makeSession(status: .uncertain), completion: $0)
+        })
+        XCTAssertEqual(system.aiRevalidationCount, 0)
+        XCTAssertEqual(system.terminatedPIDs, [])
+    }
+
+    func testSimulatorShutdownRevalidatesBeforeAction() {
+        let system = FakeProcessHealthSystem()
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+        let simulator = SimulatorHealthItem(
+            deviceName: "iPhone 17 Pro",
+            runtimeName: "iOS 26 0",
+            deviceUUID: UUID(),
+            bootedAt: scanDate.addingTimeInterval(-7_200),
+            scannedAt: scanDate,
+            isActivelyUsed: false)
+
+        system.simulatorSafe = false
+        XCTAssertFalse(waitForAction { monitor.shutDown(simulator, completion: $0) })
+        XCTAssertEqual(system.shutdownUUIDs, [])
+
+        system.simulatorSafe = true
+        XCTAssertTrue(waitForAction { monitor.shutDown(simulator, completion: $0) })
+        XCTAssertEqual(system.shutdownUUIDs, [simulator.deviceUUID])
+    }
+
+    private func makeSession(
+        service: AISessionService = .codex,
+        status: AISessionCompletionStatus = .completed,
+        isDetached: Bool = true,
+        hasUnavailableStandardIO: Bool = true,
+        logPath: String? = "/tmp/codex/session.jsonl"
+    ) -> AISessionHealthItem {
+        AISessionHealthItem(
+            service: service,
+            processID: 123,
+            processStartedAt: scanDate.addingTimeInterval(-300),
+            projectPath: "/tmp/project",
+            sessionID: "session-1",
+            sessionLogPath: logPath,
+            elapsedTime: 300,
+            taskSummary: "Fix issue",
+            completionSummary: "Done",
+            completionStatus: status,
+            isDetached: isDetached,
+            hasUnavailableStandardIO: hasUnavailableStandardIO)
+    }
+
+    private func jsonLines(_ objects: [[String: Any]]) throws -> Data {
+        try objects.map { object in
+            String(data: try JSONSerialization.data(withJSONObject: object), encoding: .utf8)!
+        }.joined(separator: "\n").data(using: .utf8)!
+    }
+
+    private func waitForRefresh(_ monitor: ProcessHealthMonitor, force: Bool = false) {
+        let expectation = expectation(description: "refresh")
+        monitor.refreshIfNeeded(force: force) { _ in expectation.fulfill() }
+        wait(for: [expectation], timeout: 2)
+    }
+
+    private func waitForAction(_ action: (@escaping ProcessHealthMonitor.ActionCompletion) -> Void) -> Bool {
+        let expectation = expectation(description: "action")
+        let result = ActionResult()
+        action {
+            result.value = $0
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+        return result.value
+    }
+}
+
+private final class TestClock: @unchecked Sendable {
+    var date: Date
+    init(date: Date) { self.date = date }
+}
+
+private final class ActionResult: @unchecked Sendable {
+    var value = false
+}
+
+private final class FakeProcessHealthSystem: ProcessHealthSystemProviding {
+    var scanCount = 0
+    var scanWasOnMainThread = true
+    var aiSessionSafe = false
+    var simulatorSafe = false
+    var aiRevalidationCount = 0
+    var terminatedPIDs: [pid_t] = []
+    var shutdownUUIDs: [UUID] = []
+
+    func scan(at date: Date) -> ProcessHealthSnapshot {
+        scanCount += 1
+        scanWasOnMainThread = Thread.isMainThread
+        return ProcessHealthSnapshot(simulators: [], aiSessions: [], scannedAt: date)
+    }
+
+    func simulatorIsSafeToShutdown(_ item: SimulatorHealthItem, at date: Date) -> Bool {
+        simulatorSafe
+    }
+
+    func shutDownSimulator(uuid: UUID) -> Bool {
+        shutdownUUIDs.append(uuid)
+        return true
+    }
+
+    func aiSessionIsSafeToCleanUp(_ item: AISessionHealthItem, at date: Date) -> Bool {
+        aiRevalidationCount += 1
+        return aiSessionSafe
+    }
+
+    func terminateProcess(pid: pid_t) -> Bool {
+        terminatedPIDs.append(pid)
+        return true
+    }
+
+    func reviewSimulator(_ simulator: SimulatorHealthItem) -> Bool { false }
+    func reviewURL(for session: AISessionHealthItem) -> URL? { nil }
+}

@@ -10,6 +10,7 @@
 		01F247F34B89EA9F1382185B /* MagnetShortcutVisualGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = D858D705115BC1DEAEE7EEFC /* MagnetShortcutVisualGuide.swift */; };
 		05903D279991987484A098E0 /* F3SpaceShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */; };
 		070D55FA33D9602F263A9519 /* MacKeyboardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */; };
+		083BB011D334E97AC15DCCB1 /* ProcessHealthMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */; };
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
 		0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
@@ -32,6 +33,7 @@
 		60A9D8AE5AB70F3D365068C8 /* WindowLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65DFB028FD2205DF91A3A6ED /* WindowLayoutManager.swift */; };
 		613E466B2653618BEEC78364 /* PerformanceMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E2F871717B8685AF8DEC74 /* PerformanceMenuView.swift */; };
 		62DAC63236FEB617879B8ACB /* WorkspaceAutomation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */; };
+		634D2E959804C40A8F8DEC83 /* ProcessHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0BF684DB5D74C82F51275B /* ProcessHealth.swift */; };
 		6ACA2F83191EA92F21494A66 /* AppPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DD1593956E51F3327F6C9D /* AppPermissions.swift */; };
 		74AD8F057D4D367178EE04DF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5FD7AC909FBAF3280A7ADB5E /* Assets.xcassets */; };
 		79B306578A1BD5062718CBD7 /* View+DebugLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FF5B5E97D65212F53962BB /* View+DebugLabel.swift */; };
@@ -48,6 +50,7 @@
 		98EB614E30CF26FE4447F600 /* SpaceOperationLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6ABB87719B3A5F78D62A062 /* SpaceOperationLog.swift */; };
 		9A3AFAD43553A0D11CC0D0C6 /* MagnetShortcutModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092DF061F688877214A88C9C /* MagnetShortcutModels.swift */; };
 		9EE943500BD3217010C1EA84 /* WorkspaceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E618C1148A91CB03E3A7C8 /* WorkspaceEditorView.swift */; };
+		9F2039E72AD3F0F8B247A02C /* ProcessHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E306B1260D5B09B12E269EDF /* ProcessHealthMonitor.swift */; };
 		A075D04D424A84021DDBFB89 /* SpaceLabelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3938CF4E3895AE556C6F75 /* SpaceLabelController.swift */; };
 		A6B0E111C975490EE6BD25B0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B554C5F7DF1B6C58AF4301F4 /* AppDelegate.swift */; };
 		A7657D799BF3E7F194521E91 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8BEBF77D87DFC507D17A3E3 /* WorkspaceStore.swift */; };
@@ -93,6 +96,7 @@
 		336A097979FB3DC851BBA76E /* PerformanceMetricToneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceMetricToneTests.swift; sourceTree = "<group>"; };
 		33DD1593956E51F3327F6C9D /* AppPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPermissions.swift; sourceTree = "<group>"; };
 		367E188D03117764FA04A9EF /* MagnetShortcutConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutConfigurationView.swift; sourceTree = "<group>"; };
+		3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHealthMonitorTests.swift; sourceTree = "<group>"; };
 		4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubIssueFetcher.swift; sourceTree = "<group>"; };
 		47932FA0B64A4E108FC71631 /* WorkspaceLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLauncher.swift; sourceTree = "<group>"; };
@@ -146,8 +150,10 @@
 		DAFBD5367F897BA06D1AE068 /* SpaceNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceNameStore.swift; sourceTree = "<group>"; };
 		DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutTests.swift; sourceTree = "<group>"; };
 		E075B3BEBED8138ABF9F40DC /* WorkspaceAutomation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceAutomation.swift; sourceTree = "<group>"; };
+		E306B1260D5B09B12E269EDF /* ProcessHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHealthMonitor.swift; sourceTree = "<group>"; };
 		E34C84458A7D3592F91C5175 /* MagnetShortcutEditorAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutEditorAdapter.swift; sourceTree = "<group>"; };
 		E4FF5B5E97D65212F53962BB /* View+DebugLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+DebugLabel.swift"; sourceTree = "<group>"; };
+		EC0BF684DB5D74C82F51275B /* ProcessHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHealth.swift; sourceTree = "<group>"; };
 		F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacKeyboardStyle.swift; sourceTree = "<group>"; };
 		F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutShortcutStore.swift; sourceTree = "<group>"; };
 		FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardInputDeviceMonitor.swift; sourceTree = "<group>"; };
@@ -161,6 +167,7 @@
 				03B99185D9C24C01012E8373 /* GitHubIssue.swift */,
 				F54319C82C187989DDF0BB0B /* MacKeyboardStyle.swift */,
 				092DF061F688877214A88C9C /* MagnetShortcutModels.swift */,
+				EC0BF684DB5D74C82F51275B /* ProcessHealth.swift */,
 				703E83622E4EE8A035214A5A /* Space.swift */,
 				A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */,
 				CDB5ABC3FBCE1E8E6B1A8576 /* SpaceWindow.swift */,
@@ -191,6 +198,7 @@
 				C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */,
 				7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */,
 				6B4CD1FDC8256CEDAF13A75A /* ModernSpaceWindowMover.m */,
+				E306B1260D5B09B12E269EDF /* ProcessHealthMonitor.swift */,
 				0C83502A28F0A648D41E7688 /* ShortcutHelper.swift */,
 				6A68E8B0DE2DAB427B8DDD53 /* SpaceCloser.swift */,
 				1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */,
@@ -257,6 +265,7 @@
 				5B14A0676EE76DAB99477270 /* ChromeProfileManagerTests.swift */,
 				7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */,
 				336A097979FB3DC851BBA76E /* PerformanceMetricToneTests.swift */,
+				3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */,
 				DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */,
 			);
 			path = SpaceManagerTests;
@@ -397,6 +406,7 @@
 				8FBF610A2B89654F9447263A /* ChromeProfileManagerTests.swift in Sources */,
 				0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */,
 				B6DEF6A8B173564D66437131 /* PerformanceMetricToneTests.swift in Sources */,
+				083BB011D334E97AC15DCCB1 /* ProcessHealthMonitorTests.swift in Sources */,
 				FCFFC68046E4FB4B6E757EBE /* WindowLayoutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -429,6 +439,8 @@
 				2715EE7F7EE57BA4B4030FD8 /* MissionControlNameOverlayController.swift in Sources */,
 				97867B69A59BF7EC5DA641FC /* ModernSpaceWindowMover.m in Sources */,
 				613E466B2653618BEEC78364 /* PerformanceMenuView.swift in Sources */,
+				634D2E959804C40A8F8DEC83 /* ProcessHealth.swift in Sources */,
+				9F2039E72AD3F0F8B247A02C /* ProcessHealthMonitor.swift in Sources */,
 				0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */,
 				926ADBDE9F90FDC1F37FC875 /* RepositoryColor.swift in Sources */,
 				395E9E0BE6F06804E330AF08 /* SettingsView.swift in Sources */,
