@@ -161,16 +161,39 @@ xcodegen generate
 # Build and deploy to /Applications
 npm run deploy
 
+# Build a versioned ZIP in dist/ without installing it
+npm run package
+
 # The deploy script:
-# 1. Builds Release config with local derivedDataPath
-# 2. Kills running instance
-# 3. Copies .app to /Applications
-# 4. Launches the app
+# 1. Regenerates the Xcode project
+# 2. Builds Release config with local derivedDataPath
+# 3. Kills the running instance
+# 4. Copies .app to /Applications
+# 5. Launches the app
 ```
 
 Do not run Space Manager from DerivedData. Always launch `/Applications/Space Manager.app` after changes so macOS permissions, URL scheme ownership, login item registration, and automation trust all point at the same app bundle.
 
 The app is signed with `Apple Development: Scott Munn` to maintain a stable code signature across rebuilds, preserving macOS permission grants.
+
+## Releases
+
+Publish a release with an explicit version bump:
+
+```bash
+npm run release -- patch
+npm run release -- minor
+npm run release -- major
+npm run release -- 1.0.0
+```
+
+The release command requires a clean `main` branch synchronized with `origin/main`. It updates `package.json` and `project.yml`, increments the build number, packages the app, commits and tags the version, pushes it, then creates a GitHub release containing the ZIP.
+
+Install the latest GitHub release into `/Applications` and launch it:
+
+```bash
+npm run installRelease
+```
 
 ## Known Limitations
 

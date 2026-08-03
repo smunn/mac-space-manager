@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "deploy": "xcodebuild -project SpaceManager.xcodeproj -scheme SpaceManager -configuration Release -derivedDataPath build build && (pkill -9 -x 'Space Manager' 2>/dev/null || true) && sleep 0.5 && rm -rf '/Applications/Space Manager.app' && cp -R 'build/Build/Products/Release/Space Manager.app' /Applications/ && open '/Applications/Space Manager.app'"
+    "deploy": "scripts/deploy.sh",
+    "package": "scripts/package-release.sh",
+    "release": "scripts/release.sh",
+    "installRelease": "scripts/install-release.sh"
   }
 }

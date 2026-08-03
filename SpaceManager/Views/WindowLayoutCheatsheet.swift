@@ -104,11 +104,17 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
             self.window = createdWindow
         }
 
-        if isNewWindow, let window {
-            let frame = screen.visibleFrame
-            window.setFrameOrigin(NSPoint(
-                x: frame.midX - window.frame.width / 2,
-                y: frame.midY - window.frame.height / 2))
+        if let window {
+            if presentation == .transient {
+                // Replacing an NSHostingController can make AppKit adopt SwiftUI's
+                // minimal fitting size. Restore the calculated screen-aware size
+                // after every content update, including the delayed keyboard-style
+                // refresh that follows the Slash shortcut.
+                window.setContentSize(metrics.windowSize)
+                center(window, on: screen)
+            } else if isNewWindow {
+                center(window, on: screen)
+            }
         }
         if presentation == .window {
             NSApp.activate(ignoringOtherApps: true)
@@ -124,6 +130,13 @@ final class WindowLayoutCheatsheetController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window = nil
+    }
+
+    private func center(_ window: NSWindow, on screen: NSScreen) {
+        let frame = screen.visibleFrame
+        window.setFrameOrigin(NSPoint(
+            x: frame.midX - window.frame.width / 2,
+            y: frame.midY - window.frame.height / 2))
     }
 
     private func optimalWindowFrameSize(for screen: NSScreen) -> NSSize {
