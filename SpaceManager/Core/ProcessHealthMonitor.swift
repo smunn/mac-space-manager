@@ -24,6 +24,7 @@ protocol ProcessHealthSystemProviding: AnyObject {
 final class ProcessHealthMonitor: @unchecked Sendable {
     typealias Completion = @Sendable (ProcessHealthSnapshot) -> Void
     typealias ActionCompletion = @Sendable (Bool) -> Void
+    typealias BatchActionCompletion = @Sendable (Int) -> Void
 
     private let queue: DispatchQueue
     private let callbackQueue: DispatchQueue
@@ -83,7 +84,14 @@ final class ProcessHealthMonitor: @unchecked Sendable {
     }
 
     func review(_ session: AISessionHealthItem, completion: ActionCompletion? = nil) {
-        review(url: system.reviewURL(for: session), completion: completion)
+        callbackQueue.async {
+            guard let url = self.system.reviewURL(for: session) else {
+                completion?(false)
+                return
+            }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            completion?(true)
+        }
     }
 
     func shutDown(_ simulator: SimulatorHealthItem, completion: @escaping ActionCompletion) {
@@ -97,21 +105,33 @@ final class ProcessHealthMonitor: @unchecked Sendable {
 
     func cleanUp(_ session: AISessionHealthItem, completion: @escaping ActionCompletion) {
         queue.async {
-            // Do not even revalidate an item the original scan considered unsafe.
-            let success = session.canCleanUp
-                && self.system.aiSessionIsSafeToCleanUp(session, at: self.now())
-                && self.system.terminateProcess(pid: session.processID)
+            let success = self.cleanUpIsSuccessful(session)
             if success { self.cachedSnapshot = nil }
             self.callbackQueue.async { completion(success) }
         }
     }
 
-    private func review(url: URL?, completion: ActionCompletion?) {
-        callbackQueue.async {
-            let success = url.map { NSWorkspace.shared.open($0) } ?? false
-            completion?(success)
+    func cleanUp(
+        _ sessions: [AISessionHealthItem],
+        completion: @escaping BatchActionCompletion
+    ) {
+        queue.async {
+            var successCount = 0
+            for session in sessions where self.cleanUpIsSuccessful(session) {
+                successCount += 1
+            }
+            if successCount > 0 { self.cachedSnapshot = nil }
+            self.callbackQueue.async { completion(successCount) }
         }
     }
+
+    private func cleanUpIsSuccessful(_ session: AISessionHealthItem) -> Bool {
+        // Do not even revalidate an item the original scan considered unsafe.
+        session.canCleanUp
+            && system.aiSessionIsSafeToCleanUp(session, at: now())
+            && system.terminateProcess(pid: session.processID)
+    }
+
 }
 
 final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
@@ -122,6 +142,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         let parentPID: pid_t
         let tty: String
         let startedAt: Date
+        let cpuUsagePercent: Double
+        let cpuTime: TimeInterval
         let command: String
     }
 
@@ -175,7 +197,21 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
 
     func terminateProcess(pid: pid_t) -> Bool {
         guard pid > 1 else { return false }
-        return kill(pid, SIGTERM) == 0
+        guard kill(pid, SIGTERM) == 0 else { return false }
+        if waitForProcessExit(pid: pid, attempts: 15) { return true }
+
+        // These processes have already passed the detached/revoked-I/O safety
+        // checks. Escalate only when a graceful termination did not finish.
+        guard kill(pid, SIGKILL) == 0 else { return false }
+        return waitForProcessExit(pid: pid, attempts: 10)
+    }
+
+    private func waitForProcessExit(pid: pid_t, attempts: Int) -> Bool {
+        for _ in 0..<attempts {
+            if kill(pid, 0) == -1 && errno == ESRCH { return true }
+            usleep(100_000)
+        }
+        return kill(pid, 0) == -1 && errno == ESRCH
     }
 
     func reviewSimulator(_ simulator: SimulatorHealthItem) -> Bool {
@@ -192,11 +228,11 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
     }
 
     func reviewURL(for session: AISessionHealthItem) -> URL? {
-        if let logPath = session.sessionLogPath, fileManager.fileExists(atPath: logPath) {
-            return URL(fileURLWithPath: logPath)
-        }
         if let projectPath = session.projectPath, fileManager.fileExists(atPath: projectPath) {
             return URL(fileURLWithPath: projectPath, isDirectory: true)
+        }
+        if let logPath = session.sessionLogPath, fileManager.fileExists(atPath: logPath) {
+            return URL(fileURLWithPath: logPath)
         }
         return nil
     }
@@ -239,53 +275,69 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
     }
 
     private func scanAISessions(at date: Date, processes: [ProcessRecord]) -> [AISessionHealthItem] {
-        processes.compactMap { process in
-            guard process.parentPID == 1,
-                  process.tty == "??" || process.tty == "?" || process.tty == "-",
-                  let service = Self.aiService(command: process.command)
-            else { return nil }
+        let processesByPID = Dictionary(uniqueKeysWithValues: processes.map { ($0.pid, $0) })
+        return processes.compactMap { process in
+            guard let service = Self.aiService(command: process.command) else { return nil }
 
             let io = standardIOState(pid: process.pid)
             let logPath = Self.sessionLogPath(in: io.openFiles, service: service)
                 ?? Self.sessionLogPath(in: Self.paths(in: process.command), service: service)
-            guard let logPath else { return nil }
-
-            let context = Self.sessionContext(logPath: logPath, service: service)
+            let context = logPath.map { Self.sessionContext(logPath: $0, service: service) }
+                ?? SessionContext(
+                    projectPath: nil,
+                    sessionID: nil,
+                    taskSummary: nil,
+                    completionSummary: nil,
+                    status: .uncertain)
+            let hasNoTTY = Self.ttyIsUnavailable(process.tty)
+            let parent = processesByPID[process.parentPID]
+            let isDetached = hasNoTTY && (process.parentPID == 1 || parent?.parentPID == 1)
             return AISessionHealthItem(
                 service: service,
                 processID: process.pid,
                 processStartedAt: process.startedAt,
-                projectPath: context.projectPath ?? processCWD(pid: process.pid),
-                sessionID: context.sessionID ?? Self.sessionID(from: logPath),
+                projectPath: processCWD(pid: process.pid) ?? context.projectPath,
+                sessionID: context.sessionID ?? logPath.flatMap(Self.sessionID(from:)),
                 sessionLogPath: logPath,
                 elapsedTime: max(0, date.timeIntervalSince(process.startedAt)),
+                cpuTime: process.cpuTime,
+                cpuUsagePercent: process.cpuUsagePercent,
+                command: process.command,
                 taskSummary: context.taskSummary,
                 completionSummary: context.completionSummary,
                 completionStatus: context.status,
-                isDetached: true,
+                isDetached: isDetached,
                 hasUnavailableStandardIO: io.unavailable)
+        }.sorted {
+            if $0.isDetached != $1.isDetached { return $0.isDetached }
+            if $0.isHighCPU != $1.isHighCPU { return $0.isHighCPU }
+            return $0.elapsedTime > $1.elapsedTime
         }
     }
 
     private func processRecords() -> [ProcessRecord] {
-        let result = run("/bin/ps", ["-axo", "pid=,ppid=,tty=,lstart=,command="])
+        let result = run("/bin/ps", ["-axo", "pid=,ppid=,tty=,lstart=,%cpu=,time=,command="])
         guard result.status == 0, let text = String(data: result.output, encoding: .utf8) else { return [] }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
         return text.split(separator: "\n").compactMap { line in
-            let fields = line.split(maxSplits: 8, whereSeparator: \.isWhitespace)
-            guard fields.count == 9,
+            let fields = line.split(maxSplits: 10, whereSeparator: \.isWhitespace)
+            guard fields.count == 11,
                   let pid = pid_t(fields[0]),
                   let parentPID = pid_t(fields[1]),
-                  let startedAt = formatter.date(from: fields[3...7].joined(separator: " "))
+                  let startedAt = formatter.date(from: fields[3...7].joined(separator: " ")),
+                  let cpuUsagePercent = Double(fields[8]),
+                  let cpuTime = Self.parseProcessTime(String(fields[9]))
             else { return nil }
             return ProcessRecord(
                 pid: pid,
                 parentPID: parentPID,
                 tty: String(fields[2]),
                 startedAt: startedAt,
-                command: String(fields[8]))
+                cpuUsagePercent: cpuUsagePercent,
+                cpuTime: cpuTime,
+                command: String(fields[10]))
         }
     }
 
@@ -378,13 +430,47 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         }
     }
 
-    private static func aiService(command: String) -> AISessionService? {
+    static func aiService(command: String) -> AISessionService? {
         let executable = command.split(separator: " ").first.map(String.init) ?? command
         let name = URL(fileURLWithPath: executable).lastPathComponent.lowercased()
+        if name == "codex" { return .codex }
+        if name == "claude" { return .claude }
         let lowerCommand = command.lowercased()
-        if name == "codex" || lowerCommand.contains("/codex") { return .codex }
-        if name == "claude" || lowerCommand.contains("/claude") { return .claude }
+        if name == "node"
+            && (lowerCommand.contains("/@anthropic-ai/claude-code/")
+                || lowerCommand.contains("/bin/claude"))
+        {
+            return .claude
+        }
         return nil
+    }
+
+    static func parseProcessTime(_ value: String) -> TimeInterval? {
+        let dayParts = value.split(separator: "-", maxSplits: 1)
+        let days: Int
+        let clock: Substring
+        if dayParts.count == 2 {
+            guard let parsedDays = Int(dayParts[0]) else { return nil }
+            days = parsedDays
+            clock = dayParts[1]
+        } else {
+            days = 0
+            clock = dayParts[0]
+        }
+
+        let components = clock.split(separator: ":")
+        guard components.count == 2 || components.count == 3,
+              let seconds = Double(components.last!)
+        else { return nil }
+        let minutesIndex = components.count - 2
+        guard let minutes = Double(components[minutesIndex]) else { return nil }
+        let hours = components.count == 3 ? Double(components[0]) ?? -1 : 0
+        guard hours >= 0 else { return nil }
+        return Double(days) * 86_400 + hours * 3_600 + minutes * 60 + seconds
+    }
+
+    private static func ttyIsUnavailable(_ tty: String) -> Bool {
+        tty == "??" || tty == "?" || tty == "-"
     }
 
     private static func paths(in command: String) -> [String] {

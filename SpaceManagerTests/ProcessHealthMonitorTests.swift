@@ -4,22 +4,22 @@ import XCTest
 final class ProcessHealthMonitorTests: XCTestCase {
     private let scanDate = Date(timeIntervalSince1970: 2_000_000)
 
-    func testCompletedDetachedSessionIsCleanableOnlyWithEveryStrongSignal() {
+    func testDetachedSessionIsCleanableWithUnavailableStandardIO() {
         let safe = makeSession()
         XCTAssertTrue(safe.canCleanUp)
-        XCTAssertFalse(makeSession(status: .active).canCleanUp)
+        XCTAssertTrue(makeSession(status: .active).canCleanUp)
         XCTAssertFalse(makeSession(isDetached: false).canCleanUp)
         XCTAssertFalse(makeSession(hasUnavailableStandardIO: false).canCleanUp)
-        XCTAssertFalse(makeSession(logPath: nil).canCleanUp)
+        XCTAssertTrue(makeSession(logPath: nil).canCleanUp)
     }
 
-    func testClaudeEndTurnSessionRemainsReviewOnly() {
+    func testDetachedClaudeSessionCanBeTerminatedWhenStandardIOIsUnavailable() {
         let session = makeSession(service: .claude, status: .completed)
 
         XCTAssertTrue(session.isDetached)
         XCTAssertTrue(session.hasUnavailableStandardIO)
         XCTAssertEqual(session.completionStatus, .completed)
-        XCTAssertFalse(session.canCleanUp)
+        XCTAssertTrue(session.canCleanUp)
     }
 
     func testCodexParserRequiresExplicitCompletionAfterLastActivity() throws {
@@ -128,6 +128,40 @@ final class ProcessHealthMonitorTests: XCTestCase {
             60 * 60)
     }
 
+    func testProcessCPUTimeParserSupportsMacOSFormats() {
+        XCTAssertEqual(ProcessHealthSystemProvider.parseProcessTime("04:02.48")!, 242.48, accuracy: 0.001)
+        XCTAssertEqual(ProcessHealthSystemProvider.parseProcessTime("13:38:43.78")!, 49_123.78, accuracy: 0.001)
+        XCTAssertEqual(ProcessHealthSystemProvider.parseProcessTime("2-01:02:03.50")!, 176_523.5, accuracy: 0.001)
+        XCTAssertNil(ProcessHealthSystemProvider.parseProcessTime("bad"))
+    }
+
+    func testAIProcessDetectionIncludesPrimaryProcessesWithoutCountingCodexHelpersOrWrappers() {
+        XCTAssertEqual(ProcessHealthSystemProvider.aiService(
+            command: "/opt/openai/bin/codex --full-auto"), .codex)
+        XCTAssertNil(ProcessHealthSystemProvider.aiService(
+            command: "/opt/openai/bin/codex-code-mode-host"))
+        XCTAssertNil(ProcessHealthSystemProvider.aiService(
+            command: "node /opt/homebrew/bin/codex"))
+        XCTAssertEqual(ProcessHealthSystemProvider.aiService(
+            command: "/opt/anthropic/bin/claude"), .claude)
+        XCTAssertEqual(ProcessHealthSystemProvider.aiService(
+            command: "node /opt/node_modules/@anthropic-ai/claude-code/cli.js"), .claude)
+    }
+
+    func testProcessStartTextUsesPreferredWeekdayDateAndTimeFormat() {
+        var calendar = Calendar(identifier: .gregorian)
+        let utc = TimeZone(secondsFromGMT: 0)!
+        calendar.timeZone = utc
+        let started = calendar.date(from: DateComponents(
+            year: 2026, month: 8, day: 3, hour: 14, minute: 30))!
+        let now = calendar.date(from: DateComponents(
+            year: 2026, month: 8, day: 3, hour: 15, minute: 30))!
+
+        XCTAssertEqual(
+            processStartText(started, now: now, calendar: calendar, timeZone: utc),
+            "M 8-3 · 2:30 pm")
+    }
+
     func testDeveloperDirectoryPrefersEnvironmentThenValidSelectedXcodeThenApplications() {
         let valid = Set(["/environment", "/selected", "/fallback"])
         let hasSimctl: (String) -> Bool = { valid.contains($0) }
@@ -163,16 +197,34 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertEqual(system.terminatedPIDs, [session.processID])
     }
 
-    func testAmbiguousSessionNeverRevalidatesOrTerminates() {
+    func testBatchCleanupReturnsSuccessfulTerminationCount() {
+        let system = FakeProcessHealthSystem()
+        system.aiSessionSafe = true
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+        let sessions = [makeSession(), makeSession(service: .claude)]
+        let expectation = expectation(description: "batch cleanup")
+        let result = BatchActionResult()
+
+        monitor.cleanUp(sessions) {
+            result.value = $0
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+
+        XCTAssertEqual(result.value, 2)
+        XCTAssertEqual(system.terminatedPIDs, [123, 123])
+    }
+
+    func testDetachedSessionWithoutLogCompletionStillRevalidatesBeforeTermination() {
         let system = FakeProcessHealthSystem()
         system.aiSessionSafe = true
         let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
 
-        XCTAssertFalse(waitForAction {
+        XCTAssertTrue(waitForAction {
             monitor.cleanUp(self.makeSession(status: .uncertain), completion: $0)
         })
-        XCTAssertEqual(system.aiRevalidationCount, 0)
-        XCTAssertEqual(system.terminatedPIDs, [])
+        XCTAssertEqual(system.aiRevalidationCount, 1)
+        XCTAssertEqual(system.terminatedPIDs, [123])
     }
 
     func testSimulatorShutdownRevalidatesBeforeAction() {
@@ -210,6 +262,9 @@ final class ProcessHealthMonitorTests: XCTestCase {
             sessionID: "session-1",
             sessionLogPath: logPath,
             elapsedTime: 300,
+            cpuTime: 30,
+            cpuUsagePercent: 5,
+            command: "/usr/local/bin/codex",
             taskSummary: "Fix issue",
             completionSummary: "Done",
             completionStatus: status,
@@ -248,6 +303,10 @@ private final class TestClock: @unchecked Sendable {
 
 private final class ActionResult: @unchecked Sendable {
     var value = false
+}
+
+private final class BatchActionResult: @unchecked Sendable {
+    var value = 0
 }
 
 private final class FakeProcessHealthSystem: ProcessHealthSystemProviding {

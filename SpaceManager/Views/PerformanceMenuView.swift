@@ -10,11 +10,19 @@ final class PerformanceMenuViewModel: ObservableObject {
     @Published var snapshot: SystemPerformanceSnapshot?
     @Published var processHealthSnapshot: ProcessHealthSnapshot = .empty
     @Published var isRefreshingProcessHealth = false
+    @Published var terminatingAISessionIDs: Set<String> = []
+    @Published var processActionStatus: ProcessActionStatus?
 
     var reviewSimulator: ((SimulatorHealthItem) -> Void)?
     var shutDownSimulator: ((SimulatorHealthItem) -> Void)?
     var reviewAISession: ((AISessionHealthItem) -> Void)?
     var cleanUpAISession: ((AISessionHealthItem) -> Void)?
+    var cleanUpRecommendedAISessions: (([AISessionHealthItem]) -> Void)?
+}
+
+struct ProcessActionStatus: Equatable {
+    let message: String
+    let succeeded: Bool?
 }
 
 struct PerformanceMenuView: View {
@@ -78,7 +86,7 @@ struct PerformanceMenuView: View {
             processHealth
         }
         .padding(10)
-        .frame(width: 360, height: processHealthItemsAreEmpty ? 172 : 280)
+        .frame(width: 440, height: processHealthItemsAreEmpty ? 172 : 310)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
@@ -139,14 +147,65 @@ struct PerformanceMenuView: View {
                             review: { model.reviewSimulator?(simulator) },
                             shutDown: { model.shutDownSimulator?(simulator) })
                     }
-                    ForEach(model.processHealthSnapshot.aiSessions) { session in
-                        AISessionHealthRow(
-                            item: session,
-                            review: { model.reviewAISession?(session) },
-                            cleanUp: { model.cleanUpAISession?(session) })
-                    }
+                    aiSessionSection(.codex)
+                    aiSessionSection(.claude)
                 }
             }
+
+            if let status = model.processActionStatus {
+                Text(status.message)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(actionStatusColor(status))
+                    .lineLimit(2)
+                    .debugLabel("processActionStatus")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func aiSessionSection(_ service: AISessionService) -> some View {
+        let sessions = model.processHealthSnapshot.aiSessions.filter { $0.service == service }
+        if !sessions.isEmpty {
+            let recommended = sessions.filter(\.canCleanUp)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(service.rawValue)
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("\(sessions.count) \(sessions.count == 1 ? "process" : "processes") · \(recommended.count) recommended")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if !recommended.isEmpty {
+                        Button("Terminate All Recommended") {
+                            model.cleanUpRecommendedAISessions?(recommended)
+                        }
+                        .controlSize(.mini)
+                        .disabled(recommended.allSatisfy {
+                            model.terminatingAISessionIDs.contains($0.id)
+                        })
+                    }
+                }
+                .debugLabel("\(service.rawValue.lowercased())ProcessHeader")
+
+                ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
+                    AISessionHealthRow(
+                        item: session,
+                        rowNumber: index + 1,
+                        isStriped: index.isMultiple(of: 2),
+                        isTerminating: model.terminatingAISessionIDs.contains(session.id),
+                        review: { model.reviewAISession?(session) },
+                        cleanUp: { model.cleanUpAISession?(session) })
+                }
+            }
+            .debugLabel("\(service.rawValue)ProcessSection")
+        }
+    }
+
+    private func actionStatusColor(_ status: ProcessActionStatus) -> Color {
+        switch status.succeeded {
+        case true: return .green
+        case false: return .red
+        case nil: return .secondary
         }
     }
 
@@ -290,39 +349,64 @@ private struct SimulatorHealthRow: View {
 
 private struct AISessionHealthRow: View {
     let item: AISessionHealthItem
+    let rowNumber: Int
+    let isStriped: Bool
+    let isTerminating: Bool
     let review: () -> Void
     let cleanUp: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(item.service.rawValue) · \(compactElapsed(item.elapsedTime))")
-                    .font(.system(size: 10, weight: .semibold))
+            Text("\(rowNumber).")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 16, alignment: .trailing)
+            Circle()
+                .fill(statusColor)
+                .frame(width: 7, height: 7)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.detail ?? "Unknown working directory")
+                    .font(.system(size: 11, weight: .semibold))
                     .lineLimit(1)
-                Text(item.detail ?? "Session \(item.processID)")
+                    .truncationMode(.middle)
+                    .help(item.detail ?? item.command)
+                Text("Started \(processStartText(item.processStartedAt)) · Running \(compactElapsed(item.elapsedTime)) · CPU \(item.cpuUsagePercent.formatted(.number.precision(.fractionLength(0))))%")
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                Text("\(item.statusLabels.joined(separator: " · ")) · PID \(item.processID) · CPU time \(compactElapsed(item.cpuTime))")
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                if let summary = item.taskSummary ?? item.completionSummary {
-                    Text(summary)
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
             }
             Spacer(minLength: 4)
-            Button("Review", action: review)
+            Button("Show in Finder", action: review)
                 .controlSize(.mini)
             if item.canCleanUp {
-                Button("Clean Up", action: cleanUp)
+                Button(isTerminating ? "Terminating…" : "Terminate", action: cleanUp)
                     .controlSize(.mini)
+                    .disabled(isTerminating)
             }
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background {
+            if isStriped {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(0.045))
+            }
+        }
+        .help(item.command)
         .debugLabel("AISessionHealthRow")
+    }
+
+    private var statusColor: Color {
+        if item.isDetached || item.isHighCPU { return .red }
+        if item.isLongRunning { return .orange }
+        return .green
     }
 }
 
-private func compactElapsed(_ interval: TimeInterval) -> String {
+func compactElapsed(_ interval: TimeInterval) -> String {
     let minutes = max(0, Int(interval / 60))
     if minutes < 60 { return "\(minutes)m" }
     let hours = minutes / 60
@@ -330,6 +414,32 @@ private func compactElapsed(_ interval: TimeInterval) -> String {
     if hours < 24 { return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m" }
     let days = hours / 24
     return "\(days)d \(hours % 24)h"
+}
+
+func processStartText(
+    _ date: Date,
+    now: Date = Date(),
+    calendar: Calendar = .current,
+    timeZone: TimeZone = .current
+) -> String {
+    let weekdayLetters = ["U", "M", "T", "W", "R", "F", "S"]
+    let weekday = calendar.component(.weekday, from: date)
+    let cutoff = calendar.date(byAdding: .month, value: -11, to: now) ?? .distantPast
+
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+    dateFormatter.timeZone = timeZone
+    dateFormatter.dateFormat = date < cutoff ? "M-d-yy" : "M-d"
+
+    let timeFormatter = DateFormatter()
+    timeFormatter.locale = Locale(identifier: "en_US_POSIX")
+    timeFormatter.timeZone = timeZone
+    timeFormatter.dateFormat = "h:mm a"
+
+    let dayLetter = weekdayLetters.indices.contains(weekday - 1)
+        ? weekdayLetters[weekday - 1]
+        : ""
+    return "\(dayLetter) \(dateFormatter.string(from: date)) · \(timeFormatter.string(from: date).lowercased())"
 }
 
 enum PerformanceMetricTone: Equatable {

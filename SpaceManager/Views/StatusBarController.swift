@@ -5,6 +5,7 @@
 
 import Cocoa
 import SwiftUI
+import UserNotifications
 
 @MainActor
 class StatusBarController: NSObject {
@@ -36,6 +37,7 @@ class StatusBarController: NSObject {
     override init() {
         super.init()
 
+        UNUserNotificationCenter.current().delegate = self
         configureProcessHealthActions()
 
         NotificationCenter.default.addObserver(
@@ -215,7 +217,7 @@ class StatusBarController: NSObject {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 376, height: performanceMenuHeight)
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: performanceMenuHeight)
         performanceHostingView = view
         item.view = view
         menu.addItem(item)
@@ -223,7 +225,7 @@ class StatusBarController: NSObject {
 
     private var performanceMenuHeight: CGFloat {
         let health = performanceViewModel.processHealthSnapshot
-        return health.simulators.isEmpty && health.aiSessions.isEmpty ? 180 : 288
+        return health.simulators.isEmpty && health.aiSessions.isEmpty ? 180 : 318
     }
 
     private func updatePerformanceMenuHeight() {
@@ -247,8 +249,100 @@ class StatusBarController: NSObject {
             self?.processHealthMonitor.review(item)
         }
         performanceViewModel.cleanUpAISession = { [weak self] item in
-            self?.processHealthMonitor.cleanUp(item) { [weak self] _ in
-                Task { @MainActor in self?.refreshProcessHealth(force: true) }
+            guard let self,
+                  self.performanceViewModel.terminatingAISessionIDs.insert(item.id).inserted
+            else { return }
+
+            self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                message: "Terminating \(item.service.rawValue) PID \(item.processID)…",
+                succeeded: nil)
+            self.sendProcessNotification(
+                title: "Terminating \(item.service.rawValue) Process",
+                body: "PID \(item.processID) · \(item.detail ?? "Unknown working directory")")
+
+            self.processHealthMonitor.cleanUp(item) { [weak self] success in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.performanceViewModel.terminatingAISessionIDs.remove(item.id)
+                    let cpu = item.cpuUsagePercent.formatted(.number.precision(.fractionLength(0)))
+                    if success {
+                        self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                            message: "Terminated \(item.service.rawValue) PID \(item.processID) · CPU time \(compactElapsed(item.cpuTime)) · CPU \(cpu)%",
+                            succeeded: true)
+                        self.sendProcessNotification(
+                            title: "\(item.service.rawValue) Process Terminated",
+                            body: "PID \(item.processID) · CPU time \(compactElapsed(item.cpuTime)) · CPU \(cpu)%")
+                    } else {
+                        self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                            message: "Could not terminate \(item.service.rawValue) PID \(item.processID)",
+                            succeeded: false)
+                        self.sendProcessNotification(
+                            title: "Process Termination Failed",
+                            body: "\(item.service.rawValue) PID \(item.processID)")
+                    }
+                    self.refreshProcessHealth(force: true)
+                }
+            }
+        }
+        performanceViewModel.cleanUpRecommendedAISessions = { [weak self] items in
+            guard let self else { return }
+            let recommended = items.filter {
+                $0.canCleanUp && !self.performanceViewModel.terminatingAISessionIDs.contains($0.id)
+            }
+            guard !recommended.isEmpty else { return }
+
+            self.performanceViewModel.terminatingAISessionIDs.formUnion(recommended.map(\.id))
+            let service = recommended[0].service.rawValue
+            self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                message: "Terminating \(recommended.count) recommended \(service) processes…",
+                succeeded: nil)
+            self.sendProcessNotification(
+                title: "Terminating Recommended \(service) Processes",
+                body: "\(recommended.count) processes")
+
+            self.processHealthMonitor.cleanUp(recommended) { [weak self] successCount in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.performanceViewModel.terminatingAISessionIDs.subtract(recommended.map(\.id))
+                    let success = successCount == recommended.count
+                    let message = "Terminated \(successCount) of \(recommended.count) recommended \(service) processes"
+                    self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                        message: message,
+                        succeeded: success)
+                    self.sendProcessNotification(
+                        title: success ? "Recommended Processes Terminated" : "Process Termination Incomplete",
+                        body: message)
+                    self.refreshProcessHealth(force: true)
+                }
+            }
+        }
+    }
+
+    private func sendProcessNotification(title: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        let deliver = {
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            center.add(UNNotificationRequest(
+                identifier: "process-health-\(UUID().uuidString)",
+                content: content,
+                trigger: nil))
+        }
+
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                deliver()
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                    if granted { deliver() }
+                }
+            case .denied:
+                break
+            @unknown default:
+                break
             }
         }
     }
@@ -1753,5 +1847,15 @@ extension StatusBarController: NSMenuDelegate {
         if menu === issuesMenu {
             populateIssuesMenu(menu)
         }
+    }
+}
+
+extension StatusBarController: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }

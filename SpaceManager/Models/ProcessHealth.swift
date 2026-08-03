@@ -51,6 +51,9 @@ struct AISessionHealthItem: Identifiable, Sendable, Equatable {
     let sessionID: String?
     let sessionLogPath: String?
     let elapsedTime: TimeInterval
+    let cpuTime: TimeInterval
+    let cpuUsagePercent: Double
+    let command: String
     let taskSummary: String?
     let completionSummary: String?
     let completionStatus: AISessionCompletionStatus
@@ -64,22 +67,24 @@ struct AISessionHealthItem: Identifiable, Sendable, Equatable {
 
     var title: String { service.rawValue }
     var detail: String? {
-        if let projectPath, !projectPath.isEmpty {
-            return URL(fileURLWithPath: projectPath).lastPathComponent
-        }
+        if let projectPath, !projectPath.isEmpty { return projectPath }
         return sessionID
     }
 
-    /// Cleanup is intentionally narrower than detection. Every independent
-    /// signal must agree before the UI is allowed to offer process termination.
-    var canCleanUp: Bool {
-        // Claude's `end_turn` means it is waiting for the user, not that the
-        // overall task is finished. Until Claude exposes stronger evidence,
-        // detected Claude sessions remain review-only.
-        service == .codex
-            && isDetached
-            && hasUnavailableStandardIO
-            && completionStatus == .completed
-            && sessionLogPath != nil
+    var isHighCPU: Bool { cpuUsagePercent >= 50 }
+    var isLongRunning: Bool { elapsedTime >= 2 * 60 * 60 }
+
+    var statusLabels: [String] {
+        var labels: [String] = []
+        if canCleanUp { labels.append("Recommended") }
+        if isDetached { labels.append("Detached") }
+        if isHighCPU { labels.append("High CPU") }
+        if isLongRunning && !isDetached { labels.append("Long-running") }
+        if labels.isEmpty { labels.append("Running") }
+        return labels
     }
+
+    /// A revoked terminal plus an orphaned process tree is stronger evidence
+    /// than log completion, which is not consistently emitted after crashes.
+    var canCleanUp: Bool { isDetached && hasUnavailableStandardIO }
 }
