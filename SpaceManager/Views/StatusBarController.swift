@@ -31,6 +31,7 @@ class StatusBarController: NSObject {
     private var performanceTimer: Timer?
     private var performanceSnapshot: SystemPerformanceSnapshot?
     private let performanceViewModel = PerformanceMenuViewModel()
+    private weak var performanceHostingView: NSView?
 
     override init() {
         super.init()
@@ -214,9 +215,23 @@ class StatusBarController: NSObject {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 376, height: 288)
+        view.frame = NSRect(x: 0, y: 0, width: 376, height: performanceMenuHeight)
+        performanceHostingView = view
         item.view = view
         menu.addItem(item)
+    }
+
+    private var performanceMenuHeight: CGFloat {
+        let health = performanceViewModel.processHealthSnapshot
+        return health.simulators.isEmpty && health.aiSessions.isEmpty ? 180 : 288
+    }
+
+    private func updatePerformanceMenuHeight() {
+        guard let view = performanceHostingView else { return }
+        let height = performanceMenuHeight
+        guard view.frame.height != height else { return }
+        view.setFrameSize(NSSize(width: view.frame.width, height: height))
+        statusMenu.update()
     }
 
     private func configureProcessHealthActions() {
@@ -245,6 +260,7 @@ class StatusBarController: NSObject {
                 guard let self else { return }
                 self.performanceViewModel.processHealthSnapshot = snapshot
                 self.performanceViewModel.isRefreshingProcessHealth = false
+                self.updatePerformanceMenuHeight()
             }
         }
     }

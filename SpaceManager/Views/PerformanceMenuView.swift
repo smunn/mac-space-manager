@@ -78,7 +78,7 @@ struct PerformanceMenuView: View {
             processHealth
         }
         .padding(10)
-        .frame(width: 360, height: 280)
+        .frame(width: 360, height: processHealthItemsAreEmpty ? 172 : 280)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
@@ -93,6 +93,33 @@ struct PerformanceMenuView: View {
     }
 
     private var processHealth: some View {
+        Group {
+            if processHealthItemsAreEmpty {
+                processHealthStatus
+            } else {
+                processHealthIssues
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .debugLabel("processHealth")
+    }
+
+    private var processHealthStatus: some View {
+        HStack {
+            Text("Process Health")
+                .font(.system(size: 12, weight: .semibold))
+            Spacer()
+            if model.isRefreshingProcessHealth {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            Text(model.isRefreshingProcessHealth ? "Scanning" : "No issues")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var processHealthIssues: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Process Health")
@@ -104,32 +131,23 @@ struct PerformanceMenuView: View {
                 }
             }
 
-            if processHealthItemsAreEmpty {
-                Text(model.isRefreshingProcessHealth ? "Scanning" : "No issues")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 6) {
-                        ForEach(model.processHealthSnapshot.simulators) { simulator in
-                            SimulatorHealthRow(
-                                item: simulator,
-                                review: { model.reviewSimulator?(simulator) },
-                                shutDown: { model.shutDownSimulator?(simulator) })
-                        }
-                        ForEach(model.processHealthSnapshot.aiSessions) { session in
-                            AISessionHealthRow(
-                                item: session,
-                                review: { model.reviewAISession?(session) },
-                                cleanUp: { model.cleanUpAISession?(session) })
-                        }
+            ScrollView {
+                LazyVStack(spacing: 6) {
+                    ForEach(model.processHealthSnapshot.simulators) { simulator in
+                        SimulatorHealthRow(
+                            item: simulator,
+                            review: { model.reviewSimulator?(simulator) },
+                            shutDown: { model.shutDownSimulator?(simulator) })
+                    }
+                    ForEach(model.processHealthSnapshot.aiSessions) { session in
+                        AISessionHealthRow(
+                            item: session,
+                            review: { model.reviewAISession?(session) },
+                            cleanUp: { model.cleanUpAISession?(session) })
                     }
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .debugLabel("processHealth")
     }
 
     private var processHealthItemsAreEmpty: Bool {
