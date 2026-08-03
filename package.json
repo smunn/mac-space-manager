@@ -6,6 +6,7 @@
     "deploy": "scripts/deploy.sh",
     "package": "scripts/package-release.sh",
     "release": "scripts/release.sh",
-    "installRelease": "scripts/install-release.sh"
+    "installRelease": "scripts/install-release.sh",
+    "checkRelease": "scripts/check-release.sh"
   }
 }

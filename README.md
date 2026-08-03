@@ -195,6 +195,12 @@ Install the latest GitHub release into `/Applications` and launch it:
 npm run installRelease
 ```
 
+Compare the installed version with the latest GitHub release:
+
+```bash
+npm run checkRelease
+```
+
 ## Known Limitations
 
 - Window titles require Screen Recording permission — without it, only generic app names are available
