@@ -64,7 +64,7 @@ npm run package
 
 ARTIFACT="$ROOT_DIR/dist/Space-Manager-$TAG.zip"
 
-git add package.json project.yml
+git add package.json project.yml SpaceManager.xcodeproj/project.pbxproj
 git commit -m "Release $TAG"
 git tag -a "$TAG" -m "Release $TAG"
 CHANGES_PENDING=0
