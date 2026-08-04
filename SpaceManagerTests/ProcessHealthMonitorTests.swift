@@ -197,6 +197,35 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertEqual(system.terminatedPIDs, [session.processID])
     }
 
+    func testDirectTerminationAllowsNonRecommendedSessionAfterRevalidation() {
+        let system = FakeProcessHealthSystem()
+        system.aiSessionSafe = true
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+        let session = makeSession(isDetached: false)
+
+        XCTAssertFalse(session.canCleanUp)
+        XCTAssertTrue(waitForAction { monitor.cleanUp(session, completion: $0) })
+        XCTAssertEqual(system.terminatedPIDs, [session.processID])
+    }
+
+    func testBatchCleanupSkipsNonRecommendedSession() {
+        let system = FakeProcessHealthSystem()
+        system.aiSessionSafe = true
+        let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
+        let expectation = expectation(description: "batch cleanup")
+        let result = BatchActionResult()
+
+        monitor.cleanUp([makeSession(isDetached: false)]) {
+            result.value = $0
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+
+        XCTAssertEqual(result.value, 0)
+        XCTAssertEqual(system.aiRevalidationCount, 0)
+        XCTAssertEqual(system.terminatedPIDs, [])
+    }
+
     func testBatchCleanupReturnsSuccessfulTerminationCount() {
         let system = FakeProcessHealthSystem()
         system.aiSessionSafe = true
@@ -333,7 +362,7 @@ private final class FakeProcessHealthSystem: ProcessHealthSystemProviding {
         return true
     }
 
-    func aiSessionIsSafeToCleanUp(_ item: AISessionHealthItem, at date: Date) -> Bool {
+    func aiSessionIsCurrent(_ item: AISessionHealthItem, at date: Date) -> Bool {
         aiRevalidationCount += 1
         return aiSessionSafe
     }
@@ -344,5 +373,4 @@ private final class FakeProcessHealthSystem: ProcessHealthSystemProviding {
     }
 
     func reviewSimulator(_ simulator: SimulatorHealthItem) -> Bool { false }
-    func reviewURL(for session: AISessionHealthItem) -> URL? { nil }
 }

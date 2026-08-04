@@ -3,8 +3,8 @@
 //  SpaceManager
 //
 //  Process and simulator discovery is intentionally kept off the main thread
-//  and cached. Cleanup repeats every safety check immediately before acting so
-//  stale menu state can never terminate a reused PID or an active process.
+//  and cached. Termination revalidates process identity immediately before
+//  acting so stale menu state can never terminate a reused PID.
 //
 
 import AppKit
@@ -15,10 +15,9 @@ protocol ProcessHealthSystemProviding: AnyObject {
     func scan(at date: Date) -> ProcessHealthSnapshot
     func simulatorIsSafeToShutdown(_ item: SimulatorHealthItem, at date: Date) -> Bool
     func shutDownSimulator(uuid: UUID) -> Bool
-    func aiSessionIsSafeToCleanUp(_ item: AISessionHealthItem, at date: Date) -> Bool
+    func aiSessionIsCurrent(_ item: AISessionHealthItem, at date: Date) -> Bool
     func terminateProcess(pid: pid_t) -> Bool
     func reviewSimulator(_ simulator: SimulatorHealthItem) -> Bool
-    func reviewURL(for session: AISessionHealthItem) -> URL?
 }
 
 final class ProcessHealthMonitor: @unchecked Sendable {
@@ -83,17 +82,6 @@ final class ProcessHealthMonitor: @unchecked Sendable {
         }
     }
 
-    func review(_ session: AISessionHealthItem, completion: ActionCompletion? = nil) {
-        callbackQueue.async {
-            guard let url = self.system.reviewURL(for: session) else {
-                completion?(false)
-                return
-            }
-            NSWorkspace.shared.activateFileViewerSelecting([url])
-            completion?(true)
-        }
-    }
-
     func shutDown(_ simulator: SimulatorHealthItem, completion: @escaping ActionCompletion) {
         queue.async {
             let success = self.system.simulatorIsSafeToShutdown(simulator, at: self.now())
@@ -105,7 +93,7 @@ final class ProcessHealthMonitor: @unchecked Sendable {
 
     func cleanUp(_ session: AISessionHealthItem, completion: @escaping ActionCompletion) {
         queue.async {
-            let success = self.cleanUpIsSuccessful(session)
+            let success = self.terminationIsSuccessful(session, requiresRecommendation: false)
             if success { self.cachedSnapshot = nil }
             self.callbackQueue.async { completion(success) }
         }
@@ -117,7 +105,10 @@ final class ProcessHealthMonitor: @unchecked Sendable {
     ) {
         queue.async {
             var successCount = 0
-            for session in sessions where self.cleanUpIsSuccessful(session) {
+            for session in sessions where self.terminationIsSuccessful(
+                session,
+                requiresRecommendation: true
+            ) {
                 successCount += 1
             }
             if successCount > 0 { self.cachedSnapshot = nil }
@@ -125,10 +116,15 @@ final class ProcessHealthMonitor: @unchecked Sendable {
         }
     }
 
-    private func cleanUpIsSuccessful(_ session: AISessionHealthItem) -> Bool {
-        // Do not even revalidate an item the original scan considered unsafe.
-        session.canCleanUp
-            && system.aiSessionIsSafeToCleanUp(session, at: now())
+    private func terminationIsSuccessful(
+        _ session: AISessionHealthItem,
+        requiresRecommendation: Bool
+    ) -> Bool {
+        // Recommendations remain conservative for batch actions. A direct user
+        // action may terminate any listed AI process after its identity is
+        // revalidated to protect against PID reuse.
+        guard !requiresRecommendation || session.canCleanUp else { return false }
+        return system.aiSessionIsCurrent(session, at: now())
             && system.terminateProcess(pid: session.processID)
     }
 
@@ -184,14 +180,12 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         runSimctl(["shutdown", uuid.uuidString]).status == 0
     }
 
-    func aiSessionIsSafeToCleanUp(_ item: AISessionHealthItem, at date: Date) -> Bool {
-        guard item.canCleanUp else { return false }
+    func aiSessionIsCurrent(_ item: AISessionHealthItem, at date: Date) -> Bool {
         return scanAISessions(at: date, processes: processRecords()).contains {
             $0.processID == item.processID
                 && abs($0.processStartedAt.timeIntervalSince(item.processStartedAt)) < 1
                 && $0.service == item.service
                 && $0.sessionLogPath == item.sessionLogPath
-                && $0.canCleanUp
         }
     }
 
@@ -200,8 +194,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         guard kill(pid, SIGTERM) == 0 else { return false }
         if waitForProcessExit(pid: pid, attempts: 15) { return true }
 
-        // These processes have already passed the detached/revoked-I/O safety
-        // checks. Escalate only when a graceful termination did not finish.
+        // The process identity was revalidated immediately before this call.
+        // Escalate only when a graceful termination did not finish.
         guard kill(pid, SIGKILL) == 0 else { return false }
         return waitForProcessExit(pid: pid, attempts: 10)
     }
@@ -225,16 +219,6 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         configuration.arguments = ["-CurrentDeviceUDID", simulator.deviceUUID.uuidString]
         NSWorkspace.shared.openApplication(at: simulatorURL, configuration: configuration) { _, _ in }
         return true
-    }
-
-    func reviewURL(for session: AISessionHealthItem) -> URL? {
-        if let projectPath = session.projectPath, fileManager.fileExists(atPath: projectPath) {
-            return URL(fileURLWithPath: projectPath, isDirectory: true)
-        }
-        if let logPath = session.sessionLogPath, fileManager.fileExists(atPath: logPath) {
-            return URL(fileURLWithPath: logPath)
-        }
-        return nil
     }
 
     private func scanSimulators(at date: Date, processes: [ProcessRecord]) -> [SimulatorHealthItem] {

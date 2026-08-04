@@ -245,9 +245,6 @@ class StatusBarController: NSObject {
                 Task { @MainActor in self?.refreshProcessHealth(force: true) }
             }
         }
-        performanceViewModel.reviewAISession = { [weak self] item in
-            self?.processHealthMonitor.review(item)
-        }
         performanceViewModel.cleanUpAISession = { [weak self] item in
             guard let self,
                   self.performanceViewModel.terminatingAISessionIDs.insert(item.id).inserted
