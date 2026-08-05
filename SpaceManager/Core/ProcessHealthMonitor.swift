@@ -170,9 +170,9 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
     }
 
     func simulatorIsSafeToShutdown(_ item: SimulatorHealthItem, at date: Date) -> Bool {
-        guard item.canCleanUp else { return false }
+        guard item.canShutDown else { return false }
         return scan(at: date).simulators.contains {
-            $0.deviceUUID == item.deviceUUID && $0.canCleanUp && $0.bootedAt == item.bootedAt
+            $0.deviceUUID == item.deviceUUID && $0.canShutDown && $0.bootedAt == item.bootedAt
         }
     }
 
@@ -223,11 +223,11 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
 
     private func scanSimulators(at date: Date, processes: [ProcessRecord]) -> [SimulatorHealthItem] {
         // Builds/tests/previews can legitimately leave a simulator busy without
-        // a visible window, so suppress the entire warning class while present.
+        // a visible window. Keep it visible, but never recommend or allow a
+        // shutdown while development work is active.
         let developmentIsActive = Self.shouldSuppressSimulatorWarnings(
             processCommands: processes.map(\.command))
 
-        guard !developmentIsActive else { return [] }
         let result = runSimctl(["list", "devices", "booted", "--json"])
         guard result.status == 0,
               let object = try? JSONSerialization.jsonObject(with: result.output) as? [String: Any],
@@ -244,15 +244,15 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
                       let bootedAt = simulatorBootDate(uuid: uuid)
                 else { continue }
 
-                let duration = date.timeIntervalSince(bootedAt)
-                guard duration >= simulatorWarningThreshold else { continue }
                 items.append(SimulatorHealthItem(
                     deviceName: name,
                     runtimeName: Self.runtimeDisplayName(runtimeIdentifier),
                     deviceUUID: uuid,
                     bootedAt: bootedAt,
                     scannedAt: date,
-                    isActivelyUsed: simulatorIsFrontmost))
+                    isActivelyUsed: simulatorIsFrontmost,
+                    isDevelopmentActive: developmentIsActive,
+                    isPastWarningThreshold: date.timeIntervalSince(bootedAt) >= simulatorWarningThreshold))
             }
         }
         return items.sorted { $0.bootDuration > $1.bootDuration }
@@ -276,11 +276,17 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
             let hasNoTTY = Self.ttyIsUnavailable(process.tty)
             let parent = processesByPID[process.parentPID]
             let isDetached = hasNoTTY && (process.parentPID == 1 || parent?.parentPID == 1)
+            let projectPath = processCWD(pid: process.pid) ?? context.projectPath
             return AISessionHealthItem(
                 service: service,
                 processID: process.pid,
                 processStartedAt: process.startedAt,
-                projectPath: processCWD(pid: process.pid) ?? context.projectPath,
+                projectPath: projectPath,
+                repositoryName: projectPath.flatMap {
+                    Self.repositoryName(forProjectPath: $0) { [fileManager] gitPath in
+                        fileManager.fileExists(atPath: gitPath)
+                    }
+                },
                 sessionID: context.sessionID ?? logPath.flatMap(Self.sessionID(from:)),
                 sessionLogPath: logPath,
                 elapsedTime: max(0, date.timeIntervalSince(process.startedAt)),
@@ -459,6 +465,20 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
 
     private static func paths(in command: String) -> [String] {
         command.split(separator: " ").map(String.init).filter { $0.hasPrefix("/") }
+    }
+
+    static func repositoryName(
+        forProjectPath path: String,
+        hasGitMetadata: (String) -> Bool
+    ) -> String? {
+        var directory = URL(fileURLWithPath: path).standardizedFileURL
+        while directory.path != "/" {
+            if hasGitMetadata(directory.appendingPathComponent(".git").path) {
+                return directory.lastPathComponent
+            }
+            directory.deleteLastPathComponent()
+        }
+        return nil
     }
 
     private static func sessionLogPath(in paths: [String], service: AISessionService) -> String? {

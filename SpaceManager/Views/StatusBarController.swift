@@ -217,26 +217,35 @@ class StatusBarController: NSObject {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 456, height: performanceMenuHeight)
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
         performanceHostingView = view
         item.view = view
         menu.addItem(item)
-    }
-
-    private var performanceMenuHeight: CGFloat {
-        let health = performanceViewModel.processHealthSnapshot
-        return health.simulators.isEmpty && health.aiSessions.isEmpty ? 180 : 318
+        updatePerformanceMenuHeight()
     }
 
     private func updatePerformanceMenuHeight() {
         guard let view = performanceHostingView else { return }
-        let height = performanceMenuHeight
-        guard view.frame.height != height else { return }
-        view.setFrameSize(NSSize(width: view.frame.width, height: height))
-        statusMenu.update()
+        DispatchQueue.main.async { [weak self, weak view] in
+            guard let self, let view else { return }
+            view.layoutSubtreeIfNeeded()
+            let height = ceil(view.fittingSize.height)
+            guard height > 0, abs(view.frame.height - height) > 0.5 else { return }
+            view.setFrameSize(NSSize(width: view.frame.width, height: height))
+            self.statusMenu.update()
+        }
     }
 
     private func configureProcessHealthActions() {
+        performanceViewModel.openActivityMonitor = {
+            guard let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.apple.ActivityMonitor")
+            else { return }
+
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+        }
         performanceViewModel.reviewSimulator = { [weak self] item in
             self?.processHealthMonitor.review(item)
         }
@@ -253,6 +262,7 @@ class StatusBarController: NSObject {
             self.performanceViewModel.processActionStatus = ProcessActionStatus(
                 message: "Terminating \(item.service.rawValue) PID \(item.processID)…",
                 succeeded: nil)
+            self.updatePerformanceMenuHeight()
             self.sendProcessNotification(
                 title: "Terminating \(item.service.rawValue) Process",
                 body: "PID \(item.processID) · \(item.detail ?? "Unknown working directory")")
@@ -293,6 +303,7 @@ class StatusBarController: NSObject {
             self.performanceViewModel.processActionStatus = ProcessActionStatus(
                 message: "Terminating \(recommended.count) recommended \(service) processes…",
                 succeeded: nil)
+            self.updatePerformanceMenuHeight()
             self.sendProcessNotification(
                 title: "Terminating Recommended \(service) Processes",
                 body: "\(recommended.count) processes")

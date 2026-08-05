@@ -23,12 +23,22 @@ struct SimulatorHealthItem: Identifiable, Sendable, Equatable {
     let bootedAt: Date
     let scannedAt: Date
     let isActivelyUsed: Bool
+    let isDevelopmentActive: Bool
+    let isPastWarningThreshold: Bool
 
     var id: String { deviceUUID.uuidString.lowercased() }
     var title: String { deviceName }
     var detail: String { runtimeName }
     var bootDuration: TimeInterval { max(0, scannedAt.timeIntervalSince(bootedAt)) }
-    var canCleanUp: Bool { !isActivelyUsed }
+    var canShutDown: Bool { !isActivelyUsed && !isDevelopmentActive }
+    var canCleanUp: Bool { canShutDown && isPastWarningThreshold }
+
+    var statusLabels: [String] {
+        if canCleanUp { return ["Recommended"] }
+        if isActivelyUsed { return ["Active"] }
+        if isDevelopmentActive { return ["Development active"] }
+        return ["Running"]
+    }
 }
 
 enum AISessionService: String, Sendable, Equatable {
@@ -48,6 +58,7 @@ struct AISessionHealthItem: Identifiable, Sendable, Equatable {
     /// Process start time is part of cleanup validation and protects against PID reuse.
     let processStartedAt: Date
     let projectPath: String?
+    let repositoryName: String?
     let sessionID: String?
     let sessionLogPath: String?
     let elapsedTime: TimeInterval

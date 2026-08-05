@@ -17,6 +17,7 @@ final class PerformanceMenuViewModel: ObservableObject {
     var shutDownSimulator: ((SimulatorHealthItem) -> Void)?
     var cleanUpAISession: ((AISessionHealthItem) -> Void)?
     var cleanUpRecommendedAISessions: (([AISessionHealthItem]) -> Void)?
+    var openActivityMonitor: (() -> Void)?
 }
 
 struct ProcessActionStatus: Equatable {
@@ -85,7 +86,7 @@ struct PerformanceMenuView: View {
             processHealth
         }
         .padding(10)
-        .frame(width: 440, height: processHealthItemsAreEmpty ? 172 : 310)
+        .frame(width: 440)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
@@ -107,14 +108,13 @@ struct PerformanceMenuView: View {
                 processHealthIssues
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .debugLabel("processHealth")
     }
 
     private var processHealthStatus: some View {
         HStack {
-            Text("Process Health")
-                .font(.system(size: 12, weight: .semibold))
+            processHealthTitle
             Spacer()
             if model.isRefreshingProcessHealth {
                 ProgressView()
@@ -129,8 +129,7 @@ struct PerformanceMenuView: View {
     private var processHealthIssues: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Process Health")
-                    .font(.system(size: 12, weight: .semibold))
+                processHealthTitle
                 Spacer()
                 if model.isRefreshingProcessHealth {
                     ProgressView()
@@ -138,17 +137,10 @@ struct PerformanceMenuView: View {
                 }
             }
 
-            ScrollView {
-                LazyVStack(spacing: 6) {
-                    ForEach(model.processHealthSnapshot.simulators) { simulator in
-                        SimulatorHealthRow(
-                            item: simulator,
-                            review: { model.reviewSimulator?(simulator) },
-                            shutDown: { model.shutDownSimulator?(simulator) })
-                    }
-                    aiSessionSection(.codex)
-                    aiSessionSection(.claude)
-                }
+            VStack(spacing: 6) {
+                simulatorSection
+                aiSessionSection(.codex)
+                aiSessionSection(.claude)
             }
 
             if let status = model.processActionStatus {
@@ -158,6 +150,35 @@ struct PerformanceMenuView: View {
                     .lineLimit(2)
                     .debugLabel("processActionStatus")
             }
+        }
+    }
+
+    @ViewBuilder
+    private var simulatorSection: some View {
+        let simulators = model.processHealthSnapshot.simulators
+        if !simulators.isEmpty {
+            let recommended = simulators.filter(\.canCleanUp)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text("Simulators")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("\(simulators.count) booted · \(recommended.count) recommended")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .debugLabel("simulatorProcessHeader")
+
+                ForEach(Array(simulators.enumerated()), id: \.element.id) { index, simulator in
+                    SimulatorHealthRow(
+                        item: simulator,
+                        rowNumber: index + 1,
+                        isStriped: index.isMultiple(of: 2),
+                        review: { model.reviewSimulator?(simulator) },
+                        shutDown: { model.shutDownSimulator?(simulator) })
+                }
+            }
+            .debugLabel("simulatorProcessSection")
         }
     }
 
@@ -211,6 +232,16 @@ struct PerformanceMenuView: View {
         model.processHealthSnapshot.simulators.isEmpty && model.processHealthSnapshot.aiSessions.isEmpty
     }
 
+    private var processHealthTitle: some View {
+        Button("Process Health") {
+            model.openActivityMonitor?()
+        }
+        .buttonStyle(.plain)
+        .font(.system(size: 12, weight: .semibold))
+        .help("Open Activity Monitor")
+        .debugLabel("processHealthTitle")
+    }
+
     private var header: some View {
         HStack(spacing: 8) {
             Text("Performance")
@@ -218,6 +249,11 @@ struct PerformanceMenuView: View {
                 .foregroundStyle(.primary)
 
             Spacer()
+
+            Text(AppBuildInfo.current.menuLabel)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .debugLabel("buildInfo")
         }
     }
 
@@ -316,16 +352,28 @@ struct PerformanceMenuView: View {
 
 private struct SimulatorHealthRow: View {
     let item: SimulatorHealthItem
+    let rowNumber: Int
+    let isStriped: Bool
     let review: () -> Void
     let shutDown: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(item.deviceName) · \(item.isActivelyUsed ? "Active" : Self.elapsed(item.bootDuration))")
-                    .font(.system(size: 10, weight: .semibold))
+            Text("\(rowNumber).")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 16, alignment: .trailing)
+            Circle()
+                .fill(statusColor)
+                .frame(width: 7, height: 7)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.deviceName)
+                    .font(.system(size: 11, weight: .semibold))
                     .lineLimit(1)
-                Text("\(item.runtimeName) · \(item.deviceUUID.uuidString)")
+                Text("Started \(processStartText(item.bootedAt)) · Running \(compactElapsed(item.bootDuration))")
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                Text("\(item.statusLabels.joined(separator: " · ")) · \(item.runtimeName) · \(item.deviceUUID.uuidString)")
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -335,13 +383,25 @@ private struct SimulatorHealthRow: View {
                 .controlSize(.mini)
             Button("Shut Down", action: shutDown)
                 .controlSize(.mini)
-                .disabled(!item.canCleanUp)
+                .disabled(!item.canShutDown)
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background {
+            if isStriped {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.primary.opacity(0.045))
+            }
+        }
+        .help(item.deviceUUID.uuidString)
         .debugLabel("SimulatorHealthRow")
     }
 
-    private static func elapsed(_ interval: TimeInterval) -> String {
-        compactElapsed(interval)
+    private var statusColor: Color {
+        if item.canCleanUp { return .red }
+        if item.isActivelyUsed { return .green }
+        if item.isDevelopmentActive { return .blue }
+        return .green
     }
 }
 
@@ -362,11 +422,7 @@ private struct AISessionHealthRow: View {
                 .fill(statusColor)
                 .frame(width: 7, height: 7)
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.detail ?? "Unknown working directory")
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(item.detail ?? item.command)
+                sessionLocation
                 Text("Started \(processStartText(item.processStartedAt)) · Running \(compactElapsed(item.elapsedTime)) · CPU \(item.cpuUsagePercent.formatted(.number.precision(.fractionLength(0))))%")
                     .font(.system(size: 10, weight: .medium))
                     .lineLimit(1)
@@ -390,6 +446,23 @@ private struct AISessionHealthRow: View {
         }
         .help(item.command)
         .debugLabel("AISessionHealthRow")
+    }
+
+    private var sessionLocation: some View {
+        Group {
+            if let repositoryName = item.repositoryName {
+                Text("[\(repositoryName)]")
+                    .foregroundStyle(Color(nsColor: RepositoryColor.color(for: repositoryName)))
+                    .help(item.projectPath ?? item.command)
+            } else {
+                Text(item.detail ?? "Unknown working directory")
+                    .truncationMode(.middle)
+                    .help(item.detail ?? item.command)
+            }
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .lineLimit(1)
+        .debugLabel("sessionLocation")
     }
 
     private var statusColor: Color {

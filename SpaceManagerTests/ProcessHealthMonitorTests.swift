@@ -22,6 +22,24 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertTrue(session.canCleanUp)
     }
 
+    func testSimulatorRecommendationIsSeparateFromManualShutdownSafety() {
+        let recent = makeSimulator(isPastWarningThreshold: false)
+        XCTAssertTrue(recent.canShutDown)
+        XCTAssertFalse(recent.canCleanUp)
+        XCTAssertEqual(recent.statusLabels, ["Running"])
+
+        let old = makeSimulator(isPastWarningThreshold: true)
+        XCTAssertTrue(old.canCleanUp)
+        XCTAssertEqual(old.statusLabels, ["Recommended"])
+
+        let developmentActive = makeSimulator(
+            isDevelopmentActive: true,
+            isPastWarningThreshold: true)
+        XCTAssertFalse(developmentActive.canShutDown)
+        XCTAssertFalse(developmentActive.canCleanUp)
+        XCTAssertEqual(developmentActive.statusLabels, ["Development active"])
+    }
+
     func testCodexParserRequiresExplicitCompletionAfterLastActivity() throws {
         let completed = try jsonLines([
             ["payload": ["type": "session_meta", "cwd": "/tmp/project", "session_id": "abc"]],
@@ -148,6 +166,18 @@ final class ProcessHealthMonitorTests: XCTestCase {
             command: "node /opt/node_modules/@anthropic-ai/claude-code/cli.js"), .claude)
     }
 
+    func testRepositoryNameFindsNearestGitAncestor() {
+        let gitPaths = Set(["/Users/scott/Sites/mac-space-manager/.git"])
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.repositoryName(
+                forProjectPath: "/Users/scott/Sites/mac-space-manager/SpaceManager/Views",
+                hasGitMetadata: { gitPaths.contains($0) }),
+            "mac-space-manager")
+        XCTAssertNil(ProcessHealthSystemProvider.repositoryName(
+            forProjectPath: "/Users/scott/Downloads",
+            hasGitMetadata: { _ in false }))
+    }
+
     func testProcessStartTextUsesPreferredWeekdayDateAndTimeFormat() {
         var calendar = Calendar(identifier: .gregorian)
         let utc = TimeZone(secondsFromGMT: 0)!
@@ -160,6 +190,21 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertEqual(
             processStartText(started, now: now, calendar: calendar, timeZone: utc),
             "M 8-3 · 2:30 pm")
+    }
+
+    func testBuildInfoUsesReleaseVersionAndChicagoTimestamp() {
+        var calendar = Calendar(identifier: .gregorian)
+        let chicago = TimeZone(identifier: "America/Chicago")!
+        calendar.timeZone = chicago
+        let buildDate = calendar.date(from: DateComponents(
+            year: 2026, month: 8, day: 4, hour: 23, minute: 0, second: 0))!
+
+        XCTAssertEqual(
+            AppBuildInfo.dateText(buildDate, timeZone: chicago),
+            "2026.08.04.23.00.00")
+        XCTAssertEqual(
+            AppBuildInfo(releaseVersion: "0.1.2", buildDate: buildDate).menuLabel,
+            "v0.1.2 · 2026.08.04.23.00.00")
     }
 
     func testDeveloperDirectoryPrefersEnvironmentThenValidSelectedXcodeThenApplications() {
@@ -259,13 +304,7 @@ final class ProcessHealthMonitorTests: XCTestCase {
     func testSimulatorShutdownRevalidatesBeforeAction() {
         let system = FakeProcessHealthSystem()
         let monitor = ProcessHealthMonitor(callbackQueue: .main, now: { self.scanDate }, system: system)
-        let simulator = SimulatorHealthItem(
-            deviceName: "iPhone 17 Pro",
-            runtimeName: "iOS 26 0",
-            deviceUUID: UUID(),
-            bootedAt: scanDate.addingTimeInterval(-7_200),
-            scannedAt: scanDate,
-            isActivelyUsed: false)
+        let simulator = makeSimulator(isPastWarningThreshold: true)
 
         system.simulatorSafe = false
         XCTAssertFalse(waitForAction { monitor.shutDown(simulator, completion: $0) })
@@ -288,6 +327,7 @@ final class ProcessHealthMonitorTests: XCTestCase {
             processID: 123,
             processStartedAt: scanDate.addingTimeInterval(-300),
             projectPath: "/tmp/project",
+            repositoryName: nil,
             sessionID: "session-1",
             sessionLogPath: logPath,
             elapsedTime: 300,
@@ -299,6 +339,22 @@ final class ProcessHealthMonitorTests: XCTestCase {
             completionStatus: status,
             isDetached: isDetached,
             hasUnavailableStandardIO: hasUnavailableStandardIO)
+    }
+
+    private func makeSimulator(
+        isActivelyUsed: Bool = false,
+        isDevelopmentActive: Bool = false,
+        isPastWarningThreshold: Bool = false
+    ) -> SimulatorHealthItem {
+        SimulatorHealthItem(
+            deviceName: "iPhone 17 Pro",
+            runtimeName: "iOS 26 0",
+            deviceUUID: UUID(),
+            bootedAt: scanDate.addingTimeInterval(-7_200),
+            scannedAt: scanDate,
+            isActivelyUsed: isActivelyUsed,
+            isDevelopmentActive: isDevelopmentActive,
+            isPastWarningThreshold: isPastWarningThreshold)
     }
 
     private func jsonLines(_ objects: [[String: Any]]) throws -> Data {

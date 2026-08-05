@@ -14,6 +14,7 @@
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
 		0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
+		16C7C843667360D03C1FE6FF /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450BB0C162552E0E7D8AEA18 /* AppBuildInfo.swift */; };
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
 		1E09A7077C6B3A5D22386CA7 /* SpaceNameInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B53C4CE84788E6E384F699 /* SpaceNameInfo.swift */; };
 		24A9D30786C44A008BDA5342 /* GitHubIssueFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */; };
@@ -99,6 +100,7 @@
 		3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHealthMonitorTests.swift; sourceTree = "<group>"; };
 		4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubIssueFetcher.swift; sourceTree = "<group>"; };
+		450BB0C162552E0E7D8AEA18 /* AppBuildInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBuildInfo.swift; sourceTree = "<group>"; };
 		47932FA0B64A4E108FC71631 /* WorkspaceLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLauncher.swift; sourceTree = "<group>"; };
 		4AC80DA235AD47C992270A3B /* SpaceTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTransfer.swift; sourceTree = "<group>"; };
 		4C699A48A6374BCDA24048F9 /* WindowMoveLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveLog.swift; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 		DFB134D6F8FD782E94AE1904 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				450BB0C162552E0E7D8AEA18 /* AppBuildInfo.swift */,
 				33DD1593956E51F3327F6C9D /* AppPermissions.swift */,
 				BA0F9A7165BF4C3B5090A6F3 /* Extensions.swift */,
 				4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */,
@@ -415,6 +418,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				16C7C843667360D03C1FE6FF /* AppBuildInfo.swift in Sources */,
 				A6B0E111C975490EE6BD25B0 /* AppDelegate.swift in Sources */,
 				6ACA2F83191EA92F21494A66 /* AppPermissions.swift in Sources */,
 				A776E67AAA188EC30668ABCD /* ChromeProfileManager.swift in Sources */,
