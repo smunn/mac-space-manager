@@ -1,0 +1,22 @@
+{
+  "appName": "Space Manager",
+  "repository": "smunn/mac-space-manager",
+  "project": "SpaceManager.xcodeproj",
+  "scheme": "SpaceManager",
+  "appBundle": "Space Manager.app",
+  "artifact": "dist/Space-Manager-{tag}.zip",
+  "generateProject": true,
+  "buildEnvironment": {},
+  "killProcesses": [
+    "Space Manager"
+  ],
+  "removeApplications": [
+    "/Applications/Space Manager.app"
+  ],
+  "syncVersionScript": "scripts/sync-project-version.mjs",
+  "versionFiles": [
+    "package.json",
+    "project.yml",
+    "SpaceManager.xcodeproj/project.pbxproj"
+  ]
+}

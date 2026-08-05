@@ -3,10 +3,10 @@
   "version": "0.1.2",
   "private": true,
   "scripts": {
-    "deploy": "scripts/deploy.sh",
-    "package": "scripts/package-release.sh",
+    "deploy": "$HOME/Sites/mac-configuration-scripts/bin/mac-deploy",
+    "package": "$HOME/Sites/mac-configuration-scripts/bin/mac-package",
     "release": "$HOME/Sites/mac-configuration-scripts/bin/mac-release",
-    "installRelease": "scripts/install-release.sh",
-    "checkRelease": "scripts/check-release.sh"
+    "installRelease": "$HOME/Sites/mac-configuration-scripts/bin/mac-install-release",
+    "checkRelease": "$HOME/Sites/mac-configuration-scripts/bin/mac-check-release"
   }
 }
