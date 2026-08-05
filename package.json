@@ -5,7 +5,7 @@
   "scripts": {
     "deploy": "scripts/deploy.sh",
     "package": "scripts/package-release.sh",
-    "release": "scripts/release.sh",
+    "release": "$HOME/Sites/mac-configuration-scripts/bin/mac-release",
     "installRelease": "scripts/install-release.sh",
     "checkRelease": "scripts/check-release.sh"
   }

@@ -178,7 +178,13 @@ The app is signed with `Apple Development: Scott Munn` to maintain a stable code
 
 ## Releases
 
-Publish a release with an explicit version bump:
+Publish a release and choose the version bump interactively:
+
+```bash
+npm run release
+```
+
+Or provide the bump directly:
 
 ```bash
 npm run release -- patch

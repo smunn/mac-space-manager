@@ -1,0 +1,10 @@
+{
+  "appName": "Space Manager",
+  "syncVersionScript": "scripts/sync-project-version.mjs",
+  "artifact": "dist/Space-Manager-{tag}.zip",
+  "versionFiles": [
+    "package.json",
+    "project.yml",
+    "SpaceManager.xcodeproj/project.pbxproj"
+  ]
+}

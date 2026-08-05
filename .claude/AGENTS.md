@@ -29,7 +29,7 @@ If the build fails, fix the issue and retry before moving on.
 ## Releases
 
 - `npm run package` builds a universal macOS Release ZIP in `dist/`.
-- `npm run release -- patch|minor|major|x.y.z` updates the version and build number, commits and tags it, pushes `main`, and publishes the ZIP in a GitHub release.
+- `npm run release` uses the shared `mac-release` command, shows the current version, and interactively selects a recommended patch, minor, major, or custom version bump. An explicit bump can still be passed with `npm run release -- patch|minor|major|x.y.z`.
 - `npm run checkRelease` compares `/Applications/Space Manager.app` with the latest GitHub release.
 - `npm run installRelease` downloads the latest GitHub release, installs it in `/Applications`, and launches it.
 
