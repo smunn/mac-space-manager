@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "autoUpdateWorkspaceNames": true,
             MissionControlNameOverlayController.enabledDefaultsKey: true
         ])
+        LaunchAtLoginManager.enableByDefaultIfNeeded()
 
         windowDetector = WindowDetector()
         spaceNamer = SpaceNamer()
