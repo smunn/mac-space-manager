@@ -631,7 +631,8 @@ class StatusBarController: NSObject {
         emptyItem.target = self
         submenu.addItem(emptyItem)
 
-        let terminalItem = NSMenuItem(title: "Terminal Space", action: #selector(addTerminalSpace), keyEquivalent: "")
+        let terminalItem = NSMenuItem(title: "Terminal Space", action: #selector(addTerminalSpace), keyEquivalent: "t")
+        terminalItem.keyEquivalentModifierMask = [.control, .option, .command]
         terminalItem.target = self
         submenu.addItem(terminalItem)
 
@@ -1647,6 +1648,10 @@ class StatusBarController: NSObject {
     }
 
     @objc private func addTerminalSpace() {
+        createTerminalSpace()
+    }
+
+    func createTerminalSpace() {
         withFreshSpaces { [weak self] in
             guard let self, let targetDisplayID = self.activeDisplayID() else { return }
             let groupIndex = self.activeDisplayGroupIndex()

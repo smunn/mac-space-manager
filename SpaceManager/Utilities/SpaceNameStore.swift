@@ -14,82 +14,84 @@ final class SpaceNameStore {
     private let defaults: UserDefaults
     private let key = "spaceNames"
     private let backupKey = "spaceNames.backup"
-    private let encoder = PropertyListEncoder()
-    private let decoder = PropertyListDecoder()
     private let queue = DispatchQueue(label: "com.smunn.SpaceManager.SpaceNameStore", attributes: .concurrent)
+    private let persistenceQueue = DispatchQueue(label: "com.smunn.SpaceManager.SpaceNameStore.Persistence")
+    private var cachedNames: [String: SpaceNameInfo]
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        cachedNames = Self.decodeNames(from: defaults.data(forKey: key))
+            ?? Self.decodeNames(from: defaults.data(forKey: backupKey))
+            ?? [:]
     }
 
     func loadAll() -> [String: SpaceNameInfo] {
         queue.sync {
-            loadUnlocked()
+            cachedNames
         }
     }
 
     func save(_ newValue: [String: SpaceNameInfo]) {
-        queue.sync(flags: .barrier) {
-            saveUnlocked(newValue)
+        let oldValue = queue.sync(flags: .barrier) { () -> [String: SpaceNameInfo] in
+            let oldValue = cachedNames
+            cachedNames = newValue
+            return oldValue
         }
+        persist(newValue, previousValue: oldValue)
     }
 
     func update(_ mutate: (inout [String: SpaceNameInfo]) -> Void) {
-        queue.sync(flags: .barrier) {
-            var names = loadUnlocked()
-            mutate(&names)
-            saveUnlocked(names)
+        let values = queue.sync(flags: .barrier) { () -> ([String: SpaceNameInfo], [String: SpaceNameInfo]) in
+            let oldValue = cachedNames
+            var newValue = oldValue
+            mutate(&newValue)
+            cachedNames = newValue
+            return (oldValue, newValue)
         }
+        persist(values.1, previousValue: values.0)
     }
 
     func remove(spaceIDs: Set<String>) {
         guard !spaceIDs.isEmpty else { return }
-        queue.sync(flags: .barrier) {
-            var names = loadUnlocked()
+        let values = queue.sync(flags: .barrier) { () -> ([String: SpaceNameInfo], [String: SpaceNameInfo]) in
+            let oldValue = cachedNames
+            var names = oldValue
             for spaceID in spaceIDs {
                 names.removeValue(forKey: spaceID)
             }
-            saveUnlocked(names, synchronizeBackup: true)
+            cachedNames = names
+            return (oldValue, names)
         }
+        persist(values.1, previousValue: values.0, synchronizeBackup: true)
     }
 
-    private func loadUnlocked() -> [String: SpaceNameInfo] {
-        if let data = defaults.data(forKey: key) {
-            do {
-                return try decoder.decode([String: SpaceNameInfo].self, from: data)
-            } catch {
-                NSLog("SpaceNameStore: primary data is invalid, trying backup: \(error)")
-            }
-        }
-
-        if let backup = defaults.data(forKey: backupKey) {
-            do {
-                return try decoder.decode([String: SpaceNameInfo].self, from: backup)
-            } catch {
-                NSLog("SpaceNameStore: backup data is invalid: \(error)")
-            }
-        }
-
-        return [:]
+    private static func decodeNames(from data: Data?) -> [String: SpaceNameInfo]? {
+        guard let data else { return nil }
+        return try? PropertyListDecoder().decode([String: SpaceNameInfo].self, from: data)
     }
 
-    private func saveUnlocked(
+    private func persist(
         _ names: [String: SpaceNameInfo],
+        previousValue: [String: SpaceNameInfo],
         synchronizeBackup: Bool = false
     ) {
-        do {
-            let data = try encoder.encode(names)
-            if let current = defaults.data(forKey: key),
-               (try? decoder.decode([String: SpaceNameInfo].self, from: current)) != nil
-            {
-                defaults.set(current, forKey: backupKey)
+        // UserDefaults posts change notifications while writing. Never perform those
+        // writes while holding the state queue: a notification delivered to the main
+        // thread can synchronously read this store and deadlock both queues.
+        persistenceQueue.async { [defaults, key, backupKey] in
+            do {
+                let encoder = PropertyListEncoder()
+                let data = try encoder.encode(names)
+                if !previousValue.isEmpty {
+                    defaults.set(try encoder.encode(previousValue), forKey: backupKey)
+                }
+                defaults.set(data, forKey: key)
+                if synchronizeBackup {
+                    defaults.set(data, forKey: backupKey)
+                }
+            } catch {
+                NSLog("SpaceNameStore: failed to encode names: \(error)")
             }
-            defaults.set(data, forKey: key)
-            if synchronizeBackup {
-                defaults.set(data, forKey: backupKey)
-            }
-        } catch {
-            NSLog("SpaceNameStore: failed to encode names: \(error)")
         }
     }
 }

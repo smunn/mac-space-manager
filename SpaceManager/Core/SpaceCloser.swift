@@ -186,28 +186,52 @@ class SpaceCloser {
             return failAndDismiss("add-desktop action failed for display group \(displayGroupIndex)")
         }
 
-        guard let updatedSnapshots = MissionControlAccessibility.waitForDesktopCount(
+        guard MissionControlAccessibility.waitForDesktopCount(
             displayID: displayID,
             displayGroupIndex: displayGroupIndex,
-            predicate: { $0 == previousCount + 1 })
+            predicate: { $0 == previousCount + 1 }) != nil
         else {
             return failAndDismiss("desktop count did not increase for display group \(displayGroupIndex)")
         }
 
         if let switchToDesktopIndex {
-            guard let updatedSnapshot = MissionControlAccessibility.snapshot(
-                in: updatedSnapshots,
-                displayID: displayID,
-                fallbackDisplayGroupIndex: displayGroupIndex)
+            // WindowManager on macOS 27 can leave the old and new desktops
+            // composited together if a desktop preview is pressed while the add
+            // animation is still mutating the Mission Control hierarchy. Let the
+            // mutation settle, dismiss Mission Control completely, then reopen a
+            // fresh hierarchy before selecting the now-existing desktop.
+            Thread.sleep(forTimeInterval: 0.45)
+            MissionControlAccessibility.dismiss()
+            Thread.sleep(forTimeInterval: 0.45)
+
+            guard let reopenedSnapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
+                  let reopenedSnapshot = MissionControlAccessibility.snapshot(
+                    in: reopenedSnapshots,
+                    displayID: displayID,
+                    fallbackDisplayGroupIndex: displayGroupIndex)
             else {
-                return failAndDismiss("updated display group \(displayGroupIndex) was unavailable")
+                return failAndDismiss("display group \(displayGroupIndex) did not reappear after adding a desktop")
             }
-            let buttons = updatedSnapshot.desktopButtons
+
+            let buttons = reopenedSnapshot.desktopButtons
             guard buttons.indices.contains(switchToDesktopIndex - 1),
                   MissionControlAccessibility.performPress(on: buttons[switchToDesktopIndex - 1])
             else {
                 return failAndDismiss("could not switch to newly-created desktop \(switchToDesktopIndex)")
             }
+
+            // On macOS 15+, selecting a desktop through Mission Control's AX
+            // hierarchy can update WindowServer without making Dock publish the
+            // Space-change notification that repaints the compositor. Reproduce
+            // Dock's own horizontal swipe pipeline, switching away and directly
+            // back, before another app is activated. Since a newly-created desktop
+            // is the rightmost one, the first switch must go left.
+            Thread.sleep(forTimeInterval: 0.25)
+            let directDisplayID = DisplayGeometryUtilities.displayID(for: displayID)
+            guard SMRefreshSpaceCompositor(directDisplayID, false) else {
+                return failAndDismiss("Dock did not accept the compositor refresh gesture")
+            }
+            Thread.sleep(forTimeInterval: 0.25)
         } else {
             MissionControlAccessibility.dismiss()
         }

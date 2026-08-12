@@ -29,5 +29,9 @@ int SMMoveWindowsToManagedSpaceModern(CFArrayRef windowIDs, uint64_t spaceID);
 // Resolves an Accessibility window element to its CGWindowID.
 AXError _AXUIElementGetWindow(AXUIElementRef element, CGWindowID *windowID);
 
+// Forces Dock's Space-change pipeline to repaint the target display after a
+// Mission Control accessibility switch. macOS 15+ can otherwise leave two
+// desktops composited together until the user begins a trackpad Space swipe.
+bool SMRefreshSpaceCompositor(CGDirectDisplayID displayID, bool firstSwitchRight);
 
 #endif

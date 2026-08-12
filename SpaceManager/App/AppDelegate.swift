@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowMoveController: WindowMoveController!
     private var statusBarController: StatusBarController!
     private var f3SpaceShortcutController: F3SpaceShortcutController!
+    private var terminalSpaceShortcutController: TerminalSpaceShortcutController!
 
     private var currentSpaces: [Space] = []
     private var pendingCommandURLs: [URL] = []
@@ -43,6 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = StatusBarController()
         f3SpaceShortcutController = F3SpaceShortcutController { [weak self] desktopNumber in
             self?.selectF3Desktop(number: desktopNumber)
+        }
+        terminalSpaceShortcutController = TerminalSpaceShortcutController { [weak self] in
+            self?.statusBarController.createTerminalSpace()
         }
         _ = WindowLayoutManager.shared
 

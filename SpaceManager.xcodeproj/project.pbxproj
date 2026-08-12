@@ -44,6 +44,7 @@
 		8DF1C59F5C00EC21A62D7395 /* WorkspaceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916A36F8B2959D8EE6EF272A /* WorkspaceDetailView.swift */; };
 		8F9A388C81D2E5728AB512AF /* GitHubIssue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03B99185D9C24C01012E8373 /* GitHubIssue.swift */; };
 		8FBF610A2B89654F9447263A /* ChromeProfileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B14A0676EE76DAB99477270 /* ChromeProfileManagerTests.swift */; };
+		91D960B8E2ECDDFE36199801 /* DockSwipeRefresher.c in Sources */ = {isa = PBXBuildFile; fileRef = 7AD5FDA99CC224D69671FCEA /* DockSwipeRefresher.c */; };
 		924902E76D958E3E141E46E2 /* WindowMoveController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82362D22A0A79C23B8BCABF9 /* WindowMoveController.swift */; };
 		926ADBDE9F90FDC1F37FC875 /* RepositoryColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1DD049D6122917C08E41871 /* RepositoryColor.swift */; };
 		9524409A6DD4865DE68E3D2F /* MagnetShortcutEditorCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2196E4946DDBA0E3FB3790BD /* MagnetShortcutEditorCoordinator.swift */; };
@@ -67,6 +68,7 @@
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
 		D20BCC1BD20F3DDB8573D221 /* SpaceLabelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836855BE97116D239959D8B6 /* SpaceLabelStore.swift */; };
 		D7F8EB39100604812F0BDC67 /* SystemPerformanceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965F6F089B662C7F3E858AB3 /* SystemPerformanceMonitor.swift */; };
+		D81CFFC16C6C0E4F952524D1 /* TerminalSpaceShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 048EF1E21D2BA2C0AF54BD81 /* TerminalSpaceShortcutController.swift */; };
 		DBE2A6EADF22BC51A5D7EA32 /* SpaceSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */; };
 		E0AE7021A47D9FBC637112CF /* WallpaperResetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */; };
 		EA50500A8F00DDE204D5E63C /* SpaceManagerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DCE0867DD1ECA0FD468D3D0 /* SpaceManagerApp.swift */; };
@@ -88,6 +90,7 @@
 
 /* Begin PBXFileReference section */
 		03B99185D9C24C01012E8373 /* GitHubIssue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubIssue.swift; sourceTree = "<group>"; };
+		048EF1E21D2BA2C0AF54BD81 /* TerminalSpaceShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSpaceShortcutController.swift; sourceTree = "<group>"; };
 		092DF061F688877214A88C9C /* MagnetShortcutModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutModels.swift; sourceTree = "<group>"; };
 		0C83502A28F0A648D41E7688 /* ShortcutHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutHelper.swift; sourceTree = "<group>"; };
 		1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceNamer.swift; sourceTree = "<group>"; };
@@ -126,6 +129,7 @@
 		733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessHelper.swift; sourceTree = "<group>"; };
 		7482EA6E19104461B2175B96 /* MissionControlAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionControlAccessibility.swift; sourceTree = "<group>"; };
 		7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = F3SpaceShortcutRoutingTests.swift; sourceTree = "<group>"; };
+		7AD5FDA99CC224D69671FCEA /* DockSwipeRefresher.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = DockSwipeRefresher.c; sourceTree = "<group>"; };
 		82362D22A0A79C23B8BCABF9 /* WindowMoveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveController.swift; sourceTree = "<group>"; };
 		836855BE97116D239959D8B6 /* SpaceLabelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceLabelStore.swift; sourceTree = "<group>"; };
 		85C16AFA9AAD2CC7CF7741A6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -192,6 +196,7 @@
 			children = (
 				C4957D5960B9FC4F05232E3B /* ChromeProfileManager.swift */,
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
+				7AD5FDA99CC224D69671FCEA /* DockSwipeRefresher.c */,
 				A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */,
 				4444608AB72988DA55AA05A8 /* GitHubIssueFetcher.swift */,
 				FE9D0DEED83FB44A7665A03F /* KeyboardInputDeviceMonitor.swift */,
@@ -208,6 +213,7 @@
 				993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */,
 				4AC80DA235AD47C992270A3B /* SpaceTransfer.swift */,
 				965F6F089B662C7F3E858AB3 /* SystemPerformanceMonitor.swift */,
+				048EF1E21D2BA2C0AF54BD81 /* TerminalSpaceShortcutController.swift */,
 				5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */,
 				5FCD10B9F25963D2BECC467D /* WindowDetector.swift */,
 				65DFB028FD2205DF91A3A6ED /* WindowLayoutManager.swift */,
@@ -424,6 +430,7 @@
 				A776E67AAA188EC30668ABCD /* ChromeProfileManager.swift in Sources */,
 				1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */,
 				346A301C50DF4ED20AE9E786 /* DisplayGeometryUtilities.swift in Sources */,
+				91D960B8E2ECDDFE36199801 /* DockSwipeRefresher.c in Sources */,
 				B6389B5374D0DC9DD7D5D685 /* Extensions.swift in Sources */,
 				05903D279991987484A098E0 /* F3SpaceShortcutController.swift in Sources */,
 				8F9A388C81D2E5728AB512AF /* GitHubIssue.swift in Sources */,
@@ -465,6 +472,7 @@
 				3CA4D8E78B9433E0C9B72FB8 /* SpaceWindow.swift in Sources */,
 				5C958F87782A7D6A42CBE17A /* StatusBarController.swift in Sources */,
 				D7F8EB39100604812F0BDC67 /* SystemPerformanceMonitor.swift in Sources */,
+				D81CFFC16C6C0E4F952524D1 /* TerminalSpaceShortcutController.swift in Sources */,
 				79B306578A1BD5062718CBD7 /* View+DebugLabel.swift in Sources */,
 				E0AE7021A47D9FBC637112CF /* WallpaperResetter.swift in Sources */,
 				ABE439E098D8935AC52C38F2 /* WindowDetector.swift in Sources */,
