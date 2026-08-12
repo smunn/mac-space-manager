@@ -62,6 +62,50 @@ class SpaceCloser {
         }
     }
 
+    /// Adds several desktops while Mission Control is open once. macOS exposes no
+    /// supported Space-creation API, so every addition is verified against the
+    /// undocumented accessibility hierarchy before the next click is attempted.
+    static func addSpaces(
+        count: Int,
+        displayID: String,
+        displayGroupIndex: Int = 1,
+        completion: @escaping (Int) -> Void
+    ) {
+        guard count > 0 else {
+            completion(0)
+            return
+        }
+
+        MissionControlAccessibility.operationQueue.async {
+            let addedCount = addSpacesSynchronously(
+                count: count,
+                displayID: displayID,
+                displayGroupIndex: displayGroupIndex)
+            DispatchQueue.main.async { completion(addedCount) }
+        }
+    }
+
+    static func focusDesktopSynchronously(
+        displayID: String,
+        displayGroupIndex: Int,
+        desktopIndex: Int
+    ) -> Bool {
+        guard let snapshots = MissionControlAccessibility.openAndWaitForDisplaySnapshots(),
+              let snapshot = MissionControlAccessibility.snapshot(
+                in: snapshots,
+                displayID: displayID,
+                fallbackDisplayGroupIndex: displayGroupIndex),
+              snapshot.desktopButtons.indices.contains(desktopIndex - 1),
+              MissionControlAccessibility.performPress(
+                on: snapshot.desktopButtons[desktopIndex - 1])
+        else {
+            return failAndDismiss(
+                "could not focus desktop \(desktopIndex) in display group \(displayGroupIndex)")
+        }
+        Thread.sleep(forTimeInterval: 0.35)
+        return true
+    }
+
     static func addSpaceAndSwitch(
         toDesktopNumber desktopNumber: Int,
         displayID: String,
@@ -239,6 +283,52 @@ class SpaceCloser {
         SpaceOperationLog.write(
             "Add completed display=\(displayGroupIndex) desktopCount=\(previousCount + 1)")
         return true
+    }
+
+    private static func addSpacesSynchronously(
+        count: Int,
+        displayID: String,
+        displayGroupIndex: Int
+    ) -> Int {
+        SpaceOperationLog.write(
+            "Batch add started display=\(displayGroupIndex) requested=\(count)")
+        guard MissionControlAccessibility.openAndWaitForDisplaySnapshots() != nil else {
+            _ = failAndDismiss("Mission Control accessibility hierarchy did not appear")
+            return 0
+        }
+
+        var addedCount = 0
+        for _ in 0..<count {
+            guard let snapshots = MissionControlAccessibility.currentDisplaySnapshots().nonEmpty,
+                  let snapshot = MissionControlAccessibility.snapshot(
+                    in: snapshots,
+                    displayID: displayID,
+                    fallbackDisplayGroupIndex: displayGroupIndex),
+                  let addButton = snapshot.addButton
+            else {
+                _ = failAndDismiss(
+                    "add-desktop button was unavailable for display group \(displayGroupIndex)")
+                return addedCount
+            }
+
+            let previousCount = snapshot.desktopButtons.count
+            guard MissionControlAccessibility.performPress(on: addButton),
+                  MissionControlAccessibility.waitForDesktopCount(
+                    displayID: displayID,
+                    displayGroupIndex: displayGroupIndex,
+                    predicate: { $0 == previousCount + 1 }) != nil
+            else {
+                _ = failAndDismiss(
+                    "desktop count did not increase for display group \(displayGroupIndex)")
+                return addedCount
+            }
+            addedCount += 1
+        }
+
+        MissionControlAccessibility.dismiss()
+        SpaceOperationLog.write(
+            "Batch add completed display=\(displayGroupIndex) added=\(addedCount)")
+        return addedCount
     }
 
     private static func failAndDismiss(_ message: String) -> Bool {

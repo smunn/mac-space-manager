@@ -636,6 +636,21 @@ class StatusBarController: NSObject {
         terminalItem.target = self
         submenu.addItem(terminalItem)
 
+        let terminalWindowCount = terminalWindowsForOrganization().count
+        let organizeTerminalItem = NSMenuItem(
+            title: "Create Spaces for Terminal Windows (\(terminalWindowCount))",
+            action: terminalWindowCount > 0 ? #selector(createSpacesForTerminalWindows) : nil,
+            keyEquivalent: "")
+        organizeTerminalItem.target = self
+        submenu.addItem(organizeTerminalItem)
+
+        let fillTerminalItem = NSMenuItem(
+            title: "Fill Terminal Windows",
+            action: terminalWindowCount > 0 ? #selector(fillTerminalWindows) : nil,
+            keyEquivalent: "")
+        fillTerminalItem.target = self
+        submenu.addItem(fillTerminalItem)
+
         submenu.addItem(NSMenuItem.separator())
         addSectionHeader("Workspaces", to: submenu)
         addWorkspaceItems(to: submenu)
@@ -1169,6 +1184,12 @@ class StatusBarController: NSObject {
         (missionControlDisplayOrder.firstIndex(of: displayID) ?? 0) + 1
     }
 
+    private func builtInDisplayID() -> String? {
+        physicalDisplayOrder.first {
+            CGDisplayIsBuiltin(DisplayGeometryUtilities.displayID(for: $0)) != 0
+        }
+    }
+
     private func activeDisplayGroupIndex() -> Int {
         guard let uuid = interactionDisplayID() else { return 1 }
         return displayGroupIndex(for: uuid)
@@ -1664,6 +1685,146 @@ class StatusBarController: NSObject {
                 self?.refreshAfterClose()
             }
         }
+    }
+
+    @objc private func createSpacesForTerminalWindows() {
+        organizeTerminalWindows()
+    }
+
+    func organizeTerminalWindows() {
+        withFreshSpaces { [weak self] in
+            self?.performCreateSpacesForTerminalWindows()
+        }
+    }
+
+    private func performCreateSpacesForTerminalWindows() {
+        // Prefer the MacBook's built-in panel even when the pointer and active
+        // Space are on an external display. Preparing the desktops there means
+        // they survive in the intended order when the external displays detach.
+        guard let targetDisplayID = builtInDisplayID() ?? activeDisplayID() else { return }
+        let terminalWindows = terminalWindowsForOrganization()
+        guard !terminalWindows.isEmpty,
+              let targetFrame = DisplayGeometryUtilities.accessibilityVisibleFrame(
+                for: targetDisplayID)
+        else { return }
+
+        let existingSpaceIDs = Set(currentSpaces.map(\.spaceID))
+        let groupIndex = displayGroupIndex(for: targetDisplayID)
+        SpaceOperationLog.write(
+            "Terminal organization started targetDisplay=\(targetDisplayID) windows=\(terminalWindows.count)")
+
+        SpaceCloser.addSpaces(
+            count: terminalWindows.count,
+            displayID: targetDisplayID,
+            displayGroupIndex: groupIndex
+        ) { [weak self] addedCount in
+            guard let self else { return }
+            guard addedCount == terminalWindows.count else {
+                SpaceOperationLog.write(
+                    "Terminal organization canceled requested=\(terminalWindows.count) added=\(addedCount)")
+                NSSound.beep()
+                self.refreshAfterClose()
+                return
+            }
+
+            self.requestSpaceRefresh? { [weak self] success in
+                DispatchQueue.main.async {
+                    guard let self, success else {
+                        NSSound.beep()
+                        return
+                    }
+
+                    let newSpaces = self.currentSpaces.filter {
+                        $0.displayID == targetDisplayID
+                            && !$0.isFullScreen
+                            && !existingSpaceIDs.contains($0.spaceID)
+                    }
+                    guard newSpaces.count == terminalWindows.count else {
+                        SpaceOperationLog.write(
+                            "Terminal organization canceled expectedNewSpaces=\(terminalWindows.count) actual=\(newSpaces.count)")
+                        NSSound.beep()
+                        return
+                    }
+
+                    let assignments = zip(terminalWindows, newSpaces).map {
+                        SpaceTransfer.ManagedSpaceAssignment(
+                            window: $0.0,
+                            targetSpaceID: $0.1.spaceID,
+                            targetFrame: targetFrame)
+                    }
+                    MissionControlAccessibility.operationQueue.async { [weak self] in
+                        let movedCount = SpaceTransfer.moveWindowsToManagedSpaces(assignments)
+                        SpaceOperationLog.write(
+                            "Terminal organization completed moved=\(movedCount)/\(assignments.count)")
+                        DispatchQueue.main.async {
+                            if movedCount != assignments.count { NSSound.beep() }
+                            self?.refreshAfterClose()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func fillTerminalWindows() {
+        withFreshSpaces { [weak self] in
+            self?.performFillTerminalWindows()
+        }
+    }
+
+    private func performFillTerminalWindows() {
+        guard let targetDisplayID = builtInDisplayID() ?? activeDisplayID(),
+              let targetFrame = DisplayGeometryUtilities.accessibilityVisibleFrame(
+                for: targetDisplayID)
+        else { return }
+
+        let assignments = currentSpaces.compactMap { space -> (
+            window: SpaceWindow,
+            displayID: String,
+            displayGroup: Int,
+            desktopIndex: Int
+        )? in
+            guard !space.isFullScreen,
+                  let desktopIndex = desktopIndexOnDisplay(for: space),
+                  let window = space.windows.first(where: SpaceNamer.isTerminalWindow)
+            else { return nil }
+            return (
+                window,
+                space.displayID,
+                displayGroupIndex(for: space.displayID),
+                desktopIndex)
+        }
+        guard !assignments.isEmpty else { return }
+
+        MissionControlAccessibility.operationQueue.async { [weak self] in
+            let filledCount = SpaceTransfer.fillWindowsOnSpaces(
+                assignments,
+                targetFrame: targetFrame)
+            SpaceOperationLog.write(
+                "Terminal window fill completed filled=\(filledCount)/\(assignments.count)")
+            DispatchQueue.main.async {
+                if filledCount != assignments.count { NSSound.beep() }
+                self?.refreshAfterClose()
+            }
+        }
+    }
+
+    private func terminalWindowsForOrganization() -> [SpaceWindow] {
+        let namer = SpaceNamer()
+        var seenWindowIDs = Set<Int>()
+        return currentSpaces
+            .filter { !$0.isFullScreen }
+            .flatMap(\.windows)
+            .filter {
+                SpaceNamer.isTerminalWindow($0) && seenWindowIDs.insert($0.windowID).inserted
+            }
+            .sorted { lhs, rhs in
+                let comparison = namer.terminalWindowSortName(lhs).localizedStandardCompare(
+                    namer.terminalWindowSortName(rhs))
+                return comparison == .orderedSame
+                    ? lhs.windowID < rhs.windowID
+                    : comparison == .orderedAscending
+            }
     }
 
     @objc private func openDevTerminal() {

@@ -261,6 +261,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case ("refresh", _):
             requestSpaceRefresh()
 
+        case ("organize-terminals", _), ("space", "/organize-terminals"):
+            statusBarController.organizeTerminalWindows()
+
         case ("window-layout-shortcuts", _), ("settings", "/window-layout-shortcuts"):
             statusBarController.openWindowLayoutShortcutEditor()
 

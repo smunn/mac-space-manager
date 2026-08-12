@@ -9,6 +9,20 @@ import Foundation
 
 struct SpaceNamer {
 
+    static let terminalApplicationNames: Set<String> = [
+        "Terminal", "iTerm2", "Alacritty", "kitty", "Warp", "Ghostty"
+    ]
+
+    static func isTerminalWindow(_ window: SpaceWindow) -> Bool {
+        terminalApplicationNames.contains(window.ownerName)
+    }
+
+    func terminalWindowSortName(_ window: SpaceWindow) -> String {
+        terminalFolderName(from: [window])
+            ?? window.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+            ?? window.ownerName
+    }
+
     func terminalFolderName(from windows: [SpaceWindow]) -> String? {
         for window in windows {
             if let name = parseTerminalCWD(window) { return name }
@@ -89,8 +103,7 @@ struct SpaceNamer {
     }
 
     private func parseTerminalCWD(_ window: SpaceWindow) -> String? {
-        let terminals: Set<String> = ["Terminal", "iTerm2", "Alacritty", "kitty", "Warp", "Ghostty"]
-        guard terminals.contains(window.ownerName) else { return nil }
+        guard Self.isTerminalWindow(window) else { return nil }
 
         // Prefer the individual window title because one terminal process can own
         // windows in several different working directories.
@@ -179,4 +192,8 @@ struct SpaceNamer {
         }
         return groups
     }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

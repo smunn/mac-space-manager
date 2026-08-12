@@ -46,6 +46,20 @@ class DisplayGeometryUtilities {
         screen(for: uuidString)?.localizedName ?? "Display"
     }
 
+    /// Converts an AppKit work area into the top-left global coordinate system
+    /// used by Accessibility window position and size attributes.
+    static func accessibilityVisibleFrame(for uuidString: String) -> CGRect? {
+        guard let screen = screen(for: uuidString),
+              let primaryScreen = NSScreen.screens.first
+        else { return nil }
+        let visibleFrame = screen.visibleFrame
+        return CGRect(
+            x: visibleFrame.minX,
+            y: primaryScreen.frame.maxY - visibleFrame.maxY,
+            width: visibleFrame.width,
+            height: visibleFrame.height)
+    }
+
     static func displayUUID(containing point: CGPoint, candidates: [String]) -> String? {
         for candidate in candidates {
             guard let screen = screen(for: candidate) else { continue }
