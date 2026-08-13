@@ -28,47 +28,43 @@ enum ChromeProfileManager {
             .appendingPathComponent("Library/Application Support/Google/Chrome/Local State")
     }
 
-    static var sharedProfileConfigurationURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Sites/mac-configuration-scripts/config/chrome-profiles.json")
+    static var sharedProfileCacheURL: URL {
+        let applicationSupportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+        return applicationSupportURL
+            .appendingPathComponent("com.smunn.SpaceManager", isDirectory: true)
+            .appendingPathComponent("chrome-profiles.json")
     }
 
-    static var sharedProfileCacheURL: URL {
+    private static var legacyProfileCacheURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".local/state/chrome-profiles.json")
     }
 
-    /// These keep the menu useful when macOS privacy protection prevents direct
-    /// access to Chrome's Local State file. Live Chrome data and the shared profile
-    /// configuration are merged over them whenever either source is available.
-    private static let fallbackProfiles = [
-        ChromeProfile(directory: "Default", name: "Personal", email: "scott@scottmunn.com"),
-        ChromeProfile(directory: "Profile 1", name: "Scott Makes Tech", email: "scottmakestech@gmail.com"),
-        ChromeProfile(directory: "Profile 2", name: "Betches", email: "betches@scottmunn.com"),
-        ChromeProfile(directory: "Profile 4", name: "Cindy", email: "cw71384@gmail.com"),
-        ChromeProfile(directory: "Profile 5", name: "WGU", email: "wgu@scottmunn.com"),
-        ChromeProfile(directory: "Profile 8", name: "Substance", email: "smunnsubstance@scottmunn.com"),
-        ChromeProfile(directory: "Profile 11", name: "Supermodern", email: "supermodern@scottmunn.com")
-    ]
-
     static func profiles(
         localStateURL: URL = defaultLocalStateURL,
-        sharedConfigurationURL: URL = sharedProfileConfigurationURL
+        sharedCacheURL: URL = sharedProfileCacheURL
     ) -> [ChromeProfile] {
-        var profilesByDirectory = Dictionary(
-            uniqueKeysWithValues: fallbackProfiles.map { ($0.directory, $0) })
-
-        for profile in profilesFromSharedConfiguration(at: sharedConfigurationURL) {
-            profilesByDirectory[profile.directory] = merging(
-                profile,
-                over: profilesByDirectory[profile.directory])
+        // Chrome's live registry is authoritative. The generated shared cache is
+        // machine-local and is used when privacy controls block direct Local
+        // State access. No profile mapping is shared between Macs.
+        let detectedProfiles: [ChromeProfile]
+        if let liveProfiles = try? profilesFromLocalState(at: localStateURL) {
+            detectedProfiles = liveProfiles
+        } else if let cachedProfiles = try? profilesFromSharedCache(at: sharedCacheURL) {
+            detectedProfiles = cachedProfiles
+        } else if sharedCacheURL == sharedProfileCacheURL,
+                  let legacyProfiles = try? profilesFromSharedCache(at: legacyProfileCacheURL) {
+            detectedProfiles = legacyProfiles
+        } else {
+            detectedProfiles = []
         }
 
-        for profile in (try? profilesFromLocalState(at: localStateURL)) ?? [] {
-            profilesByDirectory[profile.directory] = merging(
-                profile,
-                over: profilesByDirectory[profile.directory])
-        }
+        let profilesByDirectory = Dictionary(
+            uniqueKeysWithValues: detectedProfiles.map { ($0.directory, $0) })
 
         return profilesByDirectory.values.sorted { lhs, rhs in
             profileSortKey(lhs.directory) < profileSortKey(rhs.directory)
@@ -109,6 +105,9 @@ enum ChromeProfileManager {
                 ofItemAtPath: cacheURL.path)
         } else {
             try data.write(to: cacheURL, options: .atomic)
+        }
+        if cacheURL == sharedProfileCacheURL {
+            try? FileManager.default.removeItem(at: legacyProfileCacheURL)
         }
         return profiles.count
     }
@@ -158,10 +157,13 @@ enum ChromeProfileManager {
         }
     }
 
-    private static func profilesFromSharedConfiguration(at url: URL) -> [ChromeProfile] {
-        guard let data = try? Data(contentsOf: url),
-              let entries = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        else { return [] }
+    private static func profilesFromSharedCache(at url: URL) throws -> [ChromeProfile] {
+        let data = try Data(contentsOf: url)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entries = root["profiles"] as? [[String: Any]]
+        else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
 
         return entries.compactMap { entry in
             let directory = stringValue(entry["directory"])
@@ -171,13 +173,6 @@ enum ChromeProfileManager {
                 name: stringValue(entry["name"]),
                 email: stringValue(entry["email"]))
         }
-    }
-
-    private static func merging(_ primary: ChromeProfile, over fallback: ChromeProfile?) -> ChromeProfile {
-        ChromeProfile(
-            directory: primary.directory,
-            name: primary.name.isEmpty ? fallback?.name ?? "" : primary.name,
-            email: primary.email.isEmpty ? fallback?.email ?? "" : primary.email)
     }
 
     private static func stringValue(_ value: Any?) -> String {

@@ -345,30 +345,25 @@ struct AppEntryRow: View {
 struct ChromeProfilePicker: View {
     @Binding var profile: String
 
-    private static let knownProfiles: [(id: String, label: String)] = [
-        ("Default", "Personal"),
-        ("Profile 1", "ISRG"),
-        ("Profile 2", "Betches"),
-        ("Profile 4", "Cindy"),
-        ("Profile 5", "WGU"),
-        ("Profile 8", "Substance"),
-        ("Profile 11", "Supermodern"),
-    ]
+    private var knownProfiles: [ChromeProfile] {
+        ChromeProfileManager.profiles()
+    }
 
     private var isCustom: Bool {
-        !profile.isEmpty && !Self.knownProfiles.contains(where: { $0.id == profile })
+        !profile.isEmpty && !knownProfiles.contains(where: { $0.directory == profile })
     }
 
     var body: some View {
         Picker("Chrome Profile", selection: $profile) {
             Text("None").tag("")
-            ForEach(Self.knownProfiles, id: \.id) { p in
-                Text("\(p.label) (\(p.id))").tag(p.id)
+            ForEach(knownProfiles, id: \.directory) { profile in
+                Text("\(profile.displayName) (\(profile.directory))").tag(profile.directory)
             }
             if isCustom {
                 Text(profile).tag(profile)
             }
         }
+        .debugLabel("ChromeProfilePicker")
     }
 }
 
