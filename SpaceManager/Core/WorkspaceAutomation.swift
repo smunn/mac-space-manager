@@ -46,64 +46,55 @@ enum WorkspaceAutomation {
         let terminalURL = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
+        // Activating Terminal's existing process can make macOS jump back to the
+        // Space containing its last window before Command-N is posted. Launch a
+        // fresh Terminal instance instead so its initial window is created on the
+        // newly selected Space. There is no public API for targeting a Space when
+        // opening an application window.
+        configuration.createsNewApplicationInstance = true
+        // A new Terminal process otherwise restores every window saved by its
+        // previous process. This launch is specifically for one new Space, so
+        // suppress state restoration and let Terminal create one default window.
+        configuration.arguments = ["-ApplePersistenceIgnoreState", "YES"]
         NSWorkspace.shared.openApplication(
             at: terminalURL,
             configuration: configuration
-        ) { _, error in
+        ) { application, error in
             if let error {
                 NSLog("WorkspaceAutomation: could not open Terminal: \(error)")
                 DispatchQueue.main.async { completion(false) }
                 return
             }
 
-            DispatchQueue.global(qos: .userInitiated).async {
-                let deadline = Date().addingTimeInterval(2.0)
-                var terminalIsActive = false
-                while Date() < deadline {
-                    if NSWorkspace.shared.runningApplications.first(where: {
-                        $0.bundleIdentifier == "com.apple.Terminal"
-                    })?.isActive == true {
-                        terminalIsActive = true
-                        break
-                    }
-                    Thread.sleep(forTimeInterval: 0.05)
-                }
-                guard terminalIsActive else {
-                    NSLog("WorkspaceAutomation: Terminal did not become active")
-                    DispatchQueue.main.async { completion(false) }
-                    return
-                }
+            guard let application else {
+                NSLog("WorkspaceAutomation: Terminal launch returned no running application")
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
 
-                if !existingWindowIDs.isEmpty {
-                    guard MissionControlAccessibility.postKey(
-                        keyCode: 45,
-                        flags: .maskCommand)
-                    else {
-                        DispatchQueue.main.async { completion(false) }
-                        return
-                    }
-                }
-
-                DispatchQueue.main.async {
-                    moveNewTerminalWindow(
-                        toDisplay: targetDisplayID,
-                        existingWindowIDs: existingWindowIDs
-                    ) { moved in
-                        completion(moved)
-                    }
+            DispatchQueue.main.async {
+                moveNewTerminalWindow(
+                    ownerPID: application.processIdentifier,
+                    toDisplay: targetDisplayID,
+                    existingWindowIDs: existingWindowIDs
+                ) { moved in
+                    completion(moved)
                 }
             }
         }
     }
 
     private static func moveNewTerminalWindow(
+        ownerPID: pid_t,
         toDisplay targetDisplayID: String,
         existingWindowIDs: Set<Int>,
         attempt: Int = 1,
         completion: @escaping (Bool) -> Void
     ) {
         let windows = terminalWindowsSnapshot()
-        let targetWindow = windows.first(where: { !existingWindowIDs.contains($0.windowID) }) ?? windows.first
+        let targetWindow = windows.first(where: {
+            $0.ownerPID == ownerPID && !existingWindowIDs.contains($0.windowID)
+        })
 
         guard let targetWindow else {
             if attempt >= 10 {
@@ -112,6 +103,7 @@ enum WorkspaceAutomation {
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     moveNewTerminalWindow(
+                        ownerPID: ownerPID,
                         toDisplay: targetDisplayID,
                         existingWindowIDs: existingWindowIDs,
                         attempt: attempt + 1,
@@ -129,6 +121,7 @@ enum WorkspaceAutomation {
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     moveNewTerminalWindow(
+                        ownerPID: ownerPID,
                         toDisplay: targetDisplayID,
                         existingWindowIDs: existingWindowIDs,
                         attempt: attempt + 1,
@@ -149,6 +142,7 @@ enum WorkspaceAutomation {
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 moveNewTerminalWindow(
+                    ownerPID: ownerPID,
                     toDisplay: targetDisplayID,
                     existingWindowIDs: existingWindowIDs,
                     attempt: attempt + 1,
@@ -203,7 +197,7 @@ enum WorkspaceAutomation {
 
     private static func terminalWindowsSnapshot() -> [SpaceWindow] {
         guard let windowInfoList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
+            [.optionAll, .excludeDesktopElements],
             kCGNullWindowID
         ) as? [[String: Any]] else {
             return []

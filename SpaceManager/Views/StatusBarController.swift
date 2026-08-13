@@ -1814,10 +1814,11 @@ class StatusBarController: NSObject {
         var seenWindowIDs = Set<Int>()
         return currentSpaces
             .filter { !$0.isFullScreen }
-            .flatMap(\.windows)
-            .filter {
-                SpaceNamer.isTerminalWindow($0) && seenWindowIDs.insert($0.windowID).inserted
+            .flatMap { space -> [SpaceWindow] in
+                let terminalWindows = space.windows.filter(SpaceNamer.isTerminalWindow)
+                return terminalWindows.count > 1 ? terminalWindows : []
             }
+            .filter { seenWindowIDs.insert($0.windowID).inserted }
             .sorted { lhs, rhs in
                 let comparison = namer.terminalWindowSortName(lhs).localizedStandardCompare(
                     namer.terminalWindowSortName(rhs))
