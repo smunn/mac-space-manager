@@ -327,14 +327,37 @@ class StatusBarController: NSObject {
     }
 
     private func sendProcessNotification(title: String, body: String) {
+        sendNotification(
+            title: title,
+            body: body,
+            sound: .default,
+            identifierPrefix: "process-health")
+    }
+
+    private func sendSpaceNotification(title: String) {
+        sendNotification(
+            title: title,
+            body: nil,
+            sound: nil,
+            identifierPrefix: "space-operation")
+    }
+
+    private func sendNotification(
+        title: String,
+        body: String?,
+        sound: UNNotificationSound?,
+        identifierPrefix: String
+    ) {
         let center = UNUserNotificationCenter.current()
         let deliver = {
             let content = UNMutableNotificationContent()
             content.title = title
-            content.body = body
-            content.sound = .default
+            if let body {
+                content.body = body
+            }
+            content.sound = sound
             center.add(UNNotificationRequest(
-                identifier: "process-health-\(UUID().uuidString)",
+                identifier: "\(identifierPrefix)-\(UUID().uuidString)",
                 content: content,
                 trigger: nil))
         }
@@ -1623,7 +1646,10 @@ class StatusBarController: NSObject {
         let targetSpaces = closeableEmptyTargetSpaces(from: desktopSpaces, windowsBySpaceID: freshWindows)
 
         let targets = targetSpaces.compactMap { closeTarget(for: $0) }
-        guard !targets.isEmpty else { return }
+        guard !targets.isEmpty else {
+            sendSpaceNotification(title: "No Empty Spaces to Close")
+            return
+        }
 
         let current = currentDesktopSpace()
         let focusTarget = current.flatMap { current in
@@ -1633,7 +1659,13 @@ class StatusBarController: NSObject {
         }
 
         SpaceCloser.closeSpaces(targets: targets, focusTarget: focusTarget) { [weak self] success in
-            if success { self?.removePersistedState(for: targetSpaces) }
+            if success {
+                self?.removePersistedState(for: targetSpaces)
+                let noun = targets.count == 1 ? "Space" : "Spaces"
+                self?.sendSpaceNotification(title: "Closed \(targets.count) Empty \(noun)")
+            } else {
+                self?.sendSpaceNotification(title: "Couldn’t Close Empty Spaces")
+            }
             self?.refreshAfterClose()
         }
     }
