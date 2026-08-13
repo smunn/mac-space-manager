@@ -118,7 +118,8 @@ class StatusBarController: NSObject {
         let closeAllItem = NSMenuItem(
             title: "Close All Spaces",
             action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
-            keyEquivalent: "")
+            keyEquivalent: "w")
+        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
         closeAllItem.target = self
         statusMenu.addItem(closeAllItem)
 
@@ -663,7 +664,8 @@ class StatusBarController: NSObject {
         let organizeTerminalItem = NSMenuItem(
             title: "Create Spaces for Terminal Windows (\(terminalWindowCount))",
             action: terminalWindowCount > 0 ? #selector(createSpacesForTerminalWindows) : nil,
-            keyEquivalent: "")
+            keyEquivalent: "t")
+        organizeTerminalItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
         organizeTerminalItem.target = self
         submenu.addItem(organizeTerminalItem)
 
@@ -879,7 +881,8 @@ class StatusBarController: NSObject {
         let closeAllItem = NSMenuItem(
             title: "Close All Spaces",
             action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
-            keyEquivalent: "")
+            keyEquivalent: "w")
+        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
         closeAllItem.target = self
         submenu.addItem(closeAllItem)
 
@@ -1671,6 +1674,10 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeAllSpaces() {
+        closeAllSpacesFromShortcut()
+    }
+
+    func closeAllSpacesFromShortcut() {
         withFreshSpaces { [weak self] in
             self?.performCloseAllSpaces()
         }

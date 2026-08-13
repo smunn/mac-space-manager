@@ -47,15 +47,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         f3SpaceShortcutController = F3SpaceShortcutController { [weak self] desktopNumber in
             self?.selectF3Desktop(number: desktopNumber)
         }
-        terminalSpaceShortcutController = TerminalSpaceShortcutController { [weak self] in
-            self?.statusBarController.createTerminalSpace()
-        }
+        terminalSpaceShortcutController = TerminalSpaceShortcutController(
+            terminalSpaceAction: { [weak self] in
+                self?.statusBarController.createTerminalSpace()
+            },
+            terminalWindowsAction: { [weak self] in
+                self?.statusBarController.organizeTerminalWindows()
+            })
         closeSpaceShortcutController = CloseSpaceShortcutController(
             closeCurrentAction: { [weak self] in
                 self?.statusBarController.closeCurrentSpaceFromShortcut()
             },
             closeEmptyAction: { [weak self] in
                 self?.statusBarController.closeEmptySpacesFromShortcut()
+            },
+            closeAllAction: { [weak self] in
+                self?.statusBarController.closeAllSpacesFromShortcut()
             })
         _ = WindowLayoutManager.shared
 

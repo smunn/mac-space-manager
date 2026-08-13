@@ -2,8 +2,8 @@
 //  CloseSpaceShortcutController.swift
 //  SpaceManager
 //
-//  Registers system-wide shortcuts for closing the current Space and all empty
-//  Spaces. Actions wait for their shortcut chord to be released before opening
+//  Registers system-wide shortcuts for closing the current Space, all empty
+//  Spaces, and all other Spaces. Actions wait for their shortcut chord to be released before opening
 //  Mission Control so the modifiers cannot affect the Space transition or
 //  another application's window commands.
 //
@@ -16,20 +16,25 @@ final class CloseSpaceShortcutController {
     private static let hotKeySignature: OSType = 0x4353_5043 // "CSPC"
     private static let closeCurrentHotKeyID: UInt32 = 1
     private static let closeEmptyHotKeyID: UInt32 = 2
+    private static let closeAllHotKeyID: UInt32 = 3
 
     private var eventHandler: EventHandlerRef?
     private var closeCurrentHotKey: EventHotKeyRef?
     private var closeEmptyHotKey: EventHotKeyRef?
+    private var closeAllHotKey: EventHotKeyRef?
     private var releaseWaitStartedAt: TimeInterval?
     private let closeCurrentAction: () -> Void
     private let closeEmptyAction: () -> Void
+    private let closeAllAction: () -> Void
 
     init(
         closeCurrentAction: @escaping () -> Void,
-        closeEmptyAction: @escaping () -> Void
+        closeEmptyAction: @escaping () -> Void,
+        closeAllAction: @escaping () -> Void
     ) {
         self.closeCurrentAction = closeCurrentAction
         self.closeEmptyAction = closeEmptyAction
+        self.closeAllAction = closeAllAction
         registerHotKeys()
     }
 
@@ -39,6 +44,9 @@ final class CloseSpaceShortcutController {
         }
         if let closeEmptyHotKey {
             UnregisterEventHotKey(closeEmptyHotKey)
+        }
+        if let closeAllHotKey {
+            UnregisterEventHotKey(closeAllHotKey)
         }
         if let eventHandler {
             RemoveEventHandler(eventHandler)
@@ -89,6 +97,20 @@ final class CloseSpaceShortcutController {
                 "CloseSpaceShortcutController: failed to register Control-Option-Command-E (%d)",
                 closeEmptyStatus)
         }
+
+        let closeAllStatus = RegisterEventHotKey(
+            UInt32(kVK_ANSI_W),
+            UInt32(controlKey | optionKey | shiftKey | cmdKey),
+            EventHotKeyID(signature: Self.hotKeySignature, id: Self.closeAllHotKeyID),
+            GetApplicationEventTarget(),
+            0,
+            &closeAllHotKey)
+
+        if closeAllStatus != noErr {
+            NSLog(
+                "CloseSpaceShortcutController: failed to register Control-Option-Shift-Command-W (%d)",
+                closeAllStatus)
+        }
     }
 
     fileprivate func handle(_ event: EventRef?) -> OSStatus {
@@ -114,6 +136,7 @@ final class CloseSpaceShortcutController {
         switch hotKeyID {
         case Self.closeCurrentHotKeyID: closeCurrentAction
         case Self.closeEmptyHotKeyID: closeEmptyAction
+        case Self.closeAllHotKeyID: closeAllAction
         default: nil
         }
     }
@@ -124,7 +147,7 @@ final class CloseSpaceShortcutController {
         releaseWaitStartedAt = startedAt
 
         let flags = CGEventSource.flagsState(.combinedSessionState)
-        let shortcutModifiers: CGEventFlags = [.maskControl, .maskAlternate, .maskCommand]
+        let shortcutModifiers: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
         if flags.intersection(shortcutModifiers).isEmpty || now - startedAt >= 1.0 {
             releaseWaitStartedAt = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

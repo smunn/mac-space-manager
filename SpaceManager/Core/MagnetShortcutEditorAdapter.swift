@@ -300,6 +300,11 @@ struct MagnetShortcutEditorAdapter {
     private static let spaceManagerReservedShortcuts: Set<MagnetShortcut> = [
         MagnetShortcut(carbonKeyCode: 37, carbonModifiers: control | option | command), // L
         MagnetShortcut(carbonKeyCode: 46, carbonModifiers: control | option | command), // M
+        MagnetShortcut(carbonKeyCode: 17, carbonModifiers: control | option | command), // T
+        MagnetShortcut(carbonKeyCode: 13, carbonModifiers: control | option | command), // W
+        MagnetShortcut(carbonKeyCode: 14, carbonModifiers: control | option | command), // E
+        MagnetShortcut(carbonKeyCode: 17, carbonModifiers: control | option | shift | command), // Shift-T
+        MagnetShortcut(carbonKeyCode: 13, carbonModifiers: control | option | shift | command), // Shift-W
         MagnetShortcut(carbonKeyCode: 43, carbonModifiers: control | option | command) // , (settings)
     ]
 
