@@ -872,7 +872,8 @@ class StatusBarController: NSObject {
         let closeCurrentItem = NSMenuItem(
             title: closeCurrentTitle,
             action: currentDesktop != nil && canCloseCurrentDesktop ? #selector(closeCurrentSpace) : nil,
-            keyEquivalent: "")
+            keyEquivalent: "w")
+        closeCurrentItem.keyEquivalentModifierMask = [.control, .option, .command]
         closeCurrentItem.target = self
         submenu.addItem(closeCurrentItem)
 
@@ -898,7 +899,8 @@ class StatusBarController: NSObject {
         let emptyItem = NSMenuItem(
             title: "Close Empty Spaces (\(closeableEmptySpaces.count))",
             action: !closeableEmptySpaces.isEmpty ? #selector(closeEmptySpaces) : nil,
-            keyEquivalent: "")
+            keyEquivalent: "e")
+        emptyItem.keyEquivalentModifierMask = [.control, .option, .command]
         emptyItem.target = self
         submenu.addItem(emptyItem)
 
@@ -1450,6 +1452,10 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeCurrentSpace() {
+        closeCurrentSpaceFromShortcut()
+    }
+
+    func closeCurrentSpaceFromShortcut() {
         withFreshSpaces { [weak self] in
             self?.performCloseCurrentSpace()
         }
@@ -1602,6 +1608,10 @@ class StatusBarController: NSObject {
     }
 
     @objc private func closeEmptySpaces() {
+        closeEmptySpacesFromShortcut()
+    }
+
+    func closeEmptySpacesFromShortcut() {
         withFreshSpaces { [weak self] in
             self?.performCloseEmptySpaces()
         }

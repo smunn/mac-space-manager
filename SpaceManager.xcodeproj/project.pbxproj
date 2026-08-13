@@ -13,6 +13,7 @@
 		083BB011D334E97AC15DCCB1 /* ProcessHealthMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */; };
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
 		0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */; };
+		10B22F7D4375431CC34B079F /* CloseSpaceShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94BC38FDC9F374AAD2AC440C /* CloseSpaceShortcutController.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
 		16C7C843667360D03C1FE6FF /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450BB0C162552E0E7D8AEA18 /* AppBuildInfo.swift */; };
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
@@ -136,6 +137,7 @@
 		8932DC9C7664E1571139F07C /* SpaceDisplayName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDisplayName.swift; sourceTree = "<group>"; };
 		8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutCheatsheet.swift; sourceTree = "<group>"; };
 		916A36F8B2959D8EE6EF272A /* WorkspaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDetailView.swift; sourceTree = "<group>"; };
+		94BC38FDC9F374AAD2AC440C /* CloseSpaceShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseSpaceShortcutController.swift; sourceTree = "<group>"; };
 		965F6F089B662C7F3E858AB3 /* SystemPerformanceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPerformanceMonitor.swift; sourceTree = "<group>"; };
 		97E618C1148A91CB03E3A7C8 /* WorkspaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceEditorView.swift; sourceTree = "<group>"; };
 		993C119C5A1753F1A427B3D8 /* SpaceSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitcher.swift; sourceTree = "<group>"; };
@@ -195,6 +197,7 @@
 			isa = PBXGroup;
 			children = (
 				C4957D5960B9FC4F05232E3B /* ChromeProfileManager.swift */,
+				94BC38FDC9F374AAD2AC440C /* CloseSpaceShortcutController.swift */,
 				6685366E0C64AECD7326B536 /* DisplayGeometryUtilities.swift */,
 				7AD5FDA99CC224D69671FCEA /* DockSwipeRefresher.c */,
 				A1E190EF041B03FAB32EFEB3 /* F3SpaceShortcutController.swift */,
@@ -428,6 +431,7 @@
 				A6B0E111C975490EE6BD25B0 /* AppDelegate.swift in Sources */,
 				6ACA2F83191EA92F21494A66 /* AppPermissions.swift in Sources */,
 				A776E67AAA188EC30668ABCD /* ChromeProfileManager.swift in Sources */,
+				10B22F7D4375431CC34B079F /* CloseSpaceShortcutController.swift in Sources */,
 				1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */,
 				346A301C50DF4ED20AE9E786 /* DisplayGeometryUtilities.swift in Sources */,
 				91D960B8E2ECDDFE36199801 /* DockSwipeRefresher.c in Sources */,
