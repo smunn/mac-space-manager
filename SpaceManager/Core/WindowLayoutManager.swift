@@ -39,6 +39,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var magnetMonitor: Timer?
     private weak var lastExternalApplication: NSRunningApplication?
     private var restoreSequences: [WindowIdentity: WindowLayoutRestoreSequence] = [:]
+    private var appWindowRestoreFrames: [Int: CGRect] = [:]
     private var cheatsheetController: WindowLayoutCheatsheetController?
     private var manualCheatsheetController: WindowLayoutCheatsheetController?
     private var manualCheatsheetModifiers: Set<MagnetShortcutModifier>?
@@ -386,7 +387,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             return
         }
         guard isPressed else { return }
-        guard isEnabled, let window = focusedWindow() else { return }
+        guard isEnabled else { return }
+
+        // Space Manager owns these global shortcuts, so macOS never gets a
+        // second chance to apply its standard Move & Resize command. Route the
+        // command to our own key window instead of falling back to the last
+        // external application when Create Issue or Settings is active.
+        if let appWindow = NSApp.keyWindow,
+           appWindow.isVisible,
+           appWindow.styleMask.contains(.resizable),
+           let screen = appWindow.screen {
+            let orientation = orientation(for: screen)
+            guard let command = commandsByHotKeyID[id]?[orientation] else { return }
+            apply(command, to: appWindow, on: screen)
+            return
+        }
+
+        guard let window = focusedWindow() else { return }
         let orientation = orientation(for: screen(containing: window.frame))
         guard let command = commandsByHotKeyID[id]?[orientation] else { return }
         apply(command, to: window)
@@ -576,6 +593,64 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 originalFrame: window.frame,
                 lastAppliedFrame: target)
         }
+    }
+
+    private func apply(_ command: MagnetShortcutCommand, to window: NSWindow, on sourceScreen: NSScreen) {
+        let operation = Self.operation(for: command.name)
+        let windowNumber = window.windowNumber
+
+        if operation == .restore {
+            guard let originalFrame = appWindowRestoreFrames.removeValue(forKey: windowNumber) else { return }
+            window.setFrame(originalFrame, display: true, animate: true)
+            return
+        }
+
+        let visible = sourceScreen.visibleFrame
+        let target: CGRect
+        if operation == .nextDisplay || operation == .previousDisplay {
+            guard let destination = adjacentScreen(
+                from: sourceScreen,
+                next: operation == .nextDisplay)
+            else { return }
+            let destinationFrame = destination.visibleFrame
+            let x = visible.width > 0 ? (window.frame.minX - visible.minX) / visible.width : 0
+            let y = visible.height > 0 ? (window.frame.minY - visible.minY) / visible.height : 0
+            let width = min(
+                destinationFrame.width,
+                window.frame.width / max(visible.width, 1) * destinationFrame.width)
+            let height = min(
+                destinationFrame.height,
+                window.frame.height / max(visible.height, 1) * destinationFrame.height)
+            target = CGRect(
+                x: min(destinationFrame.maxX - width, max(destinationFrame.minX, destinationFrame.minX + x * destinationFrame.width)),
+                y: min(destinationFrame.maxY - height, max(destinationFrame.minY, destinationFrame.minY + y * destinationFrame.height)),
+                width: width,
+                height: height).integral
+        } else if operation == .center {
+            let size = CGSize(
+                width: min(window.frame.width, visible.width),
+                height: min(window.frame.height, visible.height))
+            target = CGRect(
+                x: visible.midX - size.width / 2,
+                y: visible.midY - size.height / 2,
+                width: size.width,
+                height: size.height).integral
+        } else if operation == .maximize {
+            target = visible
+        } else {
+            // Magnet target coordinates are top-origin; AppKit window frames
+            // are bottom-origin.
+            target = CGRect(
+                x: visible.minX + visible.width * command.x,
+                y: visible.maxY - visible.height * (command.y + command.height),
+                width: visible.width * command.width,
+                height: visible.height * command.height).integral
+        }
+
+        if appWindowRestoreFrames[windowNumber] == nil {
+            appWindowRestoreFrames[windowNumber] = window.frame
+        }
+        window.setFrame(target, display: true, animate: true)
     }
 
     static func operation(for name: String) -> WindowLayoutOperation {

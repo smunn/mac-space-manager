@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var f3SpaceShortcutController: F3SpaceShortcutController!
     private var terminalSpaceShortcutController: TerminalSpaceShortcutController!
     private var closeSpaceShortcutController: CloseSpaceShortcutController!
+    private var createIssueShortcutController: CreateIssueShortcutController!
 
     private var currentSpaces: [Space] = []
     private var pendingCommandURLs: [URL] = []
@@ -64,6 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             closeAllAction: { [weak self] in
                 self?.statusBarController.closeAllSpacesFromShortcut()
             })
+        createIssueShortcutController = CreateIssueShortcutController { [weak self] in
+            self?.statusBarController.showCreateIssueWindow()
+        }
         _ = WindowLayoutManager.shared
 
         spaceObserver = SpaceObserver()

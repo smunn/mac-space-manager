@@ -5,7 +5,11 @@
 
 import Cocoa
 import SwiftUI
-import UserNotifications
+@preconcurrency import UserNotifications
+
+private let issueCreatedNotificationCategory = "ISSUE_CREATED"
+private let openCreatedIssueNotificationAction = "OPEN_CREATED_ISSUE"
+private let createdIssueURLNotificationKey = "issueURL"
 
 @MainActor
 class StatusBarController: NSObject {
@@ -17,6 +21,10 @@ class StatusBarController: NSObject {
     private var settingsWindow: NSWindow?
     private var settingsWindowModel: SettingsWindowModel?
     private var workspaceEditorWindow: NSWindow?
+    private var createIssueWindow: NSWindow?
+    private var createIssueHasPendingChanges = false
+    private var allowCreateIssueClose = false
+    private var createIssueCloseConfirmationVisible = false
     private var windowLayoutShortcutCoordinator: MagnetShortcutEditorCoordinator?
 
     private var currentSpaces: [Space] = []
@@ -39,6 +47,7 @@ class StatusBarController: NSObject {
         super.init()
 
         UNUserNotificationCenter.current().delegate = self
+        configureIssueNotificationCategory()
         configureProcessHealthActions()
 
         NotificationCenter.default.addObserver(
@@ -405,11 +414,45 @@ class StatusBarController: NSObject {
             identifierPrefix: "space-operation")
     }
 
+    private func configureIssueNotificationCategory() {
+        let center = UNUserNotificationCenter.current()
+        let openAction = UNNotificationAction(
+            identifier: openCreatedIssueNotificationAction,
+            title: "Open Issue",
+            options: [.foreground])
+        let category = UNNotificationCategory(
+            identifier: issueCreatedNotificationCategory,
+            actions: [openAction],
+            intentIdentifiers: [],
+            options: [])
+
+        center.getNotificationCategories { categories in
+            var updatedCategories = categories
+            updatedCategories.update(with: category)
+            center.setNotificationCategories(updatedCategories)
+        }
+    }
+
+    private func sendIssueCreatedNotification(
+        issue: CreatedGitHubIssue,
+        repository: String
+    ) {
+        sendNotification(
+            title: "Issue Created",
+            body: "\(repository) #\(issue.number)",
+            sound: .default,
+            identifierPrefix: "issue-created",
+            categoryIdentifier: issueCreatedNotificationCategory,
+            userInfo: [createdIssueURLNotificationKey: issue.htmlURL.absoluteString])
+    }
+
     private func sendNotification(
         title: String,
         body: String?,
         sound: UNNotificationSound?,
-        identifierPrefix: String
+        identifierPrefix: String,
+        categoryIdentifier: String? = nil,
+        userInfo: [AnyHashable: Any] = [:]
     ) {
         let center = UNUserNotificationCenter.current()
         let deliver = {
@@ -419,6 +462,10 @@ class StatusBarController: NSObject {
                 content.body = body
             }
             content.sound = sound
+            if let categoryIdentifier {
+                content.categoryIdentifier = categoryIdentifier
+            }
+            content.userInfo = userInfo
             center.add(UNNotificationRequest(
                 identifier: "\(identifierPrefix)-\(UUID().uuidString)",
                 content: content,
@@ -791,10 +838,14 @@ class StatusBarController: NSObject {
         }
     }
 
-    private func addSectionHeader(_ title: String, to menu: NSMenu) {
+    private func addSectionHeader(
+        _ title: String,
+        to menu: NSMenu,
+        foregroundColor: NSColor = .tertiaryLabelColor
+    ) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-            .foregroundColor: NSColor.tertiaryLabelColor
+            .foregroundColor: foregroundColor
         ]
         let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         header.isEnabled = false
@@ -1038,6 +1089,15 @@ class StatusBarController: NSObject {
     private func populateIssuesMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
+        let createItem = NSMenuItem(
+            title: "New Issue…",
+            action: #selector(showCreateIssueWindowFromMenu),
+            keyEquivalent: "i")
+        createItem.keyEquivalentModifierMask = [.control, .option, .command]
+        createItem.target = self
+        menu.addItem(createItem)
+        menu.addItem(NSMenuItem.separator())
+
         let issues = issueFetcher.issues
 
         if issues.isEmpty {
@@ -1057,15 +1117,33 @@ class StatusBarController: NSObject {
         } else {
             let recentItem = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
             let recentMenu = NSMenu()
-            buildIssuesList(recentMenu, issues: issues, sortByRecent: true)
+            buildFlatIssuesList(recentMenu, issues: issues, sortByRecent: true)
             recentItem.submenu = recentMenu
             menu.addItem(recentItem)
 
             let azItem = NSMenuItem(title: "A to Z", action: nil, keyEquivalent: "")
             let azMenu = NSMenu()
-            buildIssuesList(azMenu, issues: issues, sortByRecent: false)
+            buildFlatIssuesList(azMenu, issues: issues, sortByRecent: false)
             azItem.submenu = azMenu
             menu.addItem(azItem)
+
+            let recentGroupedItem = NSMenuItem(
+                title: "Recent, Grouped by Repo",
+                action: nil,
+                keyEquivalent: "")
+            let recentGroupedMenu = NSMenu()
+            buildGroupedIssuesList(recentGroupedMenu, issues: issues, sortByRecent: true)
+            recentGroupedItem.submenu = recentGroupedMenu
+            menu.addItem(recentGroupedItem)
+
+            let azGroupedItem = NSMenuItem(
+                title: "A to Z, Grouped by Repo",
+                action: nil,
+                keyEquivalent: "")
+            let azGroupedMenu = NSMenu()
+            buildGroupedIssuesList(azGroupedMenu, issues: issues, sortByRecent: false)
+            azGroupedItem.submenu = azGroupedMenu
+            menu.addItem(azGroupedItem)
         }
 
         menu.addItem(NSMenuItem.separator())
@@ -1078,7 +1156,35 @@ class StatusBarController: NSObject {
         menu.addItem(refreshItem)
     }
 
-    private func buildIssuesList(_ menu: NSMenu, issues: [GitHubIssue], sortByRecent: Bool) {
+    private func buildFlatIssuesList(
+        _ menu: NSMenu,
+        issues: [GitHubIssue],
+        sortByRecent: Bool
+    ) {
+        let sorted = issues.sorted { first, second in
+            if sortByRecent {
+                if first.updatedAt != second.updatedAt { return first.updatedAt > second.updatedAt }
+            } else {
+                let comparison = first.title.localizedCaseInsensitiveCompare(second.title)
+                if comparison != .orderedSame { return comparison == .orderedAscending }
+            }
+            if first.repoFullName != second.repoFullName {
+                return first.repoFullName.localizedCaseInsensitiveCompare(second.repoFullName)
+                    == .orderedAscending
+            }
+            return first.number < second.number
+        }
+
+        for issue in sorted {
+            addIssueMenuItem(issue, to: menu, includesRepository: true)
+        }
+    }
+
+    private func buildGroupedIssuesList(
+        _ menu: NSMenu,
+        issues: [GitHubIssue],
+        sortByRecent: Bool
+    ) {
         let grouped = Dictionary(grouping: issues, by: { $0.repoFullName })
 
         let sortedRepos: [String]
@@ -1096,20 +1202,29 @@ class StatusBarController: NSObject {
             if index > 0 { menu.addItem(NSMenuItem.separator()) }
 
             let repoName = repoFullName.components(separatedBy: "/").last ?? repoFullName
-            addSectionHeader(repoName, to: menu)
+            addSectionHeader(
+                repoName,
+                to: menu,
+                foregroundColor: RepositoryColor.color(for: repoName))
 
             guard let repoIssues = grouped[repoFullName] else { continue }
             let sorted = sortByRecent
                 ? repoIssues.sorted { $0.updatedAt > $1.updatedAt }
-                : repoIssues
+                : repoIssues.sorted {
+                    $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+                }
 
             for issue in sorted {
-                addIssueMenuItem(issue, to: menu)
+                addIssueMenuItem(issue, to: menu, includesRepository: false)
             }
         }
     }
 
-    private func addIssueMenuItem(_ issue: GitHubIssue, to menu: NSMenu) {
+    private func addIssueMenuItem(
+        _ issue: GitHubIssue,
+        to menu: NSMenu,
+        includesRepository: Bool
+    ) {
         let info: [String: Any] = [
             "repoName": issue.repoName,
             "repoFullName": issue.repoFullName,
@@ -1130,7 +1245,18 @@ class StatusBarController: NSObject {
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
             .foregroundColor: NSColor.tertiaryLabelColor
         ]
-        attrTitle.append(NSAttributedString(string: "#\(issue.number) ", attributes: numAttrs))
+        if includesRepository {
+            let repositoryAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.menuFont(ofSize: 12),
+                .foregroundColor: RepositoryColor.color(for: issue.repoName)
+            ]
+            attrTitle.append(NSAttributedString(
+                string: "\(issue.repoName)  ",
+                attributes: repositoryAttrs))
+        }
+        attrTitle.append(NSAttributedString(
+            string: "#\(issue.number) ",
+            attributes: numAttrs))
 
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.menuFont(ofSize: 13),
@@ -1161,6 +1287,59 @@ class StatusBarController: NSObject {
         altAttrTitle.append(NSAttributedString(string: "  \u{2197}", attributes: arrowAttrs))
         altItem.attributedTitle = altAttrTitle
         menu.addItem(altItem)
+    }
+
+    @objc private func showCreateIssueWindowFromMenu() {
+        showCreateIssueWindow()
+    }
+
+    func showCreateIssueWindow() {
+        // LSUIElement apps use the accessory policy by default. Temporarily
+        // becoming a regular app lets macOS treat this as a fully managed
+        // document window, including system Move & Resize keyboard commands.
+        NSApp.setActivationPolicy(.regular)
+
+        if let createIssueWindow {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            createIssueWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false)
+        window.title = "New GitHub Issue"
+        window.isReleasedWhenClosed = false
+        window.collectionBehavior = [.managed, .fullScreenPrimary, .participatesInCycle]
+        window.contentMinSize = NSSize(width: 420, height: 440)
+        window.setFrameAutosaveName("CreateGitHubIssueWindow")
+        window.standardWindowButton(.zoomButton)?.isEnabled = true
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.delegate = self
+        window.center()
+        createIssueHasPendingChanges = false
+        allowCreateIssueClose = false
+        createIssueCloseConfirmationVisible = false
+        window.contentView = NSHostingView(rootView: CreateGitHubIssueView(
+            onCancel: { [weak window] in
+                window?.performClose(nil)
+            },
+            onCreated: { [weak window, weak self] issue, repository, createAnother in
+                self?.sendIssueCreatedNotification(issue: issue, repository: repository)
+                self?.issueFetcher.fetch()
+                if !createAnother {
+                    self?.createIssueHasPendingChanges = false
+                    window?.performClose(nil)
+                }
+            },
+            onPendingChangesChanged: { [weak self] hasPendingChanges in
+                self?.createIssueHasPendingChanges = hasPendingChanges
+            }))
+        createIssueWindow = window
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
     }
 
     @objc private func openIssueProject(_ sender: NSMenuItem) {
@@ -2143,5 +2322,69 @@ extension StatusBarController: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let shouldOpenIssue = response.actionIdentifier == openCreatedIssueNotificationAction ||
+            response.actionIdentifier == UNNotificationDefaultActionIdentifier
+        let urlString = response.notification.request.content.userInfo[
+            createdIssueURLNotificationKey] as? String
+
+        if shouldOpenIssue, let urlString, let url = URL(string: urlString) {
+            Task { @MainActor in
+                NSWorkspace.shared.open(url)
+            }
+        }
+        completionHandler()
+    }
+}
+
+extension StatusBarController: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === createIssueWindow,
+              createIssueHasPendingChanges,
+              !allowCreateIssueClose
+        else { return true }
+
+        guard !createIssueCloseConfirmationVisible else { return false }
+        createIssueCloseConfirmationVisible = true
+
+        let alert = NSAlert()
+        alert.messageText = "Discard Pending Changes?"
+        alert.informativeText = "You have pending changes. Are you sure you want to close this window?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Discard Changes")
+        alert.addButton(withTitle: "Keep Editing")
+        alert.buttons.first?.hasDestructiveAction = true
+        alert.beginSheetModal(for: sender) { [weak self, weak sender] response in
+            guard let self else { return }
+            self.createIssueCloseConfirmationVisible = false
+            guard response == .alertFirstButtonReturn else { return }
+            self.allowCreateIssueClose = true
+            sender?.performClose(nil)
+        }
+        return false
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === createIssueWindow
+        else { return }
+        createIssueWindow = nil
+        createIssueHasPendingChanges = false
+        allowCreateIssueClose = false
+        createIssueCloseConfirmationVisible = false
+        DispatchQueue.main.async {
+            let hasOtherManagedWindow = NSApp.windows.contains {
+                $0 !== window && $0.isVisible && $0.canBecomeMain
+            }
+            if !hasOtherManagedWindow {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
     }
 }
