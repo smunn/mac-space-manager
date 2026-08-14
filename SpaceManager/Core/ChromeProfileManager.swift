@@ -41,7 +41,7 @@ enum ChromeProfileManager {
 
     private static var legacyProfileCacheURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".local/state/chrome-profiles.json")
+            .appendingPathComponent(".local/state/mac-space-manager/chrome-profiles.json")
     }
 
     static func profiles(
