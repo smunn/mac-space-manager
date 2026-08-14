@@ -53,6 +53,7 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertEqual(context.sessionID, "abc")
         XCTAssertEqual(context.taskSummary, "Fix the issue")
         XCTAssertEqual(context.completionSummary, "Fixed it")
+        XCTAssertEqual(context.lastActivitySummary, "Turn completed")
 
         let resumed = completed + (try jsonLines([
             ["payload": ["type": "user_message", "message": "One more thing"]]
@@ -91,6 +92,27 @@ final class ProcessHealthMonitorTests: XCTestCase {
         XCTAssertNotEqual(
             ProcessHealthSystemProvider.sessionContext(logData: resumedWithTool, service: .claude).status,
             .completed)
+    }
+
+    func testCodexParserReportsCurrentToolActivity() throws {
+        let activity = try jsonLines([
+            [
+                "timestamp": "2026-08-14T02:53:24.381Z",
+                "type": "response_item",
+                "payload": [
+                    "type": "custom_tool_call",
+                    "name": "exec",
+                    "input": "await tools.exec_command({cmd:\"npm test\"})"
+                ]
+            ]
+        ])
+        let context = ProcessHealthSystemProvider.sessionContext(logData: activity, service: .codex)
+
+        XCTAssertEqual(
+            context.lastActivitySummary,
+            "Running exec: await tools.exec_command({cmd:\"npm test\"})")
+        XCTAssertNotNil(context.lastActivityAt)
+        XCTAssertEqual(context.status, .active)
     }
 
     func testRefreshUsesSixtySecondCacheUnlessForced() {
@@ -164,6 +186,13 @@ final class ProcessHealthMonitorTests: XCTestCase {
             command: "/opt/anthropic/bin/claude"), .claude)
         XCTAssertEqual(ProcessHealthSystemProvider.aiService(
             command: "node /opt/node_modules/@anthropic-ai/claude-code/cli.js"), .claude)
+    }
+
+    func testCodexSessionIDUsesCompleteUUIDFromRolloutFilename() {
+        XCTAssertEqual(
+            ProcessHealthSystemProvider.sessionID(
+                from: "/tmp/rollout-2026-08-13T14-50-47-019ffcad-5bdc-7902-8a78-38a13d25f51e.jsonl"),
+            "019ffcad-5bdc-7902-8a78-38a13d25f51e")
     }
 
     func testRepositoryNameFindsNearestGitAncestor() {
@@ -325,6 +354,7 @@ final class ProcessHealthMonitorTests: XCTestCase {
         AISessionHealthItem(
             service: service,
             processID: 123,
+            parentProcessID: 122,
             processStartedAt: scanDate.addingTimeInterval(-300),
             projectPath: "/tmp/project",
             repositoryName: nil,
@@ -336,6 +366,8 @@ final class ProcessHealthMonitorTests: XCTestCase {
             command: "/usr/local/bin/codex",
             taskSummary: "Fix issue",
             completionSummary: "Done",
+            lastActivityAt: scanDate.addingTimeInterval(-10),
+            lastActivitySummary: "Running exec: npm test",
             completionStatus: status,
             isDetached: isDetached,
             hasUnavailableStandardIO: hasUnavailableStandardIO)

@@ -33,6 +33,7 @@ class StatusBarController: NSObject {
     private var performanceSnapshot: SystemPerformanceSnapshot?
     private let performanceViewModel = PerformanceMenuViewModel()
     private weak var performanceHostingView: NSView?
+    private var aiSessionInspectorController: AISessionInspectorController?
 
     override init() {
         super.init()
@@ -255,6 +256,9 @@ class StatusBarController: NSObject {
                 Task { @MainActor in self?.refreshProcessHealth(force: true) }
             }
         }
+        performanceViewModel.inspectAISession = { [weak self] item in
+            self?.inspectAISession(item)
+        }
         performanceViewModel.cleanUpAISession = { [weak self] item in
             guard let self,
                   self.performanceViewModel.terminatingAISessionIDs.insert(item.id).inserted
@@ -322,6 +326,64 @@ class StatusBarController: NSObject {
                         title: success ? "Recommended Processes Terminated" : "Process Termination Incomplete",
                         body: message)
                     self.refreshProcessHealth(force: true)
+                }
+            }
+        }
+    }
+
+    private func inspectAISession(_ item: AISessionHealthItem) {
+        let controller = AISessionInspectorController(item: item) { [weak self] in
+            self?.confirmAndResumeAISession(item)
+        }
+        aiSessionInspectorController = controller
+        controller.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func confirmAndResumeAISession(_ item: AISessionHealthItem) {
+        guard let sessionID = item.sessionID,
+              !sessionID.isEmpty
+        else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Resume \(item.service.rawValue) Session?"
+        alert.informativeText = "This terminates PID \(item.processID), then opens the saved session in Terminal."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Resume")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        guard performanceViewModel.terminatingAISessionIDs.insert(item.id).inserted else { return }
+        performanceViewModel.processActionStatus = ProcessActionStatus(
+            message: "Preparing \(item.service.rawValue) PID \(item.processID) to resume…",
+            succeeded: nil)
+
+        processHealthMonitor.cleanUp(item) { [weak self] terminated in
+            Task { @MainActor in
+                guard let self else { return }
+                guard terminated else {
+                    self.performanceViewModel.terminatingAISessionIDs.remove(item.id)
+                    self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                        message: "Could not terminate \(item.service.rawValue) PID \(item.processID)",
+                        succeeded: false)
+                    self.refreshProcessHealth(force: true)
+                    return
+                }
+
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let launched = AISessionLauncher.resume(
+                        service: item.service,
+                        sessionID: sessionID,
+                        projectPath: item.projectPath)
+                    DispatchQueue.main.async {
+                        self.performanceViewModel.terminatingAISessionIDs.remove(item.id)
+                        self.performanceViewModel.processActionStatus = ProcessActionStatus(
+                            message: launched
+                                ? "Resumed \(item.service.rawValue) session \(sessionID) in Terminal"
+                                : "Could not resume \(item.service.rawValue) session \(sessionID)",
+                            succeeded: launched)
+                        self.refreshProcessHealth(force: true)
+                    }
                 }
             }
         }

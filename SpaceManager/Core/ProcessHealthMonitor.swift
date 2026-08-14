@@ -272,6 +272,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
                     sessionID: nil,
                     taskSummary: nil,
                     completionSummary: nil,
+                    lastActivityAt: nil,
+                    lastActivitySummary: nil,
                     status: .uncertain)
             let hasNoTTY = Self.ttyIsUnavailable(process.tty)
             let parent = processesByPID[process.parentPID]
@@ -280,6 +282,7 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
             return AISessionHealthItem(
                 service: service,
                 processID: process.pid,
+                parentProcessID: process.parentPID,
                 processStartedAt: process.startedAt,
                 projectPath: projectPath,
                 repositoryName: projectPath.flatMap {
@@ -295,6 +298,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
                 command: process.command,
                 taskSummary: context.taskSummary,
                 completionSummary: context.completionSummary,
+                lastActivityAt: context.lastActivityAt,
+                lastActivitySummary: context.lastActivitySummary,
                 completionStatus: context.status,
                 isDetached: isDetached,
                 hasUnavailableStandardIO: io.unavailable)
@@ -489,10 +494,17 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         }
     }
 
-    private static func sessionID(from path: String) -> String? {
+    static func sessionID(from path: String) -> String? {
         let name = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
-        let matches = name.split(whereSeparator: { $0 == "-" || $0 == "_" })
-        return matches.last.map(String.init)
+        let pattern = #"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"#
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let match = expression.matches(
+                in: name,
+                range: NSRange(name.startIndex..., in: name)
+              ).last,
+              let range = Range(match.range, in: name)
+        else { return nil }
+        return String(name[range])
     }
 
     struct SessionContext: Equatable {
@@ -500,6 +512,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         let sessionID: String?
         let taskSummary: String?
         let completionSummary: String?
+        let lastActivityAt: Date?
+        let lastActivitySummary: String?
         let status: AISessionCompletionStatus
     }
 
@@ -514,12 +528,18 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         var lastAssistant: String?
         var completion = false
         var activityAfterCompletion = false
+        var lastActivityAt: Date?
+        var lastActivitySummary: String?
+        let timestampFormatter = ISO8601DateFormatter()
 
         for object in objects {
             let payload = object["payload"] as? [String: Any] ?? object
             let nestedMessage = payload["message"] as? [String: Any]
             projectPath = (payload["cwd"] as? String) ?? projectPath
-            sessionID = (payload["session_id"] as? String) ?? (payload["sessionId"] as? String) ?? sessionID
+            sessionID = (payload["session_id"] as? String)
+                ?? (payload["sessionId"] as? String)
+                ?? (object["type"] as? String == "session_meta" ? payload["id"] as? String : nil)
+                ?? sessionID
             let type = ((payload["type"] as? String) ?? (object["type"] as? String) ?? "").lowercased()
             let role = ((payload["role"] as? String) ?? (nestedMessage?["role"] as? String))?.lowercased()
             let message = textualContent(
@@ -529,6 +549,15 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
                 let contentType = ($0["type"] as? String)?.lowercased()
                 return contentType == "tool_use" || contentType == "tool_result"
             } ?? false
+
+            if let timestamp = object["timestamp"] as? String,
+               let date = timestampFormatter.date(from: timestamp)
+            {
+                lastActivityAt = date
+            }
+            if let summary = activitySummary(type: type, role: role, payload: payload) {
+                lastActivitySummary = summary
+            }
 
             if role == "user" || type == "user" || type == "user_message" {
                 lastUser = message ?? lastUser
@@ -550,6 +579,9 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
             if containsToolActivity
                 || type == "tool_use"
                 || type == "tool_result"
+                || type == "custom_tool_call"
+                || type == "function_call"
+                || type == "task_started"
                 || type == "turn.started"
                 || type == "turn_started"
             {
@@ -563,6 +595,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
             sessionID: sessionID,
             taskSummary: lastUser.map(shortSummary),
             completionSummary: lastAssistant.map(shortSummary),
+            lastActivityAt: lastActivityAt,
+            lastActivitySummary: lastActivitySummary,
             status: completion && !activityAfterCompletion ? .completed : (objects.isEmpty ? .uncertain : .active))
     }
 
@@ -573,13 +607,75 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
                 sessionID: nil,
                 taskSummary: nil,
                 completionSummary: nil,
+                lastActivityAt: nil,
+                lastActivitySummary: nil,
                 status: .uncertain)
         }
         defer { try? handle.close() }
         let size = (try? handle.seekToEnd()) ?? 0
-        let tailSize = min(size, 512 * 1_024)
+        let prefixSize = min(size, 64 * 1_024)
+        try? handle.seek(toOffset: 0)
+        let prefix = handle.readData(ofLength: Int(prefixSize))
+        guard size > prefixSize else { return sessionContext(logData: prefix, service: service) }
+
+        let tailSize = min(size - prefixSize, 512 * 1_024)
         try? handle.seek(toOffset: size - tailSize)
-        return sessionContext(logData: handle.readDataToEndOfFile(), service: service)
+        var combined = prefix
+        combined.append(Data("\n".utf8))
+        combined.append(handle.readDataToEndOfFile())
+        return sessionContext(logData: combined, service: service)
+    }
+
+    private static func activitySummary(
+        type: String,
+        role: String?,
+        payload: [String: Any]
+    ) -> String? {
+        switch type {
+        case "task_started", "turn.started", "turn_started":
+            return "Turn started"
+        case "task_complete", "turn.completed", "turn_completed":
+            return "Turn completed"
+        case "custom_tool_call", "function_call", "tool_use":
+            let name = (payload["name"] as? String) ?? "tool"
+            if let command = commandSummary(from: payload), !command.isEmpty {
+                return "Running \(name): \(shortSummary(command))"
+            }
+            return "Running \(name)"
+        case "custom_tool_call_output", "function_call_output", "tool_result":
+            return "Tool finished"
+        case "reasoning":
+            return "Reasoning"
+        case "message", "user", "user_message":
+            if role == "user" { return "Prompt received" }
+            if role == "assistant" { return "Response written" }
+            return nil
+        case "agent_message", "assistant":
+            return "Response written"
+        default:
+            return nil
+        }
+    }
+
+    private static func commandSummary(from payload: [String: Any]) -> String? {
+        for key in ["input", "arguments"] {
+            if let dictionary = payload[key] as? [String: Any],
+               let command = dictionary["cmd"] as? String ?? dictionary["command"] as? String
+            {
+                return command
+            }
+            guard let string = payload[key] as? String,
+                  !string.isEmpty
+            else { continue }
+            if let data = string.data(using: .utf8),
+               let dictionary = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let command = dictionary["cmd"] as? String ?? dictionary["command"] as? String
+            {
+                return command
+            }
+            return string
+        }
+        return nil
     }
 
     private static func textualContent(_ value: Any?) -> String? {

@@ -55,6 +55,7 @@ enum AISessionCompletionStatus: String, Sendable, Equatable {
 struct AISessionHealthItem: Identifiable, Sendable, Equatable {
     let service: AISessionService
     let processID: pid_t
+    let parentProcessID: pid_t
     /// Process start time is part of cleanup validation and protects against PID reuse.
     let processStartedAt: Date
     let projectPath: String?
@@ -67,6 +68,8 @@ struct AISessionHealthItem: Identifiable, Sendable, Equatable {
     let command: String
     let taskSummary: String?
     let completionSummary: String?
+    let lastActivityAt: Date?
+    let lastActivitySummary: String?
     let completionStatus: AISessionCompletionStatus
     let isDetached: Bool
     let hasUnavailableStandardIO: Bool

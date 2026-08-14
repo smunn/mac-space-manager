@@ -15,6 +15,7 @@ final class PerformanceMenuViewModel: ObservableObject {
 
     var reviewSimulator: ((SimulatorHealthItem) -> Void)?
     var shutDownSimulator: ((SimulatorHealthItem) -> Void)?
+    var inspectAISession: ((AISessionHealthItem) -> Void)?
     var cleanUpAISession: ((AISessionHealthItem) -> Void)?
     var cleanUpRecommendedAISessions: (([AISessionHealthItem]) -> Void)?
     var openActivityMonitor: (() -> Void)?
@@ -213,6 +214,7 @@ struct PerformanceMenuView: View {
                         rowNumber: index + 1,
                         isStriped: index.isMultiple(of: 2),
                         isTerminating: model.terminatingAISessionIDs.contains(session.id),
+                        inspect: { model.inspectAISession?(session) },
                         cleanUp: { model.cleanUpAISession?(session) })
                 }
             }
@@ -410,6 +412,7 @@ private struct AISessionHealthRow: View {
     let rowNumber: Int
     let isStriped: Bool
     let isTerminating: Bool
+    let inspect: () -> Void
     let cleanUp: () -> Void
 
     var body: some View {
@@ -432,6 +435,8 @@ private struct AISessionHealthRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
+            Button("Inspect", action: inspect)
+                .controlSize(.mini)
             Button(isTerminating ? "Terminating…" : "Terminate", action: cleanUp)
                 .controlSize(.mini)
                 .disabled(isTerminating)
