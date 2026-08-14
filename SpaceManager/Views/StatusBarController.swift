@@ -37,8 +37,10 @@ class StatusBarController: NSObject {
     private var chromeProfilesMenu: NSMenu?
     private let performanceMonitor = SystemPerformanceMonitor()
     private let processHealthMonitor = ProcessHealthMonitor()
+    private let aiLimitsReader = AILimitsSnapshotReader.shared
     private var performanceTimer: Timer?
     private var performanceSnapshot: SystemPerformanceSnapshot?
+    private let aiLimitsViewModel = AILimitsMenuViewModel()
     private let performanceViewModel = PerformanceMenuViewModel()
     private weak var performanceHostingView: NSView?
     private var aiSessionInspectorController: AISessionInspectorController?
@@ -105,6 +107,9 @@ class StatusBarController: NSObject {
 
     private func rebuildMenu(_ spaces: [Space]) {
         statusMenu.removeAllItems()
+
+        addAILimitsSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
 
         addPerformanceSection(to: statusMenu)
         statusMenu.addItem(NSMenuItem.separator())
@@ -223,6 +228,20 @@ class StatusBarController: NSObject {
     }
 
     // MARK: - Performance
+
+    private func addAILimitsSection(to menu: NSMenu) {
+        refreshAILimits()
+        let item = NSMenuItem(title: "AI Limits", action: nil, keyEquivalent: "")
+        let view = NSHostingView(rootView: AILimitsMenuView(model: aiLimitsViewModel))
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: 70)
+        item.view = view
+        menu.addItem(item)
+    }
+
+    private func refreshAILimits() {
+        aiLimitsViewModel.snapshot = aiLimitsReader.read()
+        aiLimitsViewModel.displayedAt = Date()
+    }
 
     private func addPerformanceSection(to menu: NSMenu) {
         performanceViewModel.snapshot = performanceSnapshot
@@ -2286,6 +2305,7 @@ class StatusBarController: NSObject {
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if menu === statusMenu {
+            refreshAILimits()
             menuContextDisplayID = DisplayGeometryUtilities.displayUUID(
                 containing: NSEvent.mouseLocation,
                 candidates: physicalDisplayOrder)
