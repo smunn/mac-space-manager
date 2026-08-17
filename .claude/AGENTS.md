@@ -23,6 +23,8 @@ open "/Applications/Space Manager.app"
 ```
 
 `npm run deploy` performs the Release build, `/Applications` install, and relaunch. Prefer it after `xcodegen generate`.
+The shared `mac-deploy` command also honors `.mac-app.json` `generateProject`,
+so npm deployment always regenerates the project before building.
 
 If the build fails, fix the issue and retry before moving on.
 
