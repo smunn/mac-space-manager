@@ -8,14 +8,14 @@ final class WindowLayoutTests: XCTestCase {
 
     func testShortcutConflictDescriptionIncludesShortcutAndAffectedCommands() {
         let conflict = WindowLayoutShortcutConflict(
-            shortcutText: "⌃⌥⇧⌘A",
+            shortcutText: "⌃⌥⇧⌘.",
             commandIDs: ["portrait", "horizontal"],
             commandNames: ["Column 3 — Top Half"],
             ownerName: "Space Manager: Organize Terminal Windows")
 
         XCTAssertEqual(
             conflict.description,
-            "⌃⌥⇧⌘A — Column 3 — Top Half (used by Space Manager: Organize Terminal Windows)")
+            "⌃⌥⇧⌘. — Column 3 — Top Half (used by Space Manager: Organize Terminal Windows)")
         XCTAssertEqual(conflict.commandIDs, ["portrait", "horizontal"])
     }
 
@@ -23,7 +23,7 @@ final class WindowLayoutTests: XCTestCase {
     func testKnownInternalShortcutConflictIdentifiesItsOwner() {
         XCTAssertEqual(
             WindowLayoutManager.internalShortcutOwner(for: MagnetShortcut(
-                carbonKeyCode: UInt32(kVK_ANSI_A),
+                carbonKeyCode: UInt32(kVK_ANSI_Period),
                 carbonModifiers: UInt32(controlKey | optionKey | shiftKey | cmdKey))),
             "Space Manager: Organize Terminal Windows")
     }

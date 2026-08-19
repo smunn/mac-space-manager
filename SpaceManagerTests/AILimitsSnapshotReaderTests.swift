@@ -75,4 +75,57 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
         XCTAssertEqual(snapshot.codex.weekly.resetsAt?.timeIntervalSince1970, 300)
         XCTAssertEqual(snapshot.codex.collectedAt?.timeIntervalSince1970, 200)
     }
+
+    func testReadsCachedCloudSnapshotWhenLocalCollectorFileIsMissing() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let localURL = directory.appendingPathComponent("missing.json")
+        let cacheURL = directory.appendingPathComponent("cache.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data(#"{"claude":{"session":37},"codex":{"limits":[]}}"#.utf8)
+            .write(to: cacheURL)
+
+        let reader = AILimitsSnapshotReader(fileURL: localURL, cacheFileURL: cacheURL)
+        let snapshot = try XCTUnwrap(reader.read())
+
+        XCTAssertTrue(reader.needsCloudFallback)
+        XCTAssertEqual(snapshot.claude.fiveHour.percentUsed, 37)
+    }
+
+    func testNormalizesSupabaseRowsAndSelectsFreshestServiceAccount() throws {
+        let response = Data(#"""
+        [
+          {
+            "service":"claude",
+            "email":"old@example.com",
+            "freshest_at":"2026-08-19T12:00:00Z",
+            "usage":{"session":12,"weeklyAll":20,"ts":1787140800000}
+          },
+          {
+            "service":"claude",
+            "email":"new@example.com",
+            "freshest_at":"2026-08-19T13:00:00Z",
+            "usage":{"session":42,"weeklyAll":51,"ts":1787144400000}
+          },
+          {
+            "service":"codex",
+            "email":"codex@example.com",
+            "freshest_at":"2026-08-19T13:00:00Z",
+            "usage":{"limits":[{"label":"5 hour usage limit","pctUsed":18}]}
+          }
+        ]
+        """#.utf8)
+        let normalized = try XCTUnwrap(AILimitsSnapshotReader.normalizedCloudData(from: response))
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try normalized.write(to: fileURL)
+
+        let snapshot = try XCTUnwrap(AILimitsSnapshotReader(fileURL: fileURL).read())
+
+        XCTAssertEqual(snapshot.claude.fiveHour.percentUsed, 42)
+        XCTAssertEqual(snapshot.claude.weekly.percentUsed, 51)
+        XCTAssertEqual(snapshot.codex.fiveHour.percentUsed, 18)
+    }
 }

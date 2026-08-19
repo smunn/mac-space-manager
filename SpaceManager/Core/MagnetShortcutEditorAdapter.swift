@@ -303,7 +303,7 @@ struct MagnetShortcutEditorAdapter {
         MagnetShortcut(carbonKeyCode: 17, carbonModifiers: control | option | command), // T
         MagnetShortcut(carbonKeyCode: 13, carbonModifiers: control | option | command), // W
         MagnetShortcut(carbonKeyCode: 14, carbonModifiers: control | option | command), // E
-        MagnetShortcut(carbonKeyCode: 17, carbonModifiers: control | option | shift | command), // Shift-T
+        MagnetShortcut(carbonKeyCode: 47, carbonModifiers: control | option | shift | command), // Shift-Period
         MagnetShortcut(carbonKeyCode: 13, carbonModifiers: control | option | shift | command), // Shift-W
         MagnetShortcut(carbonKeyCode: 43, carbonModifiers: control | option | command) // , (settings)
     ]

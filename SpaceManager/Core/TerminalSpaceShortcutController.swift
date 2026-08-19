@@ -76,7 +76,7 @@ final class TerminalSpaceShortcutController {
         }
 
         let terminalWindowsStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_A),
+            UInt32(kVK_ANSI_Period),
             UInt32(controlKey | optionKey | shiftKey | cmdKey),
             EventHotKeyID(signature: Self.hotKeySignature, id: Self.terminalWindowsHotKeyID),
             GetApplicationEventTarget(),
@@ -85,7 +85,7 @@ final class TerminalSpaceShortcutController {
 
         if terminalWindowsStatus != noErr {
             NSLog(
-                "TerminalSpaceShortcutController: failed to register Control-Option-Shift-Command-A (%d)",
+                "TerminalSpaceShortcutController: failed to register Control-Option-Shift-Command-Period (%d)",
                 terminalWindowsStatus)
         }
     }

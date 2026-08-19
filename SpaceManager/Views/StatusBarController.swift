@@ -45,6 +45,9 @@ class StatusBarController: NSObject {
     private let aiLimitsViewModel = AILimitsMenuViewModel()
     private let performanceViewModel = PerformanceMenuViewModel()
     private weak var performanceHostingView: NSView?
+    private var statusMenuIsOpen = false
+    private var pendingProcessHealthSnapshot: ProcessHealthSnapshot?
+    private var aiLimitsCloudRefreshInFlight = false
     private var aiSessionInspectorController: AISessionInspectorController?
 
     override init() {
@@ -70,6 +73,7 @@ class StatusBarController: NSObject {
 
         statusItem.menu = statusMenu
         issueFetcher.startPeriodicRefresh()
+        refreshProcessHealth(force: true)
     }
 
     func updateSpaces(_ spaces: [Space], missionControlDisplayOrder mcOrder: [String] = []) {
@@ -254,34 +258,51 @@ class StatusBarController: NSObject {
     }
 
     private func refreshAILimits() {
-        aiLimitsViewModel.snapshot = aiLimitsReader.read()
+        if let snapshot = aiLimitsReader.read() {
+            aiLimitsViewModel.snapshot = snapshot
+        }
         aiLimitsViewModel.displayedAt = Date()
+
+        guard aiLimitsReader.needsCloudFallback,
+              !aiLimitsCloudRefreshInFlight
+        else { return }
+
+        aiLimitsCloudRefreshInFlight = true
+        Task { [weak self] in
+            guard let self else { return }
+            let snapshot = await self.aiLimitsReader.fetchCloudSnapshot()
+            self.aiLimitsCloudRefreshInFlight = false
+            guard let snapshot else { return }
+            self.aiLimitsViewModel.snapshot = snapshot
+            self.aiLimitsViewModel.displayedAt = Date()
+        }
     }
 
     private func addPerformanceSection(to menu: NSMenu) {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        // NSMenu lays out a custom item before the deferred fitting-size pass.
-        // A one-point seed height can become the hosting view's vertical proposal,
-        // leaving the entire section permanently compressed on some macOS versions.
-        view.frame = NSRect(x: 0, y: 0, width: 456, height: 180)
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
+        sizePerformanceHostingView(view)
         performanceHostingView = view
         item.view = view
         menu.addItem(item)
-        updatePerformanceMenuHeight()
     }
 
     private func updatePerformanceMenuHeight() {
-        guard let view = performanceHostingView else { return }
-        DispatchQueue.main.async { [weak self, weak view] in
-            guard let self, let view else { return }
-            view.layoutSubtreeIfNeeded()
-            let height = ceil(view.fittingSize.height)
-            guard height > 0, abs(view.frame.height - height) > 0.5 else { return }
-            view.setFrameSize(NSSize(width: view.frame.width, height: height))
-            self.statusMenu.update()
-        }
+        guard !statusMenuIsOpen, let view = performanceHostingView else { return }
+        sizePerformanceHostingView(view)
+        statusMenu.update()
+    }
+
+    private func sizePerformanceHostingView(_ view: NSView) {
+        // NSMenu determines its window height before presenting custom item views.
+        // Measure synchronously so a later SwiftUI resize cannot leave the top of
+        // the card clipped while the menu keeps the old height as blank space.
+        view.layoutSubtreeIfNeeded()
+        let height = ceil(view.fittingSize.height)
+        guard height > 0 else { return }
+        view.setFrameSize(NSSize(width: view.frame.width, height: height))
     }
 
     private func configureProcessHealthActions() {
@@ -530,7 +551,11 @@ class StatusBarController: NSObject {
         processHealthMonitor.refreshIfNeeded(force: force) { [weak self] snapshot in
             Task { @MainActor in
                 guard let self else { return }
-                self.performanceViewModel.processHealthSnapshot = snapshot
+                if self.statusMenuIsOpen {
+                    self.pendingProcessHealthSnapshot = snapshot
+                } else {
+                    self.performanceViewModel.processHealthSnapshot = snapshot
+                }
                 self.performanceViewModel.isRefreshingProcessHealth = false
                 self.updatePerformanceMenuHeight()
             }
@@ -810,7 +835,7 @@ class StatusBarController: NSObject {
         let organizeTerminalItem = NSMenuItem(
             title: "Create Spaces for Terminal Windows (\(terminalWindowCount))",
             action: terminalWindowCount > 0 ? #selector(createSpacesForTerminalWindows) : nil,
-            keyEquivalent: "a")
+            keyEquivalent: ".")
         organizeTerminalItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
         organizeTerminalItem.target = self
         submenu.addItem(organizeTerminalItem)
@@ -2327,6 +2352,8 @@ class StatusBarController: NSObject {
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if menu === statusMenu {
+            updatePerformanceMenuHeight()
+            statusMenuIsOpen = true
             refreshPermissionsMenuItem()
             refreshAILimits()
             menuContextDisplayID = DisplayGeometryUtilities.displayUUID(
@@ -2347,6 +2374,12 @@ extension StatusBarController: NSMenuDelegate {
 
     func menuDidClose(_ menu: NSMenu) {
         if menu === statusMenu {
+            statusMenuIsOpen = false
+            if let pendingProcessHealthSnapshot {
+                performanceViewModel.processHealthSnapshot = pendingProcessHealthSnapshot
+                self.pendingProcessHealthSnapshot = nil
+                updatePerformanceMenuHeight()
+            }
             stopPerformanceMonitoring()
             menuContextDisplayID = nil
         }
