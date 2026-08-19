@@ -98,6 +98,7 @@ struct PerformanceMenuView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+        .fixedSize(horizontal: false, vertical: true)
         .debugLabel("PerformanceMenuView")
     }
 

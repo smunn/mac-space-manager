@@ -262,7 +262,10 @@ class StatusBarController: NSObject {
         performanceViewModel.snapshot = performanceSnapshot
         let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
         let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
+        // NSMenu lays out a custom item before the deferred fitting-size pass.
+        // A one-point seed height can become the hosting view's vertical proposal,
+        // leaving the entire section permanently compressed on some macOS versions.
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: 180)
         performanceHostingView = view
         item.view = view
         menu.addItem(item)
