@@ -10,6 +10,24 @@ import ApplicationServices
 import Carbon
 import Cocoa
 
+struct WindowLayoutShortcutConflict: Equatable, Identifiable {
+    let shortcutText: String
+    let commandIDs: Set<String>
+    let commandNames: [String]
+    let ownerName: String?
+
+    var id: String {
+        ([shortcutText] + commandIDs.sorted()).joined(separator: "|")
+    }
+
+    var description: String {
+        let names = commandNames.joined(separator: ", ")
+        let commandDescription = names.isEmpty ? shortcutText : "\(shortcutText) — \(names)"
+        guard let ownerName else { return commandDescription }
+        return "\(commandDescription) (used by \(ownerName))"
+    }
+}
+
 @MainActor
 final class WindowLayoutManager: NSObject, ObservableObject {
     static let shared = WindowLayoutManager()
@@ -18,6 +36,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var isMagnetRunning: Bool
     @Published private(set) var lastError: String?
+    @Published private(set) var shortcutConflicts: [WindowLayoutShortcutConflict] = []
 
     private static let hotKeySignature: OSType = 0x53574C59 // SWLY
     private static let settingsHotKeyID: UInt32 = 990
@@ -133,6 +152,16 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         settings.isEnabled = false
         menu.addItem(settings)
 
+        if !shortcutConflicts.isEmpty {
+            menu.addItem(.separator())
+            addHeader("Shortcut Conflicts", to: menu)
+            for conflict in shortcutConflicts {
+                let item = NSMenuItem(title: conflict.description, action: nil, keyEquivalent: "")
+                item.isEnabled = false
+                menu.addItem(item)
+            }
+        }
+
         let orientation: MagnetDisplayOrientation = focusedWindow().map {
             self.orientation(for: screen(containing: $0.frame))
         } ?? MagnetDisplayOrientation.horizontal
@@ -177,6 +206,12 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             let alert = NSAlert()
             alert.messageText = "Window Layouts Could Not Be Enabled"
             alert.informativeText = lastError
+            alert.alertStyle = .warning
+            alert.runModal()
+        } else if isEnabled && !shortcutConflicts.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "Window Layouts Enabled with Conflicts"
+            alert.informativeText = shortcutConflicts.map(\.description).joined(separator: "\n")
             alert.alertStyle = .warning
             alert.runModal()
         }
@@ -245,6 +280,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func disable() {
         unregisterHotKeys()
+        shortcutConflicts = []
         isEnabled = false
         UserDefaults.standard.set(false, forKey: Self.enabledDefaultsKey)
     }
@@ -271,6 +307,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     private func registerHotKeys() throws {
         unregisterHotKeys()
+        shortcutConflicts = []
         var routes: [MagnetShortcut: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
         for command in commands where command.isEnabled {
             for shortcut in shortcuts(for: command) {
@@ -337,11 +374,18 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             GetApplicationEventTarget(),
             0,
             &settingsReference)
-        guard settingsRegistration == noErr, let settingsReference else {
+        if settingsRegistration == noErr, let settingsReference {
+            hotKeys.append(settingsReference)
+        } else if settingsRegistration == eventHotKeyExistsErr {
+            shortcutConflicts.append(WindowLayoutShortcutConflict(
+                shortcutText: Self.settingsShortcutText,
+                commandIDs: [],
+                commandNames: ["Edit Shortcuts"],
+                ownerName: nil))
+        } else {
             unregisterHotKeys()
             throw WindowLayoutError.hotKeyRegistration(Self.settingsShortcutText, settingsRegistration)
         }
-        hotKeys.append(settingsReference)
 
         for (index, entry) in routes.sorted(by: { lhs, rhs in
             lhs.key.carbonModifiers == rhs.key.carbonModifiers
@@ -357,6 +401,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 GetApplicationEventTarget(),
                 0,
                 &reference)
+            if registration == eventHotKeyExistsErr {
+                let routeCommands = Array(entry.value.values)
+                shortcutConflicts.append(WindowLayoutShortcutConflict(
+                    shortcutText: routeCommands.first?.shortcutText ?? "Unknown",
+                    commandIDs: Set(routeCommands.map(\.id)),
+                    commandNames: Array(Set(routeCommands.map(\.displayName))).sorted(),
+                    ownerName: Self.internalShortcutOwner(for: entry.key)))
+                continue
+            }
             guard registration == noErr, let reference else {
                 unregisterHotKeys()
                 throw WindowLayoutError.hotKeyRegistration(entry.value.values.first?.shortcutText ?? "Unknown", registration)
@@ -858,6 +911,15 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             case .command: return result | UInt32(cmdKey)
             }
         }
+    }
+
+    static func internalShortcutOwner(for shortcut: MagnetShortcut) -> String? {
+        let terminalWindowsShortcut = MagnetShortcut(
+            carbonKeyCode: UInt32(kVK_ANSI_T),
+            carbonModifiers: UInt32(controlKey | optionKey | shiftKey | cmdKey))
+        return shortcut == terminalWindowsShortcut
+            ? "Space Manager: Organize Terminal Windows"
+            : nil
     }
 
     private func showCheatsheet(modifiers: Set<MagnetShortcutModifier>) {

@@ -138,6 +138,19 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
+
+                    if !windowLayouts.shortcutConflicts.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label("Shortcut Conflicts", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.orange)
+                            ForEach(windowLayouts.shortcutConflicts) { conflict in
+                                Text(conflict.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

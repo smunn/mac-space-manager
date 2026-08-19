@@ -1,9 +1,32 @@
 import ApplicationServices
+import Carbon
 import XCTest
 @testable import Space_Manager
 
 final class WindowLayoutTests: XCTestCase {
     private let adapter = MagnetShortcutEditorAdapter()
+
+    func testShortcutConflictDescriptionIncludesShortcutAndAffectedCommands() {
+        let conflict = WindowLayoutShortcutConflict(
+            shortcutText: "⌃⌥⇧⌘T",
+            commandIDs: ["portrait", "horizontal"],
+            commandNames: ["Column 3 — Top Half"],
+            ownerName: "Space Manager: Organize Terminal Windows")
+
+        XCTAssertEqual(
+            conflict.description,
+            "⌃⌥⇧⌘T — Column 3 — Top Half (used by Space Manager: Organize Terminal Windows)")
+        XCTAssertEqual(conflict.commandIDs, ["portrait", "horizontal"])
+    }
+
+    @MainActor
+    func testKnownInternalShortcutConflictIdentifiesItsOwner() {
+        XCTAssertEqual(
+            WindowLayoutManager.internalShortcutOwner(for: MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_T),
+                carbonModifiers: UInt32(controlKey | optionKey | shiftKey | cmdKey))),
+            "Space Manager: Organize Terminal Windows")
+    }
 
     func testKarabinerKeyboardSourceUsesSharedKarabinerMarkerPath() {
         XCTAssertEqual(

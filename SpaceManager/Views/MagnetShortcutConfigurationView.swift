@@ -143,6 +143,7 @@ final class MagnetShortcutConfigurationModel: ObservableObject {
 
 struct MagnetShortcutConfigurationView: View {
     @StateObject private var model: MagnetShortcutConfigurationModel
+    @ObservedObject private var windowLayouts = WindowLayoutManager.shared
     @State private var mode: EditorMode = .configure
     @State private var applyError: String?
     @State private var statusText: String?
@@ -210,6 +211,15 @@ struct MagnetShortcutConfigurationView: View {
                 Label(statusText, systemImage: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            if !windowLayouts.shortcutConflicts.isEmpty {
+                Label(
+                    "\(windowLayouts.shortcutConflicts.count) Shortcut \(windowLayouts.shortcutConflicts.count == 1 ? "Conflict" : "Conflicts")",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
             }
 
             Button("Save") {
@@ -302,7 +312,8 @@ struct MagnetShortcutConfigurationView: View {
                     ForEach(model.filteredCommands.filter { $0.section == section }) { command in
                         MagnetShortcutCommandRow(
                             command: command,
-                            color: colors[command.id] ?? .accentColor)
+                            color: colors[command.id] ?? .accentColor,
+                            hasConflict: conflictedCommandIDs.contains(command.id))
                             .tag(command.id)
                     }
                 } header: {
@@ -311,6 +322,12 @@ struct MagnetShortcutConfigurationView: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private var conflictedCommandIDs: Set<String> {
+        windowLayouts.shortcutConflicts.reduce(into: []) {
+            $0.formUnion($1.commandIDs)
+        }
     }
 
     private enum EditorMode: String, CaseIterable, Identifiable {
@@ -323,6 +340,7 @@ struct MagnetShortcutConfigurationView: View {
 private struct MagnetShortcutCommandRow: View {
     let command: MagnetShortcutCommand
     let color: Color
+    let hasConflict: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -333,7 +351,15 @@ private struct MagnetShortcutCommandRow: View {
             Spacer(minLength: 4)
             Text(command.shortcutText)
                 .font(.system(.caption, design: .rounded, weight: .medium))
-                .foregroundStyle(command.isEnabled ? .secondary : .tertiary)
+                .foregroundStyle(
+                    hasConflict
+                        ? Color.orange
+                        : Color.secondary.opacity(command.isEnabled ? 1 : 0.6))
+            if hasConflict {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .help("Shortcut is already in use")
+            }
             if !command.isEnabled {
                 Image(systemName: "pause.circle")
                     .foregroundStyle(.tertiary)
