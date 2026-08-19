@@ -28,24 +28,51 @@ struct WindowLayoutShortcutConflict: Equatable, Identifiable {
     }
 }
 
+struct WindowLayoutApplicationShortcutException: Equatable, Identifiable {
+    let applicationName: String
+    let bundleIdentifier: String
+    let shortcutText: String
+    let applicationAction: String
+    let shortcut: MagnetShortcut
+
+    var id: String {
+        "\(bundleIdentifier)|\(shortcut.carbonModifiers)|\(shortcut.carbonKeyCode)"
+    }
+}
+
 struct WindowLayoutApplicationShortcutPolicy {
-    static let passThroughShortcutsByBundleIdentifier: [String: Set<MagnetShortcut>] = [
-        "com.google.Chrome": [
-            MagnetShortcut(
+    static let exceptions: [WindowLayoutApplicationShortcutException] = [
+        WindowLayoutApplicationShortcutException(
+            applicationName: "Google Chrome",
+            bundleIdentifier: "com.google.Chrome",
+            shortcutText: "⌘⌥U",
+            applicationAction: "View Page Source",
+            shortcut: MagnetShortcut(
                 carbonKeyCode: UInt32(kVK_ANSI_U),
-                carbonModifiers: UInt32(optionKey | cmdKey)),
-            MagnetShortcut(
+                carbonModifiers: UInt32(optionKey | cmdKey))),
+        WindowLayoutApplicationShortcutException(
+            applicationName: "Google Chrome",
+            bundleIdentifier: "com.google.Chrome",
+            shortcutText: "⌘⌥I",
+            applicationAction: "Developer Tools",
+            shortcut: MagnetShortcut(
                 carbonKeyCode: UInt32(kVK_ANSI_I),
-                carbonModifiers: UInt32(optionKey | cmdKey)),
-            MagnetShortcut(
+                carbonModifiers: UInt32(optionKey | cmdKey))),
+        WindowLayoutApplicationShortcutException(
+            applicationName: "Google Chrome",
+            bundleIdentifier: "com.google.Chrome",
+            shortcutText: "⌘⌥J",
+            applicationAction: "JavaScript Console",
+            shortcut: MagnetShortcut(
                 carbonKeyCode: UInt32(kVK_ANSI_J),
-                carbonModifiers: UInt32(optionKey | cmdKey))
-        ]
+                carbonModifiers: UInt32(optionKey | cmdKey)))
     ]
 
     static func passThroughShortcuts(for bundleIdentifier: String?) -> Set<MagnetShortcut> {
         guard let bundleIdentifier else { return [] }
-        return passThroughShortcutsByBundleIdentifier[bundleIdentifier] ?? []
+        return Set(exceptions.lazy
+            .filter { $0.bundleIdentifier == bundleIdentifier }
+            .map(\.shortcut))
     }
 }
 

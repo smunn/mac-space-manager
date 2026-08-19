@@ -200,13 +200,15 @@ struct MagnetShortcutConfigurationView: View {
 
             if mode == .configure {
                 configurationContent
-            } else {
+            } else if mode == .guide {
                 MagnetShortcutVisualGuide(
                     commands: model.commands,
                     orientation: $model.orientation,
                     group: $model.group,
                     selection: $model.selection
                 )
+            } else {
+                applicationExceptions
             }
         }
         .frame(minWidth: 920, idealWidth: 1080, minHeight: 640, idealHeight: 720)
@@ -236,7 +238,7 @@ struct MagnetShortcutConfigurationView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 200)
+            .frame(width: 280)
 
             Spacer()
 
@@ -310,6 +312,26 @@ struct MagnetShortcutConfigurationView: View {
         .navigationSplitViewStyle(.balanced)
     }
 
+    private var applicationExceptions: some View {
+        Table(WindowLayoutApplicationShortcutPolicy.exceptions) {
+            TableColumn("Application") { exception in
+                Text(exception.applicationName)
+            }
+            .width(min: 160, ideal: 200)
+
+            TableColumn("Shortcut") { exception in
+                Text(exception.shortcutText)
+                    .font(.system(.body, design: .monospaced))
+            }
+            .width(100)
+
+            TableColumn("Application Action") { exception in
+                Text(exception.applicationAction)
+            }
+        }
+        .debugLabel("applicationShortcutExceptionsView")
+    }
+
     private var filterBar: some View {
         VStack(spacing: 8) {
             Picker("Orientation", selection: $model.orientation) {
@@ -366,6 +388,7 @@ struct MagnetShortcutConfigurationView: View {
     private enum EditorMode: String, CaseIterable, Identifiable {
         case configure = "Configure"
         case guide = "Visual Guide"
+        case exceptions = "Exceptions"
         var id: String { rawValue }
     }
 }

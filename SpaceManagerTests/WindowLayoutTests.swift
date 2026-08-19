@@ -20,6 +20,10 @@ final class WindowLayoutTests: XCTestCase {
     }
 
     func testChromeApplicationShortcutsPassThrough() {
+        XCTAssertEqual(
+            WindowLayoutApplicationShortcutPolicy.exceptions.map(\.applicationAction),
+            ["View Page Source", "Developer Tools", "JavaScript Console"])
+
         let shortcuts = WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
             for: "com.google.Chrome")
 
