@@ -19,6 +19,41 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertEqual(conflict.commandIDs, ["portrait", "horizontal"])
     }
 
+    func testChromeApplicationShortcutsPassThrough() {
+        let shortcuts = WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+            for: "com.google.Chrome")
+
+        XCTAssertEqual(shortcuts, [
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_U),
+                carbonModifiers: UInt32(optionKey | cmdKey)),
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_I),
+                carbonModifiers: UInt32(optionKey | cmdKey)),
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_J),
+                carbonModifiers: UInt32(optionKey | cmdKey))
+        ])
+    }
+
+    func testApplicationShortcutPassThroughIsExactAndChromeSpecific() {
+        XCTAssertTrue(
+            WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+                for: "com.apple.Safari").isEmpty)
+        XCTAssertTrue(
+            WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+                for: nil).isEmpty)
+
+        let chromeShortcuts = WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+            for: "com.google.Chrome")
+        XCTAssertFalse(chromeShortcuts.contains(MagnetShortcut(
+            carbonKeyCode: UInt32(kVK_ANSI_O),
+            carbonModifiers: UInt32(optionKey | cmdKey))))
+        XCTAssertFalse(chromeShortcuts.contains(MagnetShortcut(
+            carbonKeyCode: UInt32(kVK_ANSI_U),
+            carbonModifiers: UInt32(optionKey | shiftKey | cmdKey))))
+    }
+
     @MainActor
     func testKnownInternalShortcutConflictIdentifiesItsOwner() {
         XCTAssertEqual(

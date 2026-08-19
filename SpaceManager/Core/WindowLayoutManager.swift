@@ -28,6 +28,27 @@ struct WindowLayoutShortcutConflict: Equatable, Identifiable {
     }
 }
 
+struct WindowLayoutApplicationShortcutPolicy {
+    static let passThroughShortcutsByBundleIdentifier: [String: Set<MagnetShortcut>] = [
+        "com.google.Chrome": [
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_U),
+                carbonModifiers: UInt32(optionKey | cmdKey)),
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_I),
+                carbonModifiers: UInt32(optionKey | cmdKey)),
+            MagnetShortcut(
+                carbonKeyCode: UInt32(kVK_ANSI_J),
+                carbonModifiers: UInt32(optionKey | cmdKey))
+        ]
+    ]
+
+    static func passThroughShortcuts(for bundleIdentifier: String?) -> Set<MagnetShortcut> {
+        guard let bundleIdentifier else { return [] }
+        return passThroughShortcutsByBundleIdentifier[bundleIdentifier] ?? []
+    }
+}
+
 @MainActor
 final class WindowLayoutManager: NSObject, ObservableObject {
     static let shared = WindowLayoutManager()
@@ -50,6 +71,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var commandsByHotKeyID: [UInt32: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
     private var cheatsheetModifierSets: Set<Set<MagnetShortcutModifier>> = []
     private var hotKeys: [EventHotKeyRef] = []
+    private var registeredApplicationPassThroughShortcuts: Set<MagnetShortcut> = []
     private var eventHandler: EventHandlerRef?
     private var cheatsheetEventTap: CFMachPort?
     private var cheatsheetEventTapSource: CFRunLoopSource?
@@ -305,9 +327,14 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         return commands
     }
 
-    private func registerHotKeys() throws {
+    private func registerHotKeys(
+        passThroughShortcuts: Set<MagnetShortcut>? = nil
+    ) throws {
         unregisterHotKeys()
         shortcutConflicts = []
+        let applicationPassThroughShortcuts = passThroughShortcuts
+            ?? WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+                for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         var routes: [MagnetShortcut: [MagnetDisplayOrientation: MagnetShortcutCommand]] = [:]
         for command in commands where command.isEnabled {
             for shortcut in shortcuts(for: command) {
@@ -392,6 +419,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 ? lhs.key.carbonKeyCode < rhs.key.carbonKeyCode
                 : lhs.key.carbonModifiers < rhs.key.carbonModifiers
         }).enumerated() {
+            // Carbon global hot keys consume the original event, so app-owned
+            // shortcuts must remain unregistered while that app is frontmost.
+            guard !applicationPassThroughShortcuts.contains(entry.key) else { continue }
             let id = UInt32(index + 1000)
             var reference: EventHotKeyRef?
             let registration = RegisterEventHotKey(
@@ -417,6 +447,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             hotKeys.append(reference)
             commandsByHotKeyID[id] = entry.value
         }
+        registeredApplicationPassThroughShortcuts = applicationPassThroughShortcuts
     }
 
     private func unregisterHotKeys() {
@@ -427,6 +458,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         hotKeys.removeAll()
         commandsByHotKeyID.removeAll()
         cheatsheetModifierSets.removeAll()
+        registeredApplicationPassThroughShortcuts.removeAll()
         if let eventHandler {
             RemoveEventHandler(eventHandler)
             self.eventHandler = nil
@@ -1053,7 +1085,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         let center = NSWorkspace.shared.notificationCenter
         observers.append(center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
             let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            Task { @MainActor in self?.rememberExternalApplication(application) }
+            Task { @MainActor in
+                guard let self else { return }
+                self.rememberExternalApplication(application)
+                self.refreshApplicationShortcutPassThrough(for: application)
+            }
         })
         observers.append(center.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] note in
             let application = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
@@ -1076,6 +1112,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 }
             }
         })
+    }
+
+    private func refreshApplicationShortcutPassThrough(
+        for application: NSRunningApplication?
+    ) {
+        guard isEnabled else { return }
+        let passThroughShortcuts = WindowLayoutApplicationShortcutPolicy.passThroughShortcuts(
+            for: application?.bundleIdentifier)
+        guard passThroughShortcuts != registeredApplicationPassThroughShortcuts else { return }
+
+        do {
+            try registerHotKeys(passThroughShortcuts: passThroughShortcuts)
+            lastError = nil
+        } catch {
+            disable()
+            lastError = error.localizedDescription
+        }
     }
 
     private func observeConfigurationChanges() {
