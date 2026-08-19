@@ -66,6 +66,21 @@ enum MagnetShortcutModifier: String, CaseIterable, Identifiable, Codable {
 }
 
 struct MagnetShortcutCommand: Identifiable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case orientation
+        case group
+        case section
+        case destinationKey
+        case modifiers
+        case isEnabled
+        case x
+        case y
+        case width
+        case height
+    }
+
     var id: String
     var name: String
     var orientation: MagnetDisplayOrientation
@@ -88,6 +103,24 @@ struct MagnetShortcutCommand: Identifiable, Equatable, Codable {
 
     var displayName: String {
         name == "Restore" ? "Restore Original" : name
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(orientation, forKey: .orientation)
+        try container.encode(group, forKey: .group)
+        try container.encode(section, forKey: .section)
+        try container.encode(destinationKey, forKey: .destinationKey)
+        try container.encode(
+            MagnetShortcutModifier.allCases.filter(modifiers.contains),
+            forKey: .modifiers)
+        try container.encode(isEnabled, forKey: .isEnabled)
+        try container.encode(x, forKey: .x)
+        try container.encode(y, forKey: .y)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
     }
 }
 

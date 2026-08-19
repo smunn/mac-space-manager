@@ -230,6 +230,19 @@ final class WindowLayoutTests: XCTestCase {
         XCTAssertEqual(try store.load(), commands)
     }
 
+    func testShortcutCommandEncodesModifiersInCanonicalOrder() throws {
+        var command = try XCTUnwrap(MagnetShortcutCommand.standardSet.first)
+        command.modifiers = [.command, .shift, .control, .option]
+
+        let data = try JSONEncoder().encode(command)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(
+            object["modifiers"] as? [String],
+            ["control", "option", "shift", "command"])
+    }
+
     @MainActor
     func testOnlyExactWindowActionNamesReceiveSpecialRouting() {
         XCTAssertEqual(WindowLayoutManager.operation(for: "Center"), .center)
