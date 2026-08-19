@@ -33,7 +33,17 @@ struct AILimitsSnapshotReader {
     }
 
     func read() -> AILimitsSnapshot? {
-        read(fileURL) ?? read(cacheFileURL)
+        readResult()?.snapshot
+    }
+
+    func readResult() -> AILimitsSnapshotResult? {
+        if let snapshot = read(fileURL) {
+            return AILimitsSnapshotResult(snapshot: snapshot, source: .local)
+        }
+        if let snapshot = read(cacheFileURL) {
+            return AILimitsSnapshotResult(snapshot: snapshot, source: .supabase)
+        }
+        return nil
     }
 
     var needsCloudFallback: Bool {

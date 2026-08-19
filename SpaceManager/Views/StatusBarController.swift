@@ -258,8 +258,9 @@ class StatusBarController: NSObject {
     }
 
     private func refreshAILimits() {
-        if let snapshot = aiLimitsReader.read() {
-            aiLimitsViewModel.snapshot = snapshot
+        if let result = aiLimitsReader.readResult() {
+            aiLimitsViewModel.snapshot = result.snapshot
+            aiLimitsViewModel.source = result.source
         }
         aiLimitsViewModel.displayedAt = Date()
 
@@ -274,6 +275,7 @@ class StatusBarController: NSObject {
             self.aiLimitsCloudRefreshInFlight = false
             guard let snapshot else { return }
             self.aiLimitsViewModel.snapshot = snapshot
+            self.aiLimitsViewModel.source = .supabase
             self.aiLimitsViewModel.displayedAt = Date()
         }
     }

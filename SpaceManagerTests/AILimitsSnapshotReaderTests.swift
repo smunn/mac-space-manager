@@ -44,8 +44,10 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
         }
         """#.utf8).write(to: fileURL)
 
-        let snapshot = try XCTUnwrap(AILimitsSnapshotReader(fileURL: fileURL).read())
+        let result = try XCTUnwrap(AILimitsSnapshotReader(fileURL: fileURL).readResult())
+        let snapshot = result.snapshot
 
+        XCTAssertEqual(result.source, .local)
         XCTAssertEqual(snapshot.claude.fiveHour.percentUsed, 52)
         XCTAssertEqual(snapshot.claude.weekly.percentUsed, 61)
         XCTAssertEqual(snapshot.claude.fable?.percentUsed, 92)
@@ -87,10 +89,11 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
             .write(to: cacheURL)
 
         let reader = AILimitsSnapshotReader(fileURL: localURL, cacheFileURL: cacheURL)
-        let snapshot = try XCTUnwrap(reader.read())
+        let result = try XCTUnwrap(reader.readResult())
 
         XCTAssertTrue(reader.needsCloudFallback)
-        XCTAssertEqual(snapshot.claude.fiveHour.percentUsed, 37)
+        XCTAssertEqual(result.source, .supabase)
+        XCTAssertEqual(result.snapshot.claude.fiveHour.percentUsed, 37)
     }
 
     func testNormalizesSupabaseRowsAndSelectsFreshestServiceAccount() throws {

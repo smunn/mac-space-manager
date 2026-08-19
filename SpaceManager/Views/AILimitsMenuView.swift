@@ -36,6 +36,7 @@ enum AILimitsResetFormatter {
 @MainActor
 final class AILimitsMenuViewModel: ObservableObject {
     @Published var snapshot: AILimitsSnapshot?
+    @Published var source: AILimitsSnapshotSource?
     @Published var displayedAt = Date()
 }
 
@@ -90,7 +91,7 @@ struct AILimitsMenuView: View {
                 limitCell("Fable", value: limits?.fable, width: 76)
             }
             Spacer(minLength: 4)
-            Text(ageText(limits?.collectedAt))
+            Text(sourceText(collectedAt: limits?.collectedAt))
                 .font(.system(size: 9, weight: .medium).monospacedDigit())
                 .foregroundStyle(ageColor(limits?.collectedAt))
         }
@@ -135,6 +136,12 @@ struct AILimitsMenuView: View {
         if seconds < 3_600 { return "\(seconds / 60)m old" }
         if seconds < 86_400 { return "\(seconds / 3_600)h old" }
         return "\(seconds / 86_400)d old"
+    }
+
+    private func sourceText(collectedAt: Date?) -> String {
+        let age = ageText(collectedAt)
+        guard let source = model.source else { return age }
+        return "\(age.replacingOccurrences(of: " old", with: "")) · \(source.label)"
     }
 
     private func ageColor(_ date: Date?) -> Color {
