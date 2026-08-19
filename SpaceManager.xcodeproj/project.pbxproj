@@ -14,6 +14,7 @@
 		0AAC9F13F11C3375E4C47ED9 /* ProcessHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733D1DA7778E004B4E5C77B4 /* ProcessHelper.swift */; };
 		0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */; };
 		10B22F7D4375431CC34B079F /* CloseSpaceShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94BC38FDC9F374AAD2AC440C /* CloseSpaceShortcutController.swift */; };
+		12F5753F7EBD6773EF79D245 /* MagnetShortcutManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53773C8D697D1C87E028F365 /* MagnetShortcutManagerTests.swift */; };
 		16B3F3970987C37716EDFB95 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4363450A7549D2DDE4A1B5A5 /* LaunchAtLoginManager.swift */; };
 		16C7C843667360D03C1FE6FF /* AppBuildInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 450BB0C162552E0E7D8AEA18 /* AppBuildInfo.swift */; };
 		1BFB4555AF14CA96CFB25B14 /* DisplayDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */; };
@@ -122,6 +123,7 @@
 		4A6E5D9F9623C9430FBA6B37 /* AILimitsSnapshotReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AILimitsSnapshotReaderTests.swift; sourceTree = "<group>"; };
 		4AC80DA235AD47C992270A3B /* SpaceTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTransfer.swift; sourceTree = "<group>"; };
 		4C699A48A6374BCDA24048F9 /* WindowMoveLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMoveLog.swift; sourceTree = "<group>"; };
+		53773C8D697D1C87E028F365 /* MagnetShortcutManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutManagerTests.swift; sourceTree = "<group>"; };
 		5679C16460E93B067FD6FEB8 /* MacDisplayLayoutGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDisplayLayoutGuide.swift; sourceTree = "<group>"; };
 		57585FBBA87AD89D93D009B7 /* DisplayDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayDirection.swift; sourceTree = "<group>"; };
 		5851DB93F14198A6FB73CF4D /* WallpaperResetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperResetter.swift; sourceTree = "<group>"; };
@@ -302,6 +304,7 @@
 				4A6E5D9F9623C9430FBA6B37 /* AILimitsSnapshotReaderTests.swift */,
 				5B14A0676EE76DAB99477270 /* ChromeProfileManagerTests.swift */,
 				7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */,
+				53773C8D697D1C87E028F365 /* MagnetShortcutManagerTests.swift */,
 				336A097979FB3DC851BBA76E /* PerformanceMetricToneTests.swift */,
 				3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */,
 				DBDCF5D5321D4F0732CCE96E /* WindowLayoutTests.swift */,
@@ -448,6 +451,7 @@
 				4D22D27A82ACBF14519DB9A5 /* AILimitsSnapshotReaderTests.swift in Sources */,
 				8FBF610A2B89654F9447263A /* ChromeProfileManagerTests.swift in Sources */,
 				0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */,
+				12F5753F7EBD6773EF79D245 /* MagnetShortcutManagerTests.swift in Sources */,
 				B6DEF6A8B173564D66437131 /* PerformanceMetricToneTests.swift in Sources */,
 				083BB011D334E97AC15DCCB1 /* ProcessHealthMonitorTests.swift in Sources */,
 				FCFFC68046E4FB4B6E757EBE /* WindowLayoutTests.swift in Sources */,

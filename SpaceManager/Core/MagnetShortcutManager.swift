@@ -55,17 +55,20 @@ final class MagnetShortcutManager {
 
     private let fileManager: FileManager
     private let workspace: NSWorkspace
+    private let domain: String
 
     init(
         fileManager: FileManager = .default,
         workspace: NSWorkspace = .shared,
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        preferenceDomain: String = MagnetShortcutManager.preferenceDomain
     ) {
         self.fileManager = fileManager
         self.workspace = workspace
+        domain = preferenceDomain
         preferencesURL = homeDirectory
             .appendingPathComponent("Library/Preferences", isDirectory: true)
-            .appendingPathComponent("\(Self.preferenceDomain).plist")
+            .appendingPathComponent("\(preferenceDomain).plist")
 
         let support = homeDirectory
             .appendingPathComponent("Library/Application Support/Space Manager", isDirectory: true)
@@ -74,11 +77,7 @@ final class MagnetShortcutManager {
     }
 
     func loadMagnetConfiguration() throws -> MagnetShortcutConfiguration {
-        guard fileManager.fileExists(atPath: preferencesURL.path) else {
-            throw MagnetShortcutManagerError.preferencesNotFound(preferencesURL)
-        }
-        let plistData = try Data(contentsOf: preferencesURL)
-        return try decodeConfiguration(from: plistData)
+        try decodeConfiguration(from: preferenceData())
     }
 
     func loadDraft() throws -> MagnetShortcutConfiguration? {
@@ -193,7 +192,7 @@ final class MagnetShortcutManager {
     }
 
     private func makeUpdatedPropertyList(from configuration: MagnetShortcutConfiguration) throws -> Data {
-        let liveData = try? Data(contentsOf: preferencesURL)
+        let liveData = try? preferenceData()
         let baseData = liveData ?? configuration.sourcePropertyList
         guard var plist = try PropertyListSerialization.propertyList(from: baseData, options: [], format: nil)
                 as? [String: Any]
@@ -209,17 +208,32 @@ final class MagnetShortcutManager {
     }
 
     private func backupCurrentPreferences() throws -> URL {
-        guard fileManager.fileExists(atPath: preferencesURL.path) else {
-            throw MagnetShortcutManagerError.preferencesNotFound(preferencesURL)
-        }
+        let data = try preferenceData()
         try fileManager.createDirectory(at: backupsDirectoryURL, withIntermediateDirectories: true)
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss-SSS"
         let destination = backupsDirectoryURL
             .appendingPathComponent("com.crowdcafe.windowmagnet_\(formatter.string(from: Date())).plist")
-        try fileManager.copyItem(at: preferencesURL, to: destination)
+        try data.write(to: destination, options: .atomic)
         return destination
+    }
+
+    /// Preference domains are managed by cfprefsd and are not guaranteed to be
+    /// materialized as a readable file in ~/Library/Preferences. Export the live
+    /// domain first, then retain the file path as a compatibility fallback.
+    private func preferenceData() throws -> Data {
+        if let export = try? run("/usr/bin/defaults", arguments: ["export", domain, "-"]),
+           export.status == 0,
+           let data = export.stdout.data(using: .utf8),
+           (try? decodeConfiguration(from: data)) != nil {
+            return data
+        }
+
+        guard fileManager.fileExists(atPath: preferencesURL.path) else {
+            throw MagnetShortcutManagerError.preferencesNotFound(preferencesURL)
+        }
+        return try Data(contentsOf: preferencesURL)
     }
 
     private func quitMagnet() throws {
@@ -247,14 +261,14 @@ final class MagnetShortcutManager {
         try data.write(to: temporaryURL, options: .atomic)
         defer { try? fileManager.removeItem(at: temporaryURL) }
 
-        let output = try run("/usr/bin/defaults", arguments: ["import", Self.preferenceDomain, temporaryURL.path])
+        let output = try run("/usr/bin/defaults", arguments: ["import", domain, temporaryURL.path])
         guard output.status == 0 else {
             throw MagnetShortcutManagerError.commandFailed("defaults import", output.stderr)
         }
     }
 
     private func verify(_ expected: MagnetShortcutConfiguration) throws {
-        let export = try run("/usr/bin/defaults", arguments: ["export", Self.preferenceDomain, "-"])
+        let export = try run("/usr/bin/defaults", arguments: ["export", domain, "-"])
         guard export.status == 0,
               let data = export.stdout.data(using: .utf8),
               let actual = try? decodeConfiguration(from: data),

@@ -10,7 +10,7 @@ final class MagnetShortcutEditorCoordinator {
     private let manager: MagnetShortcutManager
     private let shortcutStore: WindowLayoutShortcutStore
     private let adapter = MagnetShortcutEditorAdapter()
-    private var configuration: MagnetShortcutConfiguration
+    private var configuration: MagnetShortcutConfiguration?
     private var edits: [MagnetShortcutCommand]
 
     init(
@@ -19,8 +19,10 @@ final class MagnetShortcutEditorCoordinator {
     ) throws {
         self.manager = manager
         self.shortcutStore = shortcutStore
-        configuration = try manager.loadDraftOrMagnetConfiguration()
-        edits = try shortcutStore.load() ?? adapter.editorCommands(from: configuration)
+        configuration = try? manager.loadDraftOrMagnetConfiguration()
+        edits = try shortcutStore.load()
+            ?? configuration.map(adapter.editorCommands(from:))
+            ?? MagnetShortcutCommand.standardSet
         try shortcutStore.save(edits)
     }
 
@@ -29,20 +31,28 @@ final class MagnetShortcutEditorCoordinator {
     }
 
     func save(_ edits: [MagnetShortcutCommand]) throws {
-        let updated = try adapter.applying(edits, to: configuration)
-        let conflicts = manager.validate(updated)
-        guard conflicts.isEmpty else {
-            throw MagnetShortcutManagerError.duplicateShortcuts(conflicts)
+        if let configuration {
+            let updated = try adapter.applying(edits, to: configuration)
+            let conflicts = manager.validate(updated)
+            guard conflicts.isEmpty else {
+                throw MagnetShortcutManagerError.duplicateShortcuts(conflicts)
+            }
+            try manager.saveDraft(updated)
+            self.configuration = updated
         }
-        try manager.saveDraft(updated)
         try shortcutStore.save(edits)
-        configuration = updated
         self.edits = edits
         NotificationCenter.default.post(name: Notification.Name("WindowLayoutConfigurationDidChange"), object: nil)
     }
 
     func apply(_ edits: [MagnetShortcutCommand]) async throws {
-        let updated = try adapter.applying(edits, to: configuration)
+        let baseConfiguration: MagnetShortcutConfiguration
+        if let configuration {
+            baseConfiguration = configuration
+        } else {
+            baseConfiguration = try manager.loadDraftOrMagnetConfiguration()
+        }
+        let updated = try adapter.applying(edits, to: baseConfiguration)
         let conflicts = manager.validate(updated)
         guard conflicts.isEmpty else {
             throw MagnetShortcutManagerError.duplicateShortcuts(conflicts)
