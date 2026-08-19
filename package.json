@@ -1,6 +1,6 @@
 {
   "name": "sm-space-manager",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "scripts": {
     "deploy": "$HOME/Sites/mac-configuration-scripts/bin/mac-deploy",

@@ -21,8 +21,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.smunn.SpaceManager
         PRODUCT_NAME: Space Manager
-        MARKETING_VERSION: "0.1.10"
-        CURRENT_PROJECT_VERSION: 11
+        MARKETING_VERSION: "0.1.11"
+        CURRENT_PROJECT_VERSION: 12
         SWIFT_OBJC_BRIDGING_HEADER: SpaceManager/SpaceManager-Bridging-Header.h
         INFOPLIST_FILE: SpaceManager/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: SpaceManager/Resources/SpaceManager.entitlements
