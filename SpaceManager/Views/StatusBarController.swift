@@ -810,7 +810,7 @@ class StatusBarController: NSObject {
         let organizeTerminalItem = NSMenuItem(
             title: "Create Spaces for Terminal Windows (\(terminalWindowCount))",
             action: terminalWindowCount > 0 ? #selector(createSpacesForTerminalWindows) : nil,
-            keyEquivalent: "t")
+            keyEquivalent: "a")
         organizeTerminalItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
         organizeTerminalItem.target = self
         submenu.addItem(organizeTerminalItem)

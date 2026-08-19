@@ -915,7 +915,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
 
     static func internalShortcutOwner(for shortcut: MagnetShortcut) -> String? {
         let terminalWindowsShortcut = MagnetShortcut(
-            carbonKeyCode: UInt32(kVK_ANSI_T),
+            carbonKeyCode: UInt32(kVK_ANSI_A),
             carbonModifiers: UInt32(controlKey | optionKey | shiftKey | cmdKey))
         return shortcut == terminalWindowsShortcut
             ? "Space Manager: Organize Terminal Windows"
