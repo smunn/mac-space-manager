@@ -228,6 +228,9 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     }
 
     private func enable() throws {
+        guard AppPermissions.check(.accessibility) else {
+            throw WindowLayoutError.permissionRequired(.accessibility)
+        }
         guard !magnetIsRunning() else { throw WindowLayoutError.magnetRunning }
         commands = try loadCommands()
         guard commands.contains(where: \.isEnabled) else { throw WindowLayoutError.noCommands }
@@ -317,7 +320,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 nil,
                 &eventHandler)
         }
-        guard status == noErr else { throw WindowLayoutError.hotKeyRegistration(status) }
+        guard status == noErr else { throw WindowLayoutError.eventHandlerRegistration(status) }
 
         let modifierSets = Set(commands.lazy.filter(\.isEnabled).map(\.modifiers))
             .filter { $0.count >= 2 }
@@ -336,7 +339,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             &settingsReference)
         guard settingsRegistration == noErr, let settingsReference else {
             unregisterHotKeys()
-            throw WindowLayoutError.hotKeyRegistration(settingsRegistration)
+            throw WindowLayoutError.hotKeyRegistration(Self.settingsShortcutText, settingsRegistration)
         }
         hotKeys.append(settingsReference)
 
@@ -356,7 +359,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 &reference)
             guard registration == noErr, let reference else {
                 unregisterHotKeys()
-                throw WindowLayoutError.hotKeyRegistration(registration)
+                throw WindowLayoutError.hotKeyRegistration(entry.value.values.first?.shortcutText ?? "Unknown", registration)
             }
             hotKeys.append(reference)
             commandsByHotKeyID[id] = entry.value
@@ -1212,21 +1215,31 @@ private let cheatsheetEventTapCallback: CGEventTapCallBack = { _, type, event, u
 }
 
 private enum WindowLayoutError: LocalizedError {
+    case permissionRequired(AppPermission)
     case magnetRunning
     case magnetDidNotQuit
     case noCommands
     case duplicateShortcut(String)
     case reservedShortcutConflict(String)
-    case hotKeyRegistration(OSStatus)
+    case eventHandlerRegistration(OSStatus)
+    case hotKeyRegistration(String, OSStatus)
 
     var errorDescription: String? {
         switch self {
+        case .permissionRequired(let permission):
+            return "Grant \(permission.title) before enabling Window Layouts."
         case .magnetRunning: return "Quit Magnet before enabling Window Layouts."
         case .magnetDidNotQuit: return "Magnet did not quit."
         case .noCommands: return "No window layout shortcuts are configured."
         case .duplicateShortcut(let shortcut): return "The shortcut \(shortcut) is assigned more than once for the same display orientation."
         case .reservedShortcutConflict(let shortcut): return "The shortcut \(shortcut) is reserved by Window Layouts."
-        case .hotKeyRegistration(let status): return "A window layout shortcut could not be registered (\(status))."
+        case .eventHandlerRegistration(let status):
+            return "Window Layouts could not start (\(status))."
+        case .hotKeyRegistration(let shortcut, let status):
+            if status == eventHotKeyExistsErr {
+                return "The shortcut \(shortcut) is already in use by another app."
+            }
+            return "The shortcut \(shortcut) could not be registered (\(status))."
         }
     }
 }

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Space Manager uses AppleScript to switch between desktops</string>
+	<string>Space Manager uses AppleScript to open and organize Terminal windows</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

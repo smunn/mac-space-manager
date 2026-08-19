@@ -20,6 +20,8 @@ class StatusBarController: NSObject {
     private let spaceSwitcher = SpaceSwitcher()
     private var settingsWindow: NSWindow?
     private var settingsWindowModel: SettingsWindowModel?
+    private var permissionsMenuItem: NSMenuItem?
+    private var permissionsMenuSeparator: NSMenuItem?
     private var workspaceEditorWindow: NSWindow?
     private var createIssueWindow: NSWindow?
     private var createIssueHasPendingChanges = false
@@ -107,6 +109,19 @@ class StatusBarController: NSObject {
 
     private func rebuildMenu(_ spaces: [Space]) {
         statusMenu.removeAllItems()
+
+        let permissionsItem = NSMenuItem(
+            title: "Window Management Permissions Needed…",
+            action: #selector(openWindowManagementPermissions),
+            keyEquivalent: "")
+        permissionsItem.target = self
+        statusMenu.addItem(permissionsItem)
+        permissionsMenuItem = permissionsItem
+
+        let permissionsSeparator = NSMenuItem.separator()
+        statusMenu.addItem(permissionsSeparator)
+        permissionsMenuSeparator = permissionsSeparator
+        refreshPermissionsMenuItem()
 
         addAILimitsSection(to: statusMenu)
         statusMenu.addItem(NSMenuItem.separator())
@@ -2219,6 +2234,10 @@ class StatusBarController: NSObject {
         openSettingsWindow(selectedTab: .windowLayouts)
     }
 
+    @objc private func openWindowManagementPermissions() {
+        openSettingsWindow(selectedTab: .permissions)
+    }
+
     @objc private func openSettings() {
         openSettingsWindow(selectedTab: .general)
     }
@@ -2305,6 +2324,7 @@ class StatusBarController: NSObject {
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if menu === statusMenu {
+            refreshPermissionsMenuItem()
             refreshAILimits()
             menuContextDisplayID = DisplayGeometryUtilities.displayUUID(
                 containing: NSEvent.mouseLocation,
@@ -2314,6 +2334,12 @@ extension StatusBarController: NSMenuDelegate {
             refreshProcessHealth()
             requestSpaceRefresh? { _ in }
         }
+    }
+
+    private func refreshPermissionsMenuItem() {
+        let hasMissingPermissions = !AppPermissions.missingWindowManagementPermissions.isEmpty
+        permissionsMenuItem?.isHidden = !hasMissingPermissions
+        permissionsMenuSeparator?.isHidden = !hasMissingPermissions
     }
 
     func menuDidClose(_ menu: NSMenu) {

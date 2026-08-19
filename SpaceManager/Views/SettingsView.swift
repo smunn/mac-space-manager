@@ -7,6 +7,7 @@ import SwiftUI
 
 enum SettingsTab: Hashable {
     case general
+    case permissions
     case windowLayouts
 }
 
@@ -31,6 +32,10 @@ struct SpaceManagerSettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag(SettingsTab.general)
 
+            WindowManagementPermissionsView()
+                .tabItem { Label("Permissions", systemImage: "lock.shield") }
+                .tag(SettingsTab.permissions)
+
             MagnetShortcutConfigurationView(
                 commands: commands,
                 onSave: onSave,
@@ -51,7 +56,6 @@ struct SettingsView: View {
     @AppStorage(MissionControlNameOverlayController.enabledDefaultsKey)
     private var showNamesInMissionControl = true
     @AppStorage(WallpaperResetter.folderDefaultsKey) private var defaultWallpaperFolder = WallpaperResetter.defaultFolderPath
-    @State private var permissionStates: [AppPermission: Bool] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -138,22 +142,6 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            GroupBox("Permissions") {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(AppPermission.allCases, id: \.self) { permission in
-                        PermissionStatusRow(
-                            permission: permission,
-                            isGranted: permissionStates[permission] ?? false
-                        )
-                    }
-
-                    Button("Refresh") {
-                        refresh()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
             GroupBox("Space Reset") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
@@ -177,17 +165,8 @@ struct SettingsView: View {
         .frame(width: 430)
         .onAppear {
             launchAtLogin.refresh()
-            refresh()
         }
         .debugLabel("settingsView")
-    }
-
-    private func refresh() {
-        permissionStates = Dictionary(
-            uniqueKeysWithValues: AppPermission.allCases.map { permission in
-                (permission, AppPermissions.check(permission))
-            }
-        )
     }
 
     private func chooseWallpaperFolder() {
@@ -200,6 +179,72 @@ struct SettingsView: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             defaultWallpaperFolder = url.path
+        }
+    }
+}
+
+struct WindowManagementPermissionsView: View {
+    @State private var permissionStates: [AppPermission: Bool] = [:]
+
+    private var nextPermission: AppPermission? {
+        AppPermission.allCases.first { permissionStates[$0] != true }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Window Management Permissions")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(AppPermission.allCases) { permission in
+                        PermissionStatusRow(
+                            permission: permission,
+                            isGranted: permissionStates[permission] ?? false
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack {
+                if let nextPermission {
+                    Button("Grant \(nextPermission.title)") {
+                        AppPermissions.request(nextPermission)
+                        refreshAfterRequest()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+
+                Button("Refresh") {
+                    refresh()
+                }
+            }
+
+            Spacer()
+        }
+        .padding(20)
+        .frame(minWidth: 560, minHeight: 360)
+        .onAppear(perform: refresh)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refresh()
+        }
+        .debugLabel("windowManagementPermissionsView")
+    }
+
+    private func refresh() {
+        permissionStates = Dictionary(
+            uniqueKeysWithValues: AppPermission.allCases.map { permission in
+                (permission, AppPermissions.check(permission))
+            }
+        )
+    }
+
+    private func refreshAfterRequest() {
+        refresh()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            refresh()
         }
     }
 }
@@ -223,7 +268,7 @@ private struct PermissionStatusRow: View {
                 .font(.caption)
                 .foregroundStyle(isGranted ? Color.secondary : Color.red)
 
-            Button("Open") {
+            Button(isGranted ? "Open" : "Grant") {
                 AppPermissions.openSettings(for: permission)
             }
         }
