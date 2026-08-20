@@ -31,33 +31,40 @@ struct PerformanceMenuView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            HStack(spacing: 7) {
-                Text("Performance")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.primary)
-                compactMetric(
+            header
+
+            HStack(spacing: 8) {
+                metricCell(
                     label: "CPU",
                     value: cpuText,
                     detail: nil,
+                    fraction: model.snapshot?.cpuUsage,
                     tone: PerformanceMetricTone.cpu(model.snapshot?.cpuUsage))
-                compactMetric(
+                    .frame(width: 54, alignment: .leading)
+                metricCell(
                     label: "Memory",
                     value: memoryText,
                     detail: memoryDetail,
+                    fraction: memoryFraction,
                     tone: PerformanceMetricTone.memory(memoryFraction))
-                compactMetric(
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+                metricCell(
                     label: "Battery",
                     value: batteryText,
                     detail: batteryDetail,
+                    fraction: batteryFraction,
                     tone: PerformanceMetricTone.battery(
                         batteryFraction,
                         isCharging: model.snapshot?.batteryIsCharging == true))
-                compactMetric(
+                    .frame(width: 60, alignment: .leading)
+                metricCell(
                     label: "Heat",
                     value: thermalText,
                     detail: nil,
+                    fraction: thermalFraction,
                     tone: PerformanceMetricTone.thermal(model.snapshot?.thermalState))
-                Spacer(minLength: 0)
+                    .frame(width: 68, alignment: .leading)
             }
 
             HStack(spacing: 16) {
@@ -271,28 +278,6 @@ struct PerformanceMenuView: View {
             detail: detail,
             fraction: fraction,
             tone: tone)
-    }
-
-    private func compactMetric(
-        label: String,
-        value: String,
-        detail: String?,
-        tone: PerformanceMetricTone?
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(label)
-                .foregroundStyle(.tertiary)
-            Text(value)
-                .foregroundStyle(tone?.color ?? Color(nsColor: .secondaryLabelColor))
-            if let detail {
-                Text(detail)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .font(.system(size: 9, weight: .medium).monospacedDigit())
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-        .debugLabel("compactPerformanceMetric")
     }
 
     private func throughputSummary(
@@ -622,17 +607,16 @@ private struct PerformanceMetricCell: View {
     let tone: PerformanceMetricTone?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .medium))
-                .tracking(0.35)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.tertiary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(tone?.color ?? Color(nsColor: .labelColor))
                     .fixedSize(horizontal: true, vertical: false)
                 if let detail {
                     Text(detail)
@@ -653,7 +637,7 @@ private struct PerformanceMetricCell: View {
                     }
                 }
             }
-            .frame(height: 2)
+            .frame(height: 3)
         }
         .debugLabel("PerformanceMetricCell")
     }
