@@ -211,10 +211,6 @@ class StatusBarController: NSObject {
         closeAllItem.target = self
         statusMenu.addItem(closeAllItem)
 
-        let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
-        missionControlItem.target = self
-        statusMenu.addItem(missionControlItem)
-
         statusMenu.addItem(NSMenuItem.separator())
 
         addAILimitsSection(to: statusMenu)
@@ -2282,10 +2278,6 @@ class StatusBarController: NSObject {
             item.representedObject = profile.directory
             menu.addItem(item)
         }
-    }
-
-    @objc private func showMissionControl() {
-        MissionControlAccessibility.open()
     }
 
     func showSettings() {
