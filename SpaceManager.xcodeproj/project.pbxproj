@@ -72,6 +72,7 @@
 		BE5E36336289AAB36FC874CC /* WindowLayoutShortcutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A11539EA96A4E3FC6F72FF /* WindowLayoutShortcutStore.swift */; };
 		C072FDACEC821AE2C9587B72 /* CreateIssueShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D88EE6B63167B7B70E40E43D /* CreateIssueShortcutController.swift */; };
 		C2FF8DF14C94F31C2DFAFA57 /* MagnetShortcutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */; };
+		C41690DF741B436F70500698 /* IssueMenuItemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C892EA5A7EC7091EFA1FB2 /* IssueMenuItemTests.swift */; };
 		C9F1AAFCEDA975E3CC921748 /* WindowLayoutCheatsheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CED817C5484E078A830D6B0 /* WindowLayoutCheatsheet.swift */; };
 		CF1987E4B3781B1BE6563B98 /* MacDisplayLayoutGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5679C16460E93B067FD6FEB8 /* MacDisplayLayoutGuide.swift */; };
 		CFEE86A9515F441B273A001F /* SpaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CCEF522DC0B4871C7115D84 /* SpaceNamer.swift */; };
@@ -169,6 +170,7 @@
 		C1DD049D6122917C08E41871 /* RepositoryColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryColor.swift; sourceTree = "<group>"; };
 		C380024057E03A2613B50EA9 /* MagnetShortcutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnetShortcutManager.swift; sourceTree = "<group>"; };
 		C4957D5960B9FC4F05232E3B /* ChromeProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeProfileManager.swift; sourceTree = "<group>"; };
+		C5C892EA5A7EC7091EFA1FB2 /* IssueMenuItemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueMenuItemTests.swift; sourceTree = "<group>"; };
 		C6ABB87719B3A5F78D62A062 /* SpaceOperationLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceOperationLog.swift; sourceTree = "<group>"; };
 		CB7E606BD09EE855032540E6 /* SpaceManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpaceManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC1761DA8F106DAD6C9F477D /* SpaceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceObserver.swift; sourceTree = "<group>"; };
@@ -304,6 +306,7 @@
 				4A6E5D9F9623C9430FBA6B37 /* AILimitsSnapshotReaderTests.swift */,
 				5B14A0676EE76DAB99477270 /* ChromeProfileManagerTests.swift */,
 				7575D9E2EAF675BB4E7A862B /* F3SpaceShortcutRoutingTests.swift */,
+				C5C892EA5A7EC7091EFA1FB2 /* IssueMenuItemTests.swift */,
 				53773C8D697D1C87E028F365 /* MagnetShortcutManagerTests.swift */,
 				336A097979FB3DC851BBA76E /* PerformanceMetricToneTests.swift */,
 				3ED80E9C7E9989B83A660792 /* ProcessHealthMonitorTests.swift */,
@@ -451,6 +454,7 @@
 				4D22D27A82ACBF14519DB9A5 /* AILimitsSnapshotReaderTests.swift in Sources */,
 				8FBF610A2B89654F9447263A /* ChromeProfileManagerTests.swift in Sources */,
 				0D88FEE9611C2B4CB19B5F52 /* F3SpaceShortcutRoutingTests.swift in Sources */,
+				C41690DF741B436F70500698 /* IssueMenuItemTests.swift in Sources */,
 				12F5753F7EBD6773EF79D245 /* MagnetShortcutManagerTests.swift in Sources */,
 				B6DEF6A8B173564D66437131 /* PerformanceMetricToneTests.swift in Sources */,
 				083BB011D334E97AC15DCCB1 /* ProcessHealthMonitorTests.swift in Sources */,

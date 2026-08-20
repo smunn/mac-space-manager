@@ -531,6 +531,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         var lastActivityAt: Date?
         var lastActivitySummary: String?
         let timestampFormatter = ISO8601DateFormatter()
+        let fractionalTimestampFormatter = ISO8601DateFormatter()
+        fractionalTimestampFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         for object in objects {
             let payload = object["payload"] as? [String: Any] ?? object
@@ -551,7 +553,8 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
             } ?? false
 
             if let timestamp = object["timestamp"] as? String,
-               let date = timestampFormatter.date(from: timestamp)
+               let date = fractionalTimestampFormatter.date(from: timestamp)
+                    ?? timestampFormatter.date(from: timestamp)
             {
                 lastActivityAt = date
             }

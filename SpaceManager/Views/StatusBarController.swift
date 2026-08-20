@@ -1289,6 +1289,20 @@ class StatusBarController: NSObject {
         to menu: NSMenu,
         includesRepository: Bool
     ) {
+        for item in Self.makeIssueMenuItems(
+            for: issue,
+            includesRepository: includesRepository,
+            target: self
+        ) {
+            menu.addItem(item)
+        }
+    }
+
+    static func makeIssueMenuItems(
+        for issue: GitHubIssue,
+        includesRepository: Bool,
+        target: AnyObject
+    ) -> [NSMenuItem] {
         let info: [String: Any] = [
             "repoName": issue.repoName,
             "repoFullName": issue.repoFullName,
@@ -1299,9 +1313,9 @@ class StatusBarController: NSObject {
 
         let item = NSMenuItem(
             title: "#\(issue.number) \(issue.title)",
-            action: #selector(openIssueProject(_:)),
+            action: #selector(openIssueInBrowser(_:)),
             keyEquivalent: "")
-        item.target = self
+        item.target = target
         item.representedObject = info
 
         let attrTitle = NSMutableAttributedString()
@@ -1331,26 +1345,25 @@ class StatusBarController: NSObject {
             : issue.title
         attrTitle.append(NSAttributedString(string: truncatedTitle, attributes: titleAttrs))
 
-        item.attributedTitle = attrTitle
-        menu.addItem(item)
-
-        let altItem = NSMenuItem(
-            title: "#\(issue.number) \(issue.title)",
-            action: #selector(openIssueInBrowser(_:)),
-            keyEquivalent: "")
-        altItem.target = self
-        altItem.representedObject = info
-        altItem.isAlternate = true
-        altItem.keyEquivalentModifierMask = .option
-
-        let altAttrTitle = NSMutableAttributedString(attributedString: attrTitle)
         let arrowAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.menuFont(ofSize: 11),
             .foregroundColor: NSColor.secondaryLabelColor
         ]
-        altAttrTitle.append(NSAttributedString(string: "  \u{2197}", attributes: arrowAttrs))
-        altItem.attributedTitle = altAttrTitle
-        menu.addItem(altItem)
+        let browserTitle = NSMutableAttributedString(attributedString: attrTitle)
+        browserTitle.append(NSAttributedString(string: "  \u{2197}", attributes: arrowAttrs))
+        item.attributedTitle = browserTitle
+
+        let altItem = NSMenuItem(
+            title: "#\(issue.number) \(issue.title)",
+            action: #selector(openIssueProject(_:)),
+            keyEquivalent: "")
+        altItem.target = target
+        altItem.representedObject = info
+        altItem.isAlternate = true
+        altItem.keyEquivalentModifierMask = .option
+        altItem.attributedTitle = attrTitle
+
+        return [item, altItem]
     }
 
     @objc private func showCreateIssueWindowFromMenu() {
