@@ -85,20 +85,18 @@ struct AILimitsMenuView: View {
     }
 
     private func limitCell(_ label: String, value: AILimitValue?) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(label)
-                    .foregroundStyle(.secondary)
-                Text(percentText(value?.percentUsed))
-                    .foregroundStyle(limitColor(value?.percentUsed))
-            }
-            .font(.system(size: 10, weight: .medium).monospacedDigit())
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Text(percentText(value?.percentUsed))
+                .foregroundStyle(limitColor(value?.percentUsed))
             Text(AILimitsResetFormatter.compact(value?.resetsAt, now: model.displayedAt))
                 .font(.system(size: 8).monospacedDigit())
                 .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: true, vertical: false)
         }
+        .font(.system(size: 10, weight: .medium).monospacedDigit())
         .lineLimit(1)
+        .minimumScaleFactor(0.75)
         .frame(width: 126, alignment: .leading)
         .help(resetHelp(value?.resetsAt))
     }
