@@ -213,10 +213,7 @@ class StatusBarController: NSObject {
 
         statusMenu.addItem(NSMenuItem.separator())
 
-        addAILimitsSection(to: statusMenu)
-        statusMenu.addItem(NSMenuItem.separator())
-
-        addPerformanceSection(to: statusMenu)
+        addSystemOverviewSection(to: statusMenu)
         statusMenu.addItem(NSMenuItem.separator())
 
         var currentDisplayID: String?
@@ -262,11 +259,17 @@ class StatusBarController: NSObject {
 
     // MARK: - Performance
 
-    private func addAILimitsSection(to menu: NSMenu) {
+    private func addSystemOverviewSection(to menu: NSMenu) {
         refreshAILimits()
-        let item = NSMenuItem(title: "AI Limits", action: nil, keyEquivalent: "")
-        let view = NSHostingView(rootView: AILimitsMenuView(model: aiLimitsViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 456, height: 70)
+        performanceViewModel.snapshot = performanceSnapshot
+        let item = NSMenuItem(title: "System Overview", action: nil, keyEquivalent: "")
+        let view = NSHostingView(
+            rootView: SystemOverviewMenuView(
+                aiLimitsModel: aiLimitsViewModel,
+                performanceModel: performanceViewModel))
+        view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
+        sizePerformanceHostingView(view)
+        performanceHostingView = view
         item.view = view
         menu.addItem(item)
     }
@@ -292,17 +295,6 @@ class StatusBarController: NSObject {
             self.aiLimitsViewModel.source = .supabase
             self.aiLimitsViewModel.displayedAt = Date()
         }
-    }
-
-    private func addPerformanceSection(to menu: NSMenu) {
-        performanceViewModel.snapshot = performanceSnapshot
-        let item = NSMenuItem(title: "Performance", action: nil, keyEquivalent: "")
-        let view = NSHostingView(rootView: PerformanceMenuView(model: performanceViewModel))
-        view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
-        sizePerformanceHostingView(view)
-        performanceHostingView = view
-        item.view = view
-        menu.addItem(item)
     }
 
     private func updatePerformanceMenuHeight() {

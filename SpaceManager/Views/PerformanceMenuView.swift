@@ -26,6 +26,33 @@ struct ProcessActionStatus: Equatable {
     let succeeded: Bool?
 }
 
+struct SystemOverviewMenuView: View {
+    @ObservedObject var aiLimitsModel: AILimitsMenuViewModel
+    @ObservedObject var performanceModel: PerformanceMenuViewModel
+
+    var body: some View {
+        VStack(spacing: 8) {
+            AILimitsMenuView(model: aiLimitsModel)
+            PerformanceMenuView(model: performanceModel)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(width: 440)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
+                }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .debugLabel("SystemOverviewMenuView")
+    }
+}
+
 struct PerformanceMenuView: View {
     @ObservedObject var model: PerformanceMenuViewModel
 
@@ -70,20 +97,6 @@ struct PerformanceMenuView: View {
             Divider()
             processHealth
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(width: 440)
-        .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5)
-                }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
-        .fixedSize(horizontal: false, vertical: true)
         .debugLabel("PerformanceMenuView")
     }
 
