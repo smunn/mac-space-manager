@@ -62,7 +62,12 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
               {"label":"Weekly usage limit","pctUsed":10,"resetEpoch":4102448400000},
               {"label":"GPT-5.3-Codex-Spark Weekly usage limit","pctUsed":99}
             ],
-            "account": {"renewalEpoch":4102446600000},
+            "account": {
+              "renewalDate":"Dec 31, 2099",
+              "renewalEpoch":4102380000000,
+              "renewalTimeOverride":"18:30",
+              "renewalTimeZone":"America/Chicago"
+            },
             "ts": 4102401000000
           }
         }

@@ -238,8 +238,36 @@ struct AILimitsSnapshotReader {
 
     private func billingPeriodEnd(from service: [String: Any]) -> Date? {
         guard let account = service["account"] as? [String: Any] else { return nil }
-        return epochDate(account["renewalEpoch"])
+        return renewalDateWithTimeOverride(from: account)
+            ?? epochDate(account["renewalEpoch"])
             ?? isoDate(account["renewalDate"])
+    }
+
+    private func renewalDateWithTimeOverride(from account: [String: Any]) -> Date? {
+        guard let renewalDate = account["renewalDate"] as? String,
+              let renewalTime = account["renewalTimeOverride"] as? String
+        else { return nil }
+
+        let timeParts = renewalTime.split(separator: ":")
+        guard timeParts.count == 2,
+              let hour = Int(timeParts[0]),
+              let minute = Int(timeParts[1]),
+              (0...23).contains(hour),
+              (0...59).contains(minute)
+        else { return nil }
+
+        let timeZone = (account["renewalTimeZone"] as? String)
+            .flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(identifier: "America/Chicago")!
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "MMM d, yyyy"
+        guard let date = formatter.date(from: renewalDate) else { return nil }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: date)
     }
 
     private func limit(from dictionary: [String: Any]?) -> AILimitValue {
