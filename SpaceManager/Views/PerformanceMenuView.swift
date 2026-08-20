@@ -67,26 +67,6 @@ struct PerformanceMenuView: View {
                     .frame(width: 68, alignment: .leading)
             }
 
-            HStack(spacing: 16) {
-                throughputSummary(
-                    label: "Network",
-                    leadingLabel: "↓",
-                    leadingValue: rateText(model.snapshot?.networkDownloadRate),
-                    trailingLabel: "↑",
-                    trailingValue: rateText(model.snapshot?.networkUploadRate))
-                throughputSummary(
-                    label: "Disk",
-                    leadingLabel: "R",
-                    leadingValue: rateText(model.snapshot?.diskReadRate),
-                    trailingLabel: "W",
-                    trailingValue: rateText(model.snapshot?.diskWriteRate))
-                Spacer(minLength: 0)
-                Text(AppBuildInfo.current.menuLabel)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.tertiary)
-                    .debugLabel("buildInfo")
-            }
-
             Divider()
             processHealth
         }
@@ -280,29 +260,6 @@ struct PerformanceMenuView: View {
             tone: tone)
     }
 
-    private func throughputSummary(
-        label: String,
-        leadingLabel: String,
-        leadingValue: String,
-        trailingLabel: String,
-        trailingValue: String
-    ) -> some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .foregroundStyle(.tertiary)
-            Text(leadingLabel)
-                .foregroundStyle(.tertiary)
-            Text(leadingValue)
-            Text(trailingLabel)
-                .foregroundStyle(.tertiary)
-            Text(trailingValue)
-        }
-        .font(.system(size: 10, weight: .medium).monospacedDigit())
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .debugLabel("compactPerformanceThroughput")
-    }
-
     private var cpuText: String {
         guard let usage = model.snapshot?.cpuUsage else { return "—" }
         return usage.formatted(.percent.precision(.fractionLength(0)))
@@ -358,11 +315,6 @@ struct PerformanceMenuView: View {
         }
     }
 
-    private func rateText(_ bytesPerSecond: Double?) -> String {
-        guard let bytesPerSecond else { return "—" }
-        return Self.rateFormatter.string(fromByteCount: Int64(bytesPerSecond)) + "/s"
-    }
-
     private static let compactBytes: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useGB]
@@ -372,13 +324,6 @@ struct PerformanceMenuView: View {
         return formatter
     }()
 
-    private static let rateFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        formatter.includesUnit = true
-        formatter.isAdaptive = true
-        return formatter
-    }()
 }
 
 private struct SimulatorHealthRow: View {
