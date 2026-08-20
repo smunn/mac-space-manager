@@ -35,7 +35,9 @@ class StatusBarController: NSObject {
     private var menuContextDisplayID: String?
 
     private let issueFetcher = GitHubIssueFetcher.shared
+    private let menuTelemetryObserver = MenuTelemetryObserver()
     private var issuesMenu: NSMenu?
+    private var issueDetailMenus: [NSMenu] = []
     private var chromeProfilesMenu: NSMenu?
     private let performanceMonitor = SystemPerformanceMonitor()
     private let processHealthMonitor = ProcessHealthMonitor()
@@ -112,7 +114,9 @@ class StatusBarController: NSObject {
     // MARK: - Menu Construction
 
     private func rebuildMenu(_ spaces: [Space]) {
+        menuTelemetryObserver.unregisterAll()
         statusMenu.removeAllItems()
+        registerTelemetry(for: statusMenu, identifier: "menu.main")
 
         let permissionsItem = NSMenuItem(
             title: "Window Management Permissions Needed…",
@@ -127,12 +131,6 @@ class StatusBarController: NSObject {
         permissionsMenuSeparator = permissionsSeparator
         refreshPermissionsMenuItem()
 
-        addAILimitsSection(to: statusMenu)
-        statusMenu.addItem(NSMenuItem.separator())
-
-        addPerformanceSection(to: statusMenu)
-        statusMenu.addItem(NSMenuItem.separator())
-
         let orderedDisplayIDs = orderedDisplayIDs(from: spaces)
         let multipleDisplays = orderedDisplayIDs.count > 1
         let activeDisplayUUID = multipleDisplays ? interactionDisplayID(from: orderedDisplayIDs) : nil
@@ -146,16 +144,6 @@ class StatusBarController: NSObject {
         } else {
             sortedSpaces = spaces
         }
-
-        let desktopSpaces = spaces.filter { !$0.isFullScreen }
-        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
-        let closeAllItem = NSMenuItem(
-            title: "Close All Spaces",
-            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
-            keyEquivalent: "w")
-        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
-        closeAllItem.target = self
-        statusMenu.addItem(closeAllItem)
 
         var currentDisplayID: String?
 
@@ -188,17 +176,23 @@ class StatusBarController: NSObject {
         statusMenu.addItem(NSMenuItem.separator())
 
         let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
-        newItem.submenu = buildNewSubmenu()
+        let newMenu = buildNewSubmenu()
+        registerTelemetry(for: newMenu, identifier: "menu.new")
+        newItem.submenu = newMenu
         statusMenu.addItem(newItem)
 
         let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
-        currentSpaceItem.submenu = buildCurrentSpaceSubmenu(
+        let currentSpaceMenu = buildCurrentSpaceSubmenu(
             spaces,
             orderedDisplayIDs: orderedDisplayIDs)
+        registerTelemetry(for: currentSpaceMenu, identifier: "menu.current_space")
+        currentSpaceItem.submenu = currentSpaceMenu
         statusMenu.addItem(currentSpaceItem)
 
         let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
-        closeItem.submenu = buildCloseSubmenu(spaces)
+        let closeMenu = buildCloseSubmenu(spaces)
+        registerTelemetry(for: closeMenu, identifier: "menu.close")
+        closeItem.submenu = closeMenu
         statusMenu.addItem(closeItem)
 
         let moveWindowItem = NSMenuItem(
@@ -209,20 +203,40 @@ class StatusBarController: NSObject {
         moveWindowItem.target = self
         statusMenu.addItem(moveWindowItem)
 
+        let desktopSpaces = spaces.filter { !$0.isFullScreen }
+        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
+        let closeAllItem = NSMenuItem(
+            title: "Close All Spaces",
+            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
+            keyEquivalent: "w")
+        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
+        closeAllItem.target = self
+        statusMenu.addItem(closeAllItem)
+
         let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
-        windowLayoutsItem.submenu = WindowLayoutManager.shared.makeMenu()
+        let windowLayoutsMenu = WindowLayoutManager.shared.makeMenu()
+        registerTelemetry(for: windowLayoutsMenu, identifier: "menu.window_layouts")
+        windowLayoutsItem.submenu = windowLayoutsMenu
         statusMenu.addItem(windowLayoutsItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        addAILimitsSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
+
+        addPerformanceSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
 
         let openChromeItem = NSMenuItem(title: "Open Chrome…", action: nil, keyEquivalent: "")
         let chromeMenu = NSMenu()
-        chromeMenu.delegate = self
+        registerTelemetry(for: chromeMenu, identifier: "menu.chrome_profiles")
         openChromeItem.submenu = chromeMenu
         chromeProfilesMenu = chromeMenu
         statusMenu.addItem(openChromeItem)
 
         let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
         let issMenu = NSMenu()
-        issMenu.delegate = self
+        registerTelemetry(for: issMenu, identifier: "menu.issues")
         issuesItem.submenu = issMenu
         issuesMenu = issMenu
         statusMenu.addItem(issuesItem)
@@ -236,7 +250,9 @@ class StatusBarController: NSObject {
         statusMenu.addItem(NSMenuItem.separator())
 
         let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
-        settingsItem.submenu = buildSettingsSubmenu()
+        let settingsMenu = buildSettingsSubmenu()
+        registerTelemetry(for: settingsMenu, identifier: "menu.settings")
+        settingsItem.submenu = settingsMenu
         statusMenu.addItem(settingsItem)
 
         statusMenu.addItem(NSMenuItem.separator())
@@ -244,6 +260,13 @@ class StatusBarController: NSObject {
         let quitItem = NSMenuItem(title: "Quit Space Manager", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         statusMenu.addItem(quitItem)
+    }
+
+    private func registerTelemetry(for menu: NSMenu, identifier: String) {
+        menu.delegate = self
+        menuTelemetryObserver.register(
+            menu: menu,
+            identifier: TelemetryIdentifier(rawValue: identifier))
     }
 
     // MARK: - Performance
@@ -662,9 +685,11 @@ class StatusBarController: NSObject {
 
         if orderedDisplayIDs.count > 1 {
             let transferItem = NSMenuItem(title: "Transfer", action: nil, keyEquivalent: "")
-            transferItem.submenu = buildTransferSubmenu(
+            let transferMenu = buildTransferSubmenu(
                 spaces,
                 orderedDisplayIDs: orderedDisplayIDs)
+            registerTelemetry(for: transferMenu, identifier: "menu.current_space.transfer")
+            transferItem.submenu = transferMenu
             submenu.addItem(transferItem)
         }
 
@@ -782,13 +807,13 @@ class StatusBarController: NSObject {
         let attrTitle = NSMutableAttributedString()
 
         let numberAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
             .foregroundColor: space.isCurrentSpace ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor
         ]
         attrTitle.append(NSAttributedString(string: "\(prefix). ", attributes: numberAttrs))
 
         let nameAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.menuFont(ofSize: 14),
+            .font: NSFont.menuFont(ofSize: 13),
             .foregroundColor: space.isCurrentSpace ? NSColor.controlAccentColor : NSColor.labelColor
         ]
         let attributedName = NSMutableAttributedString(string: primaryName, attributes: nameAttrs)
@@ -805,7 +830,7 @@ class StatusBarController: NSObject {
 
         if label.isEmpty && space.hasDriftedName {
             let driftAttrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.menuFont(ofSize: 11),
+                .font: NSFont.menuFont(ofSize: 10),
                 .foregroundColor: NSColor.tertiaryLabelColor
             ]
             attrTitle.append(NSAttributedString(string: "  \u{00B7}", attributes: driftAttrs))
@@ -940,6 +965,13 @@ class StatusBarController: NSObject {
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshSpaces), keyEquivalent: "r")
         refreshItem.target = self
         submenu.addItem(refreshItem)
+
+        let exportTelemetryItem = NSMenuItem(
+            title: "Export Telemetry Report…",
+            action: #selector(exportUsageTelemetryReport),
+            keyEquivalent: "")
+        exportTelemetryItem.target = self
+        submenu.addItem(exportTelemetryItem)
 
         submenu.addItem(NSMenuItem.separator())
 
@@ -1151,6 +1183,8 @@ class StatusBarController: NSObject {
     // MARK: - Issues Submenu
 
     private func populateIssuesMenu(_ menu: NSMenu) {
+        issueDetailMenus.forEach { menuTelemetryObserver.unregister(menu: $0) }
+        issueDetailMenus.removeAll()
         menu.removeAllItems()
 
         let createItem = NSMenuItem(
@@ -1182,12 +1216,16 @@ class StatusBarController: NSObject {
             let recentItem = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
             let recentMenu = NSMenu()
             buildFlatIssuesList(recentMenu, issues: issues, sortByRecent: true)
+            registerTelemetry(for: recentMenu, identifier: "menu.issues.recent")
+            issueDetailMenus.append(recentMenu)
             recentItem.submenu = recentMenu
             menu.addItem(recentItem)
 
             let azItem = NSMenuItem(title: "A to Z", action: nil, keyEquivalent: "")
             let azMenu = NSMenu()
             buildFlatIssuesList(azMenu, issues: issues, sortByRecent: false)
+            registerTelemetry(for: azMenu, identifier: "menu.issues.a_to_z")
+            issueDetailMenus.append(azMenu)
             azItem.submenu = azMenu
             menu.addItem(azItem)
 
@@ -1197,6 +1235,10 @@ class StatusBarController: NSObject {
                 keyEquivalent: "")
             let recentGroupedMenu = NSMenu()
             buildGroupedIssuesList(recentGroupedMenu, issues: issues, sortByRecent: true)
+            registerTelemetry(
+                for: recentGroupedMenu,
+                identifier: "menu.issues.recent_grouped")
+            issueDetailMenus.append(recentGroupedMenu)
             recentGroupedItem.submenu = recentGroupedMenu
             menu.addItem(recentGroupedItem)
 
@@ -1206,6 +1248,10 @@ class StatusBarController: NSObject {
                 keyEquivalent: "")
             let azGroupedMenu = NSMenu()
             buildGroupedIssuesList(azGroupedMenu, issues: issues, sortByRecent: false)
+            registerTelemetry(
+                for: azGroupedMenu,
+                identifier: "menu.issues.a_to_z_grouped")
+            issueDetailMenus.append(azGroupedMenu)
             azGroupedItem.submenu = azGroupedMenu
             menu.addItem(azGroupedItem)
         }
@@ -2348,6 +2394,28 @@ class StatusBarController: NSObject {
         NotificationCenter.default.post(name: NSNotification.Name("RequestSpaceRefresh"), object: nil)
     }
 
+    @objc private func exportUsageTelemetryReport() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Export"
+
+        guard panel.runModal() == .OK, let parentDirectory = panel.url else { return }
+
+        do {
+            let export = try UsageTelemetryReportExporter().export(to: parentDirectory)
+            NSWorkspace.shared.activateFileViewerSelecting([export.directoryURL])
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Unable to Export Telemetry"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
     }
@@ -2366,6 +2434,8 @@ class StatusBarController: NSObject {
 
 extension StatusBarController: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
+        menuTelemetryObserver.menuWillOpen(menu)
+
         if menu === statusMenu {
             updatePerformanceMenuHeight()
             statusMenuIsOpen = true

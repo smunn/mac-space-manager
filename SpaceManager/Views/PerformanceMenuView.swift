@@ -30,63 +30,63 @@ struct PerformanceMenuView: View {
     @ObservedObject var model: PerformanceMenuViewModel
 
     var body: some View {
-        VStack(spacing: 8) {
-            header
-
-            HStack(spacing: 8) {
-                metricCell(
+        VStack(spacing: 6) {
+            HStack(spacing: 7) {
+                Text("Performance")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
+                compactMetric(
                     label: "CPU",
                     value: cpuText,
                     detail: nil,
-                    fraction: model.snapshot?.cpuUsage,
                     tone: PerformanceMetricTone.cpu(model.snapshot?.cpuUsage))
-                    .frame(width: 52, alignment: .leading)
-                metricCell(
+                compactMetric(
                     label: "Memory",
                     value: memoryText,
                     detail: memoryDetail,
-                    fraction: memoryFraction,
                     tone: PerformanceMetricTone.memory(memoryFraction))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
-                metricCell(
+                compactMetric(
                     label: "Battery",
                     value: batteryText,
                     detail: batteryDetail,
-                    fraction: batteryFraction,
                     tone: PerformanceMetricTone.battery(
                         batteryFraction,
                         isCharging: model.snapshot?.batteryIsCharging == true))
-                    .frame(width: 54, alignment: .leading)
-                metricCell(
+                compactMetric(
                     label: "Heat",
                     value: thermalText,
                     detail: nil,
-                    fraction: thermalFraction,
                     tone: PerformanceMetricTone.thermal(model.snapshot?.thermalState))
-                    .frame(width: 66, alignment: .leading)
+                Spacer(minLength: 0)
             }
 
-            Divider()
+            HStack(spacing: 16) {
+                throughputSummary(
+                    label: "Network",
+                    leadingLabel: "↓",
+                    leadingValue: rateText(model.snapshot?.networkDownloadRate),
+                    trailingLabel: "↑",
+                    trailingValue: rateText(model.snapshot?.networkUploadRate))
+                throughputSummary(
+                    label: "Disk",
+                    leadingLabel: "R",
+                    leadingValue: rateText(model.snapshot?.diskReadRate),
+                    trailingLabel: "W",
+                    trailingValue: rateText(model.snapshot?.diskWriteRate))
+                Spacer(minLength: 0)
+                Text(AppBuildInfo.current.menuLabel)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .debugLabel("buildInfo")
+            }
 
-            PerformanceThroughputRow(
-                label: "Network",
-                leadingLabel: "↓",
-                leadingValue: rateText(model.snapshot?.networkDownloadRate),
-                trailingLabel: "↑",
-                trailingValue: rateText(model.snapshot?.networkUploadRate))
-            PerformanceThroughputRow(
-                label: "Disk",
-                leadingLabel: "R",
-                leadingValue: rateText(model.snapshot?.diskReadRate),
-                trailingLabel: "W",
-                trailingValue: rateText(model.snapshot?.diskWriteRate))
-
-            Divider()
-
-            processHealth
+            if shouldShowProcessHealth {
+                Divider()
+                processHealth
+            }
         }
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .frame(width: 440)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -97,7 +97,7 @@ struct PerformanceMenuView: View {
                 }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .fixedSize(horizontal: false, vertical: true)
         .debugLabel("PerformanceMenuView")
     }
@@ -273,6 +273,62 @@ struct PerformanceMenuView: View {
             detail: detail,
             fraction: fraction,
             tone: tone)
+    }
+
+    private func compactMetric(
+        label: String,
+        value: String,
+        detail: String?,
+        tone: PerformanceMetricTone?
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(label)
+                .foregroundStyle(.tertiary)
+            Text(value)
+                .foregroundStyle(tone?.color ?? Color(nsColor: .secondaryLabelColor))
+            if let detail {
+                Text(detail)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .font(.system(size: 9, weight: .medium).monospacedDigit())
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .debugLabel("compactPerformanceMetric")
+    }
+
+    private func throughputSummary(
+        label: String,
+        leadingLabel: String,
+        leadingValue: String,
+        trailingLabel: String,
+        trailingValue: String
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .foregroundStyle(.tertiary)
+            Text(leadingLabel)
+                .foregroundStyle(.tertiary)
+            Text(leadingValue)
+            Text(trailingLabel)
+                .foregroundStyle(.tertiary)
+            Text(trailingValue)
+        }
+        .font(.system(size: 10, weight: .medium).monospacedDigit())
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .debugLabel("compactPerformanceThroughput")
+    }
+
+    private var shouldShowProcessHealth: Bool {
+        let hasRecommendedSimulator = model.processHealthSnapshot.simulators.contains(where: \.canCleanUp)
+        let hasRecommendedAISession = model.processHealthSnapshot.aiSessions.contains(where: \.canCleanUp)
+        let hasVisibleActionStatus = model.processActionStatus?.succeeded != true
+            && model.processActionStatus != nil
+        return hasRecommendedSimulator
+            || hasRecommendedAISession
+            || !model.terminatingAISessionIDs.isEmpty
+            || hasVisibleActionStatus
     }
 
     private var cpuText: String {

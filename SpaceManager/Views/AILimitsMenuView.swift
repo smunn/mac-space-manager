@@ -44,7 +44,7 @@ struct AILimitsMenuView: View {
     @ObservedObject var model: AILimitsMenuViewModel
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 3) {
             serviceRow(
                 emoji: "✴️",
                 name: "Claude",
@@ -57,7 +57,7 @@ struct AILimitsMenuView: View {
                 includesFable: false)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.vertical, 5)
         .frame(width: 440)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -78,7 +78,7 @@ struct AILimitsMenuView: View {
         limits: AIServiceLimitsSnapshot?,
         includesFable: Bool
     ) -> some View {
-        HStack(alignment: .top, spacing: 7) {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
             Text(emoji)
                 .font(.system(size: 11))
                 .frame(width: 14)
@@ -100,20 +100,18 @@ struct AILimitsMenuView: View {
     }
 
     private func limitCell(_ label: String, value: AILimitValue?, width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 2) {
-                Text(label)
-                    .foregroundStyle(.secondary)
-                Text(percentText(value?.percentUsed))
-                    .foregroundStyle(limitColor(value?.percentUsed))
-            }
-            .font(.system(size: 10, weight: .medium).monospacedDigit())
-
-            Text(AILimitsResetFormatter.compact(value?.resetsAt, now: model.displayedAt))
-                .font(.system(size: 9).monospacedDigit())
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(label)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+            Text(percentText(value?.percentUsed))
+                .foregroundStyle(limitColor(value?.percentUsed))
+            Text(AILimitsResetFormatter.compact(value?.resetsAt, now: model.displayedAt))
+                .font(.system(size: 8).monospacedDigit())
+                .foregroundStyle(.tertiary)
         }
+        .font(.system(size: 10, weight: .medium).monospacedDigit())
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
         .frame(width: width, alignment: .leading)
         .help(resetHelp(value?.resetsAt))
     }
