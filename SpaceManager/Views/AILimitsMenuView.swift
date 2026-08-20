@@ -34,6 +34,21 @@ enum AILimitsResetFormatter {
     }
 }
 
+enum AILimitsDisplayFormatter {
+    static func resetText(
+        for value: AILimitValue?,
+        expiresAt: Date?,
+        now: Date = Date()
+    ) -> String {
+        if let expiresAt,
+           let resetsAt = value?.resetsAt,
+           expiresAt < resetsAt {
+            return "Expires \(AILimitsResetFormatter.compact(expiresAt, now: now))"
+        }
+        return AILimitsResetFormatter.compact(value?.resetsAt, now: now)
+    }
+}
+
 @MainActor
 final class AILimitsMenuViewModel: ObservableObject {
     @Published var snapshot: AILimitsSnapshot?
@@ -72,7 +87,10 @@ struct AILimitsMenuView: View {
                 .frame(width: 18)
                 .accessibilityLabel(name)
             limitCell("5h", value: limits?.fiveHour)
-            limitCell("wk", value: limits?.weekly)
+            limitCell(
+                "wk",
+                value: limits?.weekly,
+                expiresAt: includesFable ? nil : limits?.billingPeriodEndsAt)
             if includesFable {
                 limitCell("Fable", value: limits?.fable)
             } else {
@@ -84,13 +102,20 @@ struct AILimitsMenuView: View {
         .debugLabel("\(name.lowercased())LimitsRow")
     }
 
-    private func limitCell(_ label: String, value: AILimitValue?) -> some View {
+    private func limitCell(
+        _ label: String,
+        value: AILimitValue?,
+        expiresAt: Date? = nil
+    ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
             Text(label)
                 .foregroundStyle(.secondary)
             Text(percentText(value?.percentUsed))
                 .foregroundStyle(limitColor(value?.percentUsed))
-            Text(AILimitsResetFormatter.compact(value?.resetsAt, now: model.displayedAt))
+            Text(AILimitsDisplayFormatter.resetText(
+                for: value,
+                expiresAt: expiresAt,
+                now: model.displayedAt))
                 .font(.system(size: 8).monospacedDigit())
                 .foregroundStyle(.tertiary)
         }

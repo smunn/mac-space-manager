@@ -207,7 +207,8 @@ struct AILimitsSnapshotReader {
                     percent: integer($0["pctUsed"]) ?? integer($0["usedPercent"]),
                     reset: epochDate($0["resetEpoch"]) ?? epochDate($0["resetsAt"]))
             },
-            collectedAt: timestamp(from: service) ?? fallbackDate)
+            collectedAt: timestamp(from: service) ?? fallbackDate,
+            billingPeriodEndsAt: nil)
     }
 
     private func codexSnapshot(
@@ -231,7 +232,14 @@ struct AILimitsSnapshotReader {
             fiveHour: limit(from: fiveHour),
             weekly: limit(from: weekly),
             fable: nil,
-            collectedAt: timestamp(from: service) ?? fallbackDate)
+            collectedAt: timestamp(from: service) ?? fallbackDate,
+            billingPeriodEndsAt: billingPeriodEnd(from: service))
+    }
+
+    private func billingPeriodEnd(from service: [String: Any]) -> Date? {
+        guard let account = service["account"] as? [String: Any] else { return nil }
+        return epochDate(account["renewalEpoch"])
+            ?? isoDate(account["renewalDate"])
     }
 
     private func limit(from dictionary: [String: Any]?) -> AILimitValue {

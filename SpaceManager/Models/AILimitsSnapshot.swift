@@ -15,6 +15,7 @@ struct AIServiceLimitsSnapshot: Equatable {
     let weekly: AILimitValue
     let fable: AILimitValue?
     let collectedAt: Date?
+    let billingPeriodEndsAt: Date?
 }
 
 struct AILimitsSnapshot: Equatable {

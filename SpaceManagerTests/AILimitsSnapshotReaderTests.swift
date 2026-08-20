@@ -21,6 +21,27 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
         XCTAssertEqual(AILimitsResetFormatter.compact(older, now: now), "W 8-13-25 · 8:30 pm")
     }
 
+    func testShowsCodexExpirationWhenItPrecedesWeeklyReset() throws {
+        let formatter = ISO8601DateFormatter()
+        let now = try XCTUnwrap(formatter.date(from: "2026-08-20T12:00:00-05:00"))
+        let expiration = try XCTUnwrap(formatter.date(from: "2026-08-23T00:00:00-05:00"))
+        let laterReset = try XCTUnwrap(formatter.date(from: "2026-08-26T22:27:00-05:00"))
+        let earlierReset = try XCTUnwrap(formatter.date(from: "2026-08-21T22:27:00-05:00"))
+
+        XCTAssertEqual(
+            AILimitsDisplayFormatter.resetText(
+                for: AILimitValue(percentUsed: 3, resetsAt: laterReset),
+                expiresAt: expiration,
+                now: now),
+            "Expires U 8-23 · 12:00 am")
+        XCTAssertEqual(
+            AILimitsDisplayFormatter.resetText(
+                for: AILimitValue(percentUsed: 3, resetsAt: earlierReset),
+                expiresAt: expiration,
+                now: now),
+            "F 8-21 · 10:27 pm")
+    }
+
     func testReadsClaudeAndCodexLimitsFromSharedSnapshot() throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -41,6 +62,7 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
               {"label":"Weekly usage limit","pctUsed":10,"resetEpoch":4102448400000},
               {"label":"GPT-5.3-Codex-Spark Weekly usage limit","pctUsed":99}
             ],
+            "account": {"renewalEpoch":4102446600000},
             "ts": 4102401000000
           }
         }
@@ -55,6 +77,7 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
         XCTAssertEqual(snapshot.claude.fable?.percentUsed, 92)
         XCTAssertEqual(snapshot.codex.fiveHour.percentUsed, 22)
         XCTAssertEqual(snapshot.codex.weekly.percentUsed, 10)
+        XCTAssertEqual(snapshot.codex.billingPeriodEndsAt?.timeIntervalSince1970, 4_102_446_600)
         XCTAssertEqual(snapshot.claude.collectedAt?.timeIntervalSince1970, 4_102_400_000)
     }
 
