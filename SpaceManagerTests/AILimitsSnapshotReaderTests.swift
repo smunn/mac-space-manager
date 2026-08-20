@@ -13,10 +13,12 @@ final class AILimitsSnapshotReaderTests: XCTestCase {
         let today = try XCTUnwrap(formatter.date(from: "2026-08-13T20:30:00-05:00"))
         let tomorrow = try XCTUnwrap(formatter.date(from: "2026-08-14T20:30:00-05:00"))
         let later = try XCTUnwrap(formatter.date(from: "2026-08-15T20:30:00-05:00"))
+        let older = try XCTUnwrap(formatter.date(from: "2025-08-13T20:30:00-05:00"))
 
-        XCTAssertEqual(AILimitsResetFormatter.compact(today, now: now), "8:30 PM")
-        XCTAssertEqual(AILimitsResetFormatter.compact(tomorrow, now: now), "Tomorrow 8:30 PM")
-        XCTAssertEqual(AILimitsResetFormatter.compact(later, now: now), "Sat 8:30 PM")
+        XCTAssertEqual(AILimitsResetFormatter.compact(today, now: now), "R 8-13 · 8:30 pm")
+        XCTAssertEqual(AILimitsResetFormatter.compact(tomorrow, now: now), "F 8-14 · 8:30 pm")
+        XCTAssertEqual(AILimitsResetFormatter.compact(later, now: now), "S 8-15 · 8:30 pm")
+        XCTAssertEqual(AILimitsResetFormatter.compact(older, now: now), "W 8-13-25 · 8:30 pm")
     }
 
     func testReadsClaudeAndCodexLimitsFromSharedSnapshot() throws {

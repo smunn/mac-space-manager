@@ -145,8 +145,85 @@ class StatusBarController: NSObject {
             sortedSpaces = spaces
         }
 
-        var currentDisplayID: String?
+        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
+        let newMenu = buildNewSubmenu()
+        registerTelemetry(for: newMenu, identifier: "menu.new")
+        newItem.submenu = newMenu
+        statusMenu.addItem(newItem)
 
+        let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
+        let currentSpaceMenu = buildCurrentSpaceSubmenu(
+            spaces,
+            orderedDisplayIDs: orderedDisplayIDs)
+        registerTelemetry(for: currentSpaceMenu, identifier: "menu.current_space")
+        currentSpaceItem.submenu = currentSpaceMenu
+        statusMenu.addItem(currentSpaceItem)
+
+        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
+        let closeMenu = buildCloseSubmenu(spaces)
+        registerTelemetry(for: closeMenu, identifier: "menu.close")
+        closeItem.submenu = closeMenu
+        statusMenu.addItem(closeItem)
+
+        let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
+        let windowLayoutsMenu = WindowLayoutManager.shared.makeMenu()
+        registerTelemetry(for: windowLayoutsMenu, identifier: "menu.window_layouts")
+        windowLayoutsItem.submenu = windowLayoutsMenu
+        statusMenu.addItem(windowLayoutsItem)
+
+        let openChromeItem = NSMenuItem(title: "Open Chrome…", action: nil, keyEquivalent: "")
+        let chromeMenu = NSMenu()
+        registerTelemetry(for: chromeMenu, identifier: "menu.chrome_profiles")
+        openChromeItem.submenu = chromeMenu
+        chromeProfilesMenu = chromeMenu
+        statusMenu.addItem(openChromeItem)
+
+        let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
+        let issMenu = NSMenu()
+        registerTelemetry(for: issMenu, identifier: "menu.issues")
+        issuesItem.submenu = issMenu
+        issuesMenu = issMenu
+        statusMenu.addItem(issuesItem)
+
+        let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
+        let settingsMenu = buildSettingsSubmenu()
+        registerTelemetry(for: settingsMenu, identifier: "menu.settings")
+        settingsItem.submenu = settingsMenu
+        statusMenu.addItem(settingsItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        let moveWindowItem = NSMenuItem(
+            title: "Move Frontmost Window...",
+            action: #selector(showWindowMoveMenu),
+            keyEquivalent: "m")
+        moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
+        moveWindowItem.target = self
+        statusMenu.addItem(moveWindowItem)
+
+        let desktopSpaces = spaces.filter { !$0.isFullScreen }
+        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
+        let closeAllItem = NSMenuItem(
+            title: "Close All Spaces",
+            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
+            keyEquivalent: "w")
+        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
+        closeAllItem.target = self
+        statusMenu.addItem(closeAllItem)
+
+        let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
+        missionControlItem.target = self
+        statusMenu.addItem(missionControlItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        addAILimitsSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
+
+        addPerformanceSection(to: statusMenu)
+        statusMenu.addItem(NSMenuItem.separator())
+
+        var currentDisplayID: String?
         for space in sortedSpaces {
             if space.displayID != currentDisplayID {
                 if currentDisplayID != nil {
@@ -172,88 +249,6 @@ class StatusBarController: NSObject {
             let item = makeSpaceMenuItem(space: space)
             statusMenu.addItem(item)
         }
-
-        statusMenu.addItem(NSMenuItem.separator())
-
-        let newItem = NSMenuItem(title: "New", action: nil, keyEquivalent: "")
-        let newMenu = buildNewSubmenu()
-        registerTelemetry(for: newMenu, identifier: "menu.new")
-        newItem.submenu = newMenu
-        statusMenu.addItem(newItem)
-
-        let currentSpaceItem = NSMenuItem(title: "Current Space", action: nil, keyEquivalent: "")
-        let currentSpaceMenu = buildCurrentSpaceSubmenu(
-            spaces,
-            orderedDisplayIDs: orderedDisplayIDs)
-        registerTelemetry(for: currentSpaceMenu, identifier: "menu.current_space")
-        currentSpaceItem.submenu = currentSpaceMenu
-        statusMenu.addItem(currentSpaceItem)
-
-        let closeItem = NSMenuItem(title: "Close", action: nil, keyEquivalent: "")
-        let closeMenu = buildCloseSubmenu(spaces)
-        registerTelemetry(for: closeMenu, identifier: "menu.close")
-        closeItem.submenu = closeMenu
-        statusMenu.addItem(closeItem)
-
-        let moveWindowItem = NSMenuItem(
-            title: "Move Frontmost Window...",
-            action: #selector(showWindowMoveMenu),
-            keyEquivalent: "m")
-        moveWindowItem.keyEquivalentModifierMask = [.control, .option, .command]
-        moveWindowItem.target = self
-        statusMenu.addItem(moveWindowItem)
-
-        let desktopSpaces = spaces.filter { !$0.isFullScreen }
-        let closeAllTargets = closeAllTargetSpaces(from: desktopSpaces)
-        let closeAllItem = NSMenuItem(
-            title: "Close All Spaces",
-            action: !closeAllTargets.isEmpty ? #selector(closeAllSpaces) : nil,
-            keyEquivalent: "w")
-        closeAllItem.keyEquivalentModifierMask = [.control, .option, .shift, .command]
-        closeAllItem.target = self
-        statusMenu.addItem(closeAllItem)
-
-        let windowLayoutsItem = NSMenuItem(title: "Window Layouts", action: nil, keyEquivalent: "")
-        let windowLayoutsMenu = WindowLayoutManager.shared.makeMenu()
-        registerTelemetry(for: windowLayoutsMenu, identifier: "menu.window_layouts")
-        windowLayoutsItem.submenu = windowLayoutsMenu
-        statusMenu.addItem(windowLayoutsItem)
-
-        statusMenu.addItem(NSMenuItem.separator())
-
-        addAILimitsSection(to: statusMenu)
-        statusMenu.addItem(NSMenuItem.separator())
-
-        addPerformanceSection(to: statusMenu)
-        statusMenu.addItem(NSMenuItem.separator())
-
-        let openChromeItem = NSMenuItem(title: "Open Chrome…", action: nil, keyEquivalent: "")
-        let chromeMenu = NSMenu()
-        registerTelemetry(for: chromeMenu, identifier: "menu.chrome_profiles")
-        openChromeItem.submenu = chromeMenu
-        chromeProfilesMenu = chromeMenu
-        statusMenu.addItem(openChromeItem)
-
-        let issuesItem = NSMenuItem(title: "Issues", action: nil, keyEquivalent: "")
-        let issMenu = NSMenu()
-        registerTelemetry(for: issMenu, identifier: "menu.issues")
-        issuesItem.submenu = issMenu
-        issuesMenu = issMenu
-        statusMenu.addItem(issuesItem)
-
-        statusMenu.addItem(NSMenuItem.separator())
-
-        let missionControlItem = NSMenuItem(title: "Mission Control", action: #selector(showMissionControl), keyEquivalent: "m")
-        missionControlItem.target = self
-        statusMenu.addItem(missionControlItem)
-
-        statusMenu.addItem(NSMenuItem.separator())
-
-        let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
-        let settingsMenu = buildSettingsSubmenu()
-        registerTelemetry(for: settingsMenu, identifier: "menu.settings")
-        settingsItem.submenu = settingsMenu
-        statusMenu.addItem(settingsItem)
 
         statusMenu.addItem(NSMenuItem.separator())
 

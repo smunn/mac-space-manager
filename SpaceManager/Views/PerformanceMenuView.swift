@@ -80,10 +80,8 @@ struct PerformanceMenuView: View {
                     .debugLabel("buildInfo")
             }
 
-            if shouldShowProcessHealth {
-                Divider()
-                processHealth
-            }
+            Divider()
+            processHealth
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -318,17 +316,6 @@ struct PerformanceMenuView: View {
         .foregroundStyle(.secondary)
         .lineLimit(1)
         .debugLabel("compactPerformanceThroughput")
-    }
-
-    private var shouldShowProcessHealth: Bool {
-        let hasRecommendedSimulator = model.processHealthSnapshot.simulators.contains(where: \.canCleanUp)
-        let hasRecommendedAISession = model.processHealthSnapshot.aiSessions.contains(where: \.canCleanUp)
-        let hasVisibleActionStatus = model.processActionStatus?.succeeded != true
-            && model.processActionStatus != nil
-        return hasRecommendedSimulator
-            || hasRecommendedAISession
-            || !model.terminatingAISessionIDs.isEmpty
-            || hasVisibleActionStatus
     }
 
     private var cpuText: String {

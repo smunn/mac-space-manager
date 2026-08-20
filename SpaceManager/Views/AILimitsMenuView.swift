@@ -7,21 +7,22 @@ import SwiftUI
 
 enum AILimitsResetFormatter {
     private static let chicagoTimeZone = TimeZone(identifier: "America/Chicago")!
+    private static let weekdayLetters = ["U", "M", "T", "W", "R", "F", "S"]
 
     static func compact(_ date: Date?, now: Date = Date()) -> String {
         guard let date else { return "—" }
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = chicagoTimeZone
-        let time = formatted(date, format: "h:mm a")
-        if calendar.isDate(date, inSameDayAs: now) {
-            return time
-        }
-        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-           calendar.isDate(date, inSameDayAs: tomorrow) {
-            return "Tomorrow \(time)"
-        }
-        return "\(formatted(date, format: "EEE")) \(time)"
+        let cutoff = calendar.date(byAdding: .month, value: -11, to: now) ?? .distantPast
+        let weekday = calendar.component(.weekday, from: date)
+        let dayLetter = weekdayLetters.indices.contains(weekday - 1)
+            ? weekdayLetters[weekday - 1]
+            : ""
+        let dateFormat = date < cutoff ? "M-d-yy" : "M-d"
+        let cleanDate = formatted(date, format: dateFormat)
+        let time = formatted(date, format: "h:mm a").lowercased()
+        return "\(dayLetter) \(cleanDate) · \(time)"
     }
 
     private static func formatted(_ date: Date, format: String) -> String {
@@ -80,39 +81,38 @@ struct AILimitsMenuView: View {
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             Text(emoji)
-                .font(.system(size: 11))
-                .frame(width: 14)
-            Text(name)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 45, alignment: .leading)
-            limitCell("5h", value: limits?.fiveHour, width: 76)
-            limitCell("wk", value: limits?.weekly, width: 76)
+                .font(.system(size: 13))
+                .frame(width: 18)
+                .accessibilityLabel(name)
+            limitCell("5h", value: limits?.fiveHour)
+            limitCell("wk", value: limits?.weekly)
             if includesFable {
-                limitCell("Fable", value: limits?.fable, width: 76)
+                limitCell("Fable", value: limits?.fable)
+            } else {
+                Spacer()
+                    .frame(width: 126)
             }
-            Spacer(minLength: 4)
-            Text(sourceText(collectedAt: limits?.collectedAt))
-                .font(.system(size: 9, weight: .medium).monospacedDigit())
-                .foregroundStyle(ageColor(limits?.collectedAt))
         }
         .frame(maxWidth: .infinity)
         .debugLabel("\(name.lowercased())LimitsRow")
     }
 
-    private func limitCell(_ label: String, value: AILimitValue?, width: CGFloat) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Text(percentText(value?.percentUsed))
-                .foregroundStyle(limitColor(value?.percentUsed))
+    private func limitCell(_ label: String, value: AILimitValue?) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(label)
+                    .foregroundStyle(.secondary)
+                Text(percentText(value?.percentUsed))
+                    .foregroundStyle(limitColor(value?.percentUsed))
+            }
+            .font(.system(size: 10, weight: .medium).monospacedDigit())
             Text(AILimitsResetFormatter.compact(value?.resetsAt, now: model.displayedAt))
                 .font(.system(size: 8).monospacedDigit())
                 .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: true, vertical: false)
         }
-        .font(.system(size: 10, weight: .medium).monospacedDigit())
         .lineLimit(1)
-        .minimumScaleFactor(0.75)
-        .frame(width: width, alignment: .leading)
+        .frame(width: 126, alignment: .leading)
         .help(resetHelp(value?.resetsAt))
     }
 
@@ -125,28 +125,6 @@ struct AILimitsMenuView: View {
         if percent >= 80 { return Color(nsColor: .systemRed) }
         if percent >= 50 { return Color(nsColor: .systemOrange) }
         return Color(nsColor: .labelColor)
-    }
-
-    private func ageText(_ date: Date?) -> String {
-        guard let date else { return "unavailable" }
-        let seconds = max(0, Int(model.displayedAt.timeIntervalSince(date)))
-        if seconds < 60 { return "\(seconds)s old" }
-        if seconds < 3_600 { return "\(seconds / 60)m old" }
-        if seconds < 86_400 { return "\(seconds / 3_600)h old" }
-        return "\(seconds / 86_400)d old"
-    }
-
-    private func sourceText(collectedAt: Date?) -> String {
-        let age = ageText(collectedAt)
-        guard let source = model.source else { return age }
-        return "\(age.replacingOccurrences(of: " old", with: "")) · \(source.label)"
-    }
-
-    private func ageColor(_ date: Date?) -> Color {
-        guard let date else { return Color(nsColor: .tertiaryLabelColor) }
-        return model.displayedAt.timeIntervalSince(date) >= 300
-            ? Color(nsColor: .systemOrange)
-            : Color(nsColor: .secondaryLabelColor)
     }
 
     private func resetHelp(_ date: Date?) -> String {
