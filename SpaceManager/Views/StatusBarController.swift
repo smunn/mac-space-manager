@@ -1345,13 +1345,7 @@ class StatusBarController: NSObject {
             : issue.title
         attrTitle.append(NSAttributedString(string: truncatedTitle, attributes: titleAttrs))
 
-        let arrowAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.menuFont(ofSize: 11),
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        let browserTitle = NSMutableAttributedString(attributedString: attrTitle)
-        browserTitle.append(NSAttributedString(string: "  \u{2197}", attributes: arrowAttrs))
-        item.attributedTitle = browserTitle
+        item.attributedTitle = attrTitle
 
         let altItem = NSMenuItem(
             title: "#\(issue.number) \(issue.title)",
@@ -1476,10 +1470,16 @@ class StatusBarController: NSObject {
 
     @objc private func openIssueInBrowser(_ sender: NSMenuItem) {
         guard let info = sender.representedObject as? [String: Any],
+              let repoFullName = info["repoFullName"] as? String,
               let url = info["url"] as? String,
               let issueURL = URL(string: url)
         else { return }
-        NSWorkspace.shared.open(issueURL)
+
+        if let profileEmail = ChromeProfileManager.profileEmail(forRepository: repoFullName) {
+            ChromeProfileManager.openURL(issueURL, profileEmail: profileEmail)
+        } else {
+            NSWorkspace.shared.open(issueURL)
+        }
     }
 
     @objc private func refreshIssues() {

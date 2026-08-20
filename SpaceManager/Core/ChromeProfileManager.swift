@@ -22,6 +22,9 @@ struct ChromeProfile: Equatable {
 
 enum ChromeProfileManager {
     private static let chromeApplicationName = "Google Chrome"
+    private static let chromeOpenPath = NSString(
+        string: "~/Sites/mac-configuration-scripts/bin/chrome-open"
+    ).expandingTildeInPath
 
     static var defaultLocalStateURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -139,6 +142,50 @@ enum ChromeProfileManager {
         }
     }
 
+    static func profileEmail(forRepository repository: String) -> String? {
+        let owner = repository
+            .split(separator: "/", maxSplits: 1)
+            .first?
+            .lowercased()
+
+        switch owner {
+        case "smunn":
+            return "scott@scottmunn.com"
+        case "scottmakestech":
+            return "scottmakestech@gmail.com"
+        default:
+            return nil
+        }
+    }
+
+    static func openURL(_ url: URL, profileEmail: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = [
+            "-l",
+            "-c",
+            [
+                shellQuoted(chromeOpenPath),
+                "--email",
+                shellQuoted(profileEmail),
+                shellQuoted(url.absoluteString)
+            ].joined(separator: " ")
+        ]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try process.run()
+            } catch {
+                NSLog(
+                    "ChromeProfileManager: failed to open URL for '%@': %@",
+                    profileEmail,
+                    error.localizedDescription)
+            }
+        }
+    }
+
     private static func profilesFromLocalState(at url: URL) throws -> [ChromeProfile] {
         let data = try Data(contentsOf: url)
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -186,5 +233,9 @@ enum ChromeProfileManager {
             return String(format: "%08d", number + 1)
         }
         return "99999999-\(directory.localizedLowercase)"
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 }

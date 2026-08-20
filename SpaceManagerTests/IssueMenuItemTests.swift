@@ -24,7 +24,7 @@ final class IssueMenuItemTests: XCTestCase {
         let browserItem = items[0]
         XCTAssertEqual(browserItem.action, NSSelectorFromString("openIssueInBrowser:"))
         XCTAssertFalse(browserItem.isAlternate)
-        XCTAssertTrue(try XCTUnwrap(browserItem.attributedTitle).string.hasSuffix("  ↗"))
+        XCTAssertFalse(try XCTUnwrap(browserItem.attributedTitle).string.contains("↗"))
 
         let projectItem = items[1]
         XCTAssertEqual(projectItem.action, NSSelectorFromString("openIssueProject:"))

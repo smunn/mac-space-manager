@@ -111,4 +111,14 @@ final class ChromeProfileManagerTests: XCTestCase {
         XCTAssertEqual(profiles.first?["name"] as? String, "VSA")
         XCTAssertEqual(profiles.first?["email"] as? String, "vsa@example.com")
     }
+
+    func testRepositoryOwnersRouteToExpectedChromeProfiles() {
+        XCTAssertEqual(
+            ChromeProfileManager.profileEmail(forRepository: "smunn/mac-space-manager"),
+            "scott@scottmunn.com")
+        XCTAssertEqual(
+            ChromeProfileManager.profileEmail(forRepository: "ScottMakesTech/project"),
+            "scottmakestech@gmail.com")
+        XCTAssertNil(ChromeProfileManager.profileEmail(forRepository: "other/project"))
+    }
 }
