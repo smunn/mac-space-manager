@@ -117,7 +117,7 @@ struct AILimitsMenuView: View {
                 expiresAt: expiresAt,
                 now: model.displayedAt))
                 .font(.system(size: 8).monospacedDigit())
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.white)
         }
         .font(.system(size: 10, weight: .medium).monospacedDigit())
         .lineLimit(1)
