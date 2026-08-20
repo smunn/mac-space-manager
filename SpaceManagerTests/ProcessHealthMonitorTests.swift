@@ -186,6 +186,10 @@ final class ProcessHealthMonitorTests: XCTestCase {
             command: "/opt/anthropic/bin/claude"), .claude)
         XCTAssertEqual(ProcessHealthSystemProvider.aiService(
             command: "node /opt/node_modules/@anthropic-ai/claude-code/cli.js"), .claude)
+        XCTAssertEqual(ProcessHealthSystemProvider.aiService(
+            command: "/Users/scott/.local/share/claude/versions/2.1.235 --model fable"), .claude)
+        XCTAssertNil(ProcessHealthSystemProvider.aiService(
+            command: "/Users/scott/.local/share/claude/versions/2.1.235 --chrome-native-host"))
     }
 
     func testCodexSessionIDUsesCompleteUUIDFromRolloutFilename() {

@@ -48,7 +48,6 @@ class StatusBarController: NSObject {
     private let performanceViewModel = PerformanceMenuViewModel()
     private weak var performanceHostingView: NSView?
     private var statusMenuIsOpen = false
-    private var pendingProcessHealthSnapshot: ProcessHealthSnapshot?
     private var aiLimitsCloudRefreshInFlight = false
     private var aiSessionInspectorController: AISessionInspectorController?
 
@@ -314,6 +313,9 @@ class StatusBarController: NSObject {
     }
 
     private func configureProcessHealthActions() {
+        performanceViewModel.refreshProcessHealth = { [weak self] in
+            self?.refreshProcessHealth(force: true)
+        }
         performanceViewModel.openActivityMonitor = {
             guard let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: "com.apple.ActivityMonitor")
@@ -559,14 +561,26 @@ class StatusBarController: NSObject {
         processHealthMonitor.refreshIfNeeded(force: force) { [weak self] snapshot in
             Task { @MainActor in
                 guard let self else { return }
-                if self.statusMenuIsOpen {
-                    self.pendingProcessHealthSnapshot = snapshot
-                } else {
-                    self.performanceViewModel.processHealthSnapshot = snapshot
-                }
+                self.performanceViewModel.processHealthSnapshot = snapshot
                 self.performanceViewModel.isRefreshingProcessHealth = false
-                self.updatePerformanceMenuHeight()
+                self.updatePerformanceMenuHeightAfterLiveRefresh()
             }
+        }
+    }
+
+    private func updatePerformanceMenuHeightAfterLiveRefresh() {
+        guard statusMenuIsOpen else {
+            updatePerformanceMenuHeight()
+            return
+        }
+
+        // Let SwiftUI apply the published snapshot before measuring. Unlike an
+        // unconstrained deferred resize, this explicitly updates the tracked
+        // menu so a refresh can add or remove process rows without clipping.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let view = self.performanceHostingView else { return }
+            self.sizePerformanceHostingView(view)
+            self.statusMenu.update()
         }
     }
 
@@ -2439,11 +2453,6 @@ extension StatusBarController: NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         if menu === statusMenu {
             statusMenuIsOpen = false
-            if let pendingProcessHealthSnapshot {
-                performanceViewModel.processHealthSnapshot = pendingProcessHealthSnapshot
-                self.pendingProcessHealthSnapshot = nil
-                updatePerformanceMenuHeight()
-            }
             stopPerformanceMonitoring()
             menuContextDisplayID = nil
         }

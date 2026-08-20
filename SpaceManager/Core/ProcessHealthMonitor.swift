@@ -431,6 +431,14 @@ final class ProcessHealthSystemProvider: ProcessHealthSystemProviding {
         if name == "codex" { return .codex }
         if name == "claude" { return .claude }
         let lowerCommand = command.lowercased()
+        // Claude's native installer uses the version number as the executable
+        // filename. Match that stable directory while excluding its browser
+        // integration process, which is not an interactive AI session.
+        if lowerCommand.contains("/.local/share/claude/versions/")
+            && !lowerCommand.contains("--chrome-native-host")
+        {
+            return .claude
+        }
         if name == "node"
             && (lowerCommand.contains("/@anthropic-ai/claude-code/")
                 || lowerCommand.contains("/bin/claude"))

@@ -19,6 +19,7 @@ final class PerformanceMenuViewModel: ObservableObject {
     var cleanUpAISession: ((AISessionHealthItem) -> Void)?
     var cleanUpRecommendedAISessions: (([AISessionHealthItem]) -> Void)?
     var openActivityMonitor: (() -> Void)?
+    var refreshProcessHealth: (() -> Void)?
 }
 
 struct ProcessActionStatus: Equatable {
@@ -113,29 +114,12 @@ struct PerformanceMenuView: View {
     }
 
     private var processHealthStatus: some View {
-        HStack {
-            processHealthTitle
-            Spacer()
-            if model.isRefreshingProcessHealth {
-                ProgressView()
-                    .controlSize(.small)
-            }
-            Text(model.isRefreshingProcessHealth ? "Scanning" : "No issues")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-        }
+        processHealthHeader(status: model.isRefreshingProcessHealth ? "Scanning" : "No issues")
     }
 
     private var processHealthIssues: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                processHealthTitle
-                Spacer()
-                if model.isRefreshingProcessHealth {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
+            processHealthHeader(status: model.isRefreshingProcessHealth ? "Scanning" : nil)
 
             VStack(spacing: 6) {
                 simulatorSection
@@ -241,6 +225,44 @@ struct PerformanceMenuView: View {
         .font(.system(size: 12, weight: .semibold))
         .help("Open Activity Monitor")
         .debugLabel("processHealthTitle")
+    }
+
+    private func processHealthHeader(status: String?) -> some View {
+        HStack(spacing: 6) {
+            processHealthTitle
+            Spacer()
+            if model.isRefreshingProcessHealth {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            if let status {
+                Text(status)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            if model.processHealthSnapshot.scannedAt != .distantPast {
+                Text(processHealthScanTime)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
+            }
+            Button {
+                model.refreshProcessHealth?()
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .controlSize(.mini)
+            .disabled(model.isRefreshingProcessHealth)
+            .help("Refresh Process Health")
+            .accessibilityLabel("Refresh Process Health")
+            .debugLabel("refreshProcessHealth")
+        }
+    }
+
+    private var processHealthScanTime: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: model.processHealthSnapshot.scannedAt).lowercased()
     }
 
     private var header: some View {
