@@ -714,7 +714,7 @@
 				CODE_SIGN_ENTITLEMENTS = SpaceManager/Resources/SpaceManager.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = YXX3W2NJA2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SpaceManager/Resources/Info.plist;
@@ -723,7 +723,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.14;
+				MARKETING_VERSION = 0.1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.smunn.SpaceManager;
 				PRODUCT_NAME = "Space Manager";
 				SDKROOT = macosx;
@@ -758,7 +758,7 @@
 				CODE_SIGN_ENTITLEMENTS = SpaceManager/Resources/SpaceManager.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = YXX3W2NJA2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SpaceManager/Resources/Info.plist;
@@ -767,7 +767,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.14;
+				MARKETING_VERSION = 0.1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.smunn.SpaceManager;
 				PRODUCT_NAME = "Space Manager";
 				SDKROOT = macosx;
