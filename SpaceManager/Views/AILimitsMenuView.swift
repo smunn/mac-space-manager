@@ -60,7 +60,7 @@ struct AILimitsMenuView: View {
     @ObservedObject var model: AILimitsMenuViewModel
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(alignment: .leading, spacing: 3) {
             serviceRow(
                 emoji: "✴️",
                 name: "Claude",
@@ -98,7 +98,7 @@ struct AILimitsMenuView: View {
                     .frame(width: 126)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .debugLabel("\(name.lowercased())LimitsRow")
     }
 

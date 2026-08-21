@@ -267,6 +267,9 @@ class StatusBarController: NSObject {
                 aiLimitsModel: aiLimitsViewModel,
                 performanceModel: performanceViewModel))
         view.frame = NSRect(x: 0, y: 0, width: 456, height: 1)
+        // NSMenu expands to its widest item. Let the custom view follow that
+        // width instead of leaving the overview card at its initial width.
+        view.autoresizingMask = [.width]
         sizePerformanceHostingView(view)
         performanceHostingView = view
         item.view = view

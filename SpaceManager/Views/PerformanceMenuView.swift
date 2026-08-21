@@ -32,13 +32,15 @@ struct SystemOverviewMenuView: View {
     @ObservedObject var performanceModel: PerformanceMenuViewModel
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             AILimitsMenuView(model: aiLimitsModel)
             PerformanceMenuView(model: performanceModel)
         }
-        .padding(.horizontal, 10)
+        // Match the standard NSMenu title inset so custom content and native
+        // menu item labels share one left edge.
+        .padding(.horizontal, 22)
         .padding(.vertical, 8)
-        .frame(width: 440)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.52))
@@ -98,6 +100,7 @@ struct PerformanceMenuView: View {
             Divider()
             processHealth
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .debugLabel("PerformanceMenuView")
     }
 
@@ -121,11 +124,16 @@ struct PerformanceMenuView: View {
         VStack(alignment: .leading, spacing: 6) {
             processHealthHeader(status: model.isRefreshingProcessHealth ? "Scanning" : nil)
 
-            VStack(spacing: 6) {
-                simulatorSection
-                aiSessionSection(.codex)
-                aiSessionSection(.claude)
+            ScrollView(.vertical) {
+                VStack(spacing: 6) {
+                    simulatorSection
+                    aiSessionSection(.codex)
+                    aiSessionSection(.claude)
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .frame(height: processHealthListHeight)
+            .debugLabel("processHealthList")
 
             if let status = model.processActionStatus {
                 Text(status.message)
@@ -135,6 +143,17 @@ struct PerformanceMenuView: View {
                     .debugLabel("processActionStatus")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var processHealthListHeight: CGFloat {
+        let simulators = model.processHealthSnapshot.simulators
+        let sessions = model.processHealthSnapshot.aiSessions
+        let simulatorHeight = simulators.isEmpty ? 0 : 19 + CGFloat(simulators.count * 55)
+        let serviceCount = Set(sessions.map(\.service)).count
+        let sessionHeight = CGFloat(serviceCount * 19 + sessions.count * 50)
+        let sectionSpacing = simulators.isEmpty || sessions.isEmpty ? 0 : 6
+        return min(220, CGFloat(simulatorHeight) + sessionHeight + CGFloat(sectionSpacing))
     }
 
     @ViewBuilder
