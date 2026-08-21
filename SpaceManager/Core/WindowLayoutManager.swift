@@ -79,7 +79,6 @@ struct WindowLayoutApplicationShortcutPolicy {
 @MainActor
 final class WindowLayoutManager: NSObject, ObservableObject {
     static let shared = WindowLayoutManager()
-    static let enabledDefaultsKey = "windowLayoutsEnabled"
 
     @Published private(set) var isEnabled: Bool
     @Published private(set) var isMagnetRunning: Bool
@@ -127,10 +126,14 @@ final class WindowLayoutManager: NSObject, ObservableObject {
     private var lastKeyboardInteraction: InteractionTarget?
 
     private override init() {
-        let requested = UserDefaults.standard.bool(forKey: Self.enabledDefaultsKey)
         isEnabled = false
         isMagnetRunning = false
         super.init()
+
+        // Window Layouts is a core app feature, not a user preference. Remove
+        // the legacy toggle value so an old disabled state cannot survive an
+        // update or a temporary registration failure.
+        UserDefaults.standard.removeObject(forKey: "windowLayoutsEnabled")
 
         keyboardInputDeviceMonitor.onSlashStyle = { [weak self] style in
             Task { @MainActor in
@@ -146,50 +149,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         }
         refreshMagnetStatus()
         commands = (try? loadCommands()) ?? MagnetShortcutCommand.standardSet
-
-        if requested {
-            if magnetIsRunning() {
-                UserDefaults.standard.set(false, forKey: Self.enabledDefaultsKey)
-                lastError = "Quit Magnet before enabling Window Layouts."
-            } else {
-                do {
-                    try enable()
-                } catch {
-                    UserDefaults.standard.set(false, forKey: Self.enabledDefaultsKey)
-                    lastError = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    func setEnabled(_ enabled: Bool) {
-        lastError = nil
-        if enabled {
-            if isMagnetRunning {
-                lastError = "Conflict: Magnet is running."
-                return
-            }
-            do {
-                try enable()
-            } catch {
-                disable()
-                lastError = error.localizedDescription
-            }
-        } else {
-            disable()
-        }
+        startIfNeeded()
     }
 
     func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        let toggle = NSMenuItem(
-            title: "Enable Window Layouts",
-            action: #selector(toggleFromMenu(_:)),
-            keyEquivalent: "")
-        toggle.target = self
-        toggle.state = isEnabled ? .on : .off
-        menu.addItem(toggle)
-
         let cheatsheet = NSMenuItem(
             title: "Open Cheatsheet…",
             action: #selector(openCheatsheetFromMenu),
@@ -246,24 +210,6 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             }
         }
         return menu
-    }
-
-    @objc private func toggleFromMenu(_ sender: NSMenuItem) {
-        setEnabled(!isEnabled)
-        sender.state = isEnabled ? .on : .off
-        if let lastError {
-            let alert = NSAlert()
-            alert.messageText = "Window Layouts Could Not Be Enabled"
-            alert.informativeText = lastError
-            alert.alertStyle = .warning
-            alert.runModal()
-        } else if isEnabled && !shortcutConflicts.isEmpty {
-            let alert = NSAlert()
-            alert.messageText = "Window Layouts Enabled with Conflicts"
-            alert.informativeText = shortcutConflicts.map(\.description).joined(separator: "\n")
-            alert.alertStyle = .warning
-            alert.runModal()
-        }
     }
 
     @objc private func openCheatsheetFromMenu() {
@@ -324,14 +270,23 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             throw WindowLayoutError.magnetRunning
         }
         isEnabled = true
-        UserDefaults.standard.set(true, forKey: Self.enabledDefaultsKey)
     }
 
     private func disable() {
         unregisterHotKeys()
         shortcutConflicts = []
         isEnabled = false
-        UserDefaults.standard.set(false, forKey: Self.enabledDefaultsKey)
+    }
+
+    private func startIfNeeded() {
+        guard !isEnabled else { return }
+        do {
+            try enable()
+            lastError = nil
+        } catch {
+            disable()
+            lastError = error.localizedDescription
+        }
     }
 
     private func loadCommands() throws -> [MagnetShortcutCommand] {
@@ -1115,7 +1070,11 @@ final class WindowLayoutManager: NSObject, ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.rememberExternalApplication(application)
-                self.refreshApplicationShortcutPassThrough(for: application)
+                if self.isEnabled {
+                    self.refreshApplicationShortcutPassThrough(for: application)
+                } else {
+                    self.startIfNeeded()
+                }
             }
         })
         observers.append(center.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] note in
@@ -1136,6 +1095,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 }
                 if application.bundleIdentifier == MagnetShortcutManager.magnetBundleIdentifier {
                     self.refreshMagnetStatus()
+                    self.startIfNeeded()
                 }
             }
         })
@@ -1166,12 +1126,16 @@ final class WindowLayoutManager: NSObject, ObservableObject {
                 guard let self else { return }
                 do {
                     let updated = try self.loadCommands()
-                    guard updated.contains(where: \.isEnabled) || !self.isEnabled else {
+                    guard updated.contains(where: \.isEnabled) else {
                         throw WindowLayoutError.noCommands
                     }
                     self.commands = updated
-                    if self.isEnabled { try self.registerHotKeys() }
-                    self.lastError = nil
+                    if self.isEnabled {
+                        try self.registerHotKeys()
+                        self.lastError = nil
+                    } else {
+                        self.startIfNeeded()
+                    }
                 } catch {
                     if self.isEnabled { self.disable() }
                     self.lastError = error.localizedDescription
@@ -1193,6 +1157,7 @@ final class WindowLayoutManager: NSObject, ObservableObject {
         do {
             try terminateMagnet()
             refreshMagnetStatus()
+            startIfNeeded()
         } catch {
             lastError = error.localizedDescription
         }
@@ -1369,8 +1334,8 @@ private enum WindowLayoutError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .permissionRequired(let permission):
-            return "Grant \(permission.title) before enabling Window Layouts."
-        case .magnetRunning: return "Quit Magnet before enabling Window Layouts."
+            return "Grant \(permission.title) for Window Layouts."
+        case .magnetRunning: return "Quit Magnet to use Window Layouts."
         case .magnetDidNotQuit: return "Magnet did not quit."
         case .noCommands: return "No window layout shortcuts are configured."
         case .duplicateShortcut(let shortcut): return "The shortcut \(shortcut) is assigned more than once for the same display orientation."

@@ -107,24 +107,15 @@ struct SettingsView: View {
                         isOn: $showNamesInMissionControl
                     )
 
-                    Divider()
+                    if windowLayouts.isMagnetRunning {
+                        Divider()
 
-                    HStack(spacing: 8) {
-                        Toggle(
-                            "Window layouts",
-                            isOn: Binding(
-                                get: { windowLayouts.isEnabled },
-                                set: { windowLayouts.setEnabled($0) }
-                            )
-                        )
-                        .disabled(windowLayouts.isMagnetRunning && !windowLayouts.isEnabled)
-
-                        Spacer()
-
-                        if windowLayouts.isMagnetRunning {
+                        HStack(spacing: 8) {
                             Text("Conflict: Magnet is running")
                                 .font(.caption)
                                 .foregroundStyle(.red)
+
+                            Spacer()
 
                             Button("Quit Magnet") {
                                 windowLayouts.quitMagnet()
